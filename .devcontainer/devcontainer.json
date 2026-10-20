@@ -1,0 +1,9 @@
+{
+	"name": "2026 ASC Web3 Website",
+	"image": "mcr.microsoft.com/devcontainers/javascript-node:20",
+	"postStartCommand": "nohup node serve.js > /tmp/website.log 2>&1 &",
+	"forwardPorts": [8080],
+	"portsAttributes": {
+		"8080": { "label": "江湖鏢局金庫網頁", "onAutoForward": "notify" }
+	}
+}

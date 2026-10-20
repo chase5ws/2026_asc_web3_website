@@ -1,0 +1,14 @@
+{
+	"name": "asc-web3-website",
+	"version": "1.0.0",
+	"description": "江湖鏢局金庫公開網頁：查看點數金庫各幣種池子、匯率與 NFT 資訊，連接錢包領取兌換與白名單鑄造",
+	"author": "Chase.Tseng",
+	"license": "MIT",
+	"private": true,
+	"scripts": {
+		"start": "node serve.js"
+	},
+	"engines": {
+		"node": ">=18"
+	}
+}
