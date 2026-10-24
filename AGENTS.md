@@ -9,7 +9,7 @@
 - 信物 NFT：`0x39c774673A25B0f1F600Bf39edF639c0f44a7488`（介面不確定，`app.js` 每個欄位讀不到就隱藏）
 
 ## 檔案
-- `index.html`：版面與 CSS（深藍＋紅，`--bg --card --red --blue …` 在 `:root`；斷點 960px 平板、640px 手機；`[hidden]` 一律隱藏）。圖片欄位見 `assets/README.md`，沒有圖時用漸層。
+- `index.html`：版面與 CSS（深藍＋紅，`--bg --card --red --blue …` 在 `:root`；斷點 960px 平板、640px 手機；`[hidden]` 一律隱藏）。圖片欄位見 `assets/README.md`，沒有圖時用漸層。圖示是文字「ASC」；綁定頁背景是「ASC鏢局」斜向重複的浮水印（`--wm` 的 SVG，`.bindview::before` 旋轉 -24°），與機器人網頁 `web.js` 的 `WATERMARK` 相同。
 - `app.js`：ethers v6 UMD。
   - 讀取：`query("pool 0x帳號")`、`query("status")`、`query("rule")`、`totalSupply`、`balanceOf`。`pool` 的數字陣列 `[點數, 門檻OK, 期末, 持有天數, 比例bps]＋每種代幣 8 個 [餘額, 保底, 鎖住, 可兌換, 100點份額, 每人上限, 本期剩餘, 全部可得]`；代幣地址從文字 `|| 符號 0x地址:` 解析。
   - 交易：`exchange(token, points)`、`transfer(to, amount)`；自訂錯誤在 ABI 裡，`explain()` 轉中文。

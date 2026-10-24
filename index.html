@@ -20,7 +20,9 @@
   --red:#e0313f;--red2:#ff5c63;--redbg:rgba(224,49,63,.14);
   --blue:#3d8bff;--cyan:#41d3ff;--gold:#d4af6a;--ok:#33c48d;--warn:#f0a63a;
   --up:#ff4d5a;--down:#2fc3a0;
-  --radius:16px;--serif:"Noto Serif TC","Songti TC",serif;
+  --radius:16px;
+  /* 背景浮水印：「ASC鏢局」斜著重複 */
+  --wm:url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='300'%20height='120'%3E%3Cg%20font-family='Noto%20Serif%20TC,Songti%20TC,serif'%20font-weight='900'%20font-size='28'%20letter-spacing='4'%3E%3Ctext%20x='8'%20y='44'%20fill='rgba(233,238,251,0.07)'%3EASC%E9%8F%A2%E5%B1%80%3C/text%3E%3Ctext%20x='158'%20y='104'%20fill='rgba(224,49,63,0.12)'%3EASC%E9%8F%A2%E5%B1%80%3C/text%3E%3C/g%3E%3C/svg%3E");--serif:"Noto Serif TC","Songti TC",serif;
 }
 *{box-sizing:border-box}
 [hidden]{display:none!important}
@@ -43,8 +45,9 @@ h3{font-size:16px}
 /* ── 頂部 ── */
 header{position:sticky;top:0;z-index:20;background:rgba(7,13,31,.82);backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
 .bar{max-width:1180px;margin:0 auto;padding:10px 16px;display:flex;align-items:center;gap:14px}
-.brand{display:flex;align-items:center;gap:10px;min-width:0}
-.logo{width:40px;height:40px;border-radius:10px;flex:none;display:grid;place-items:center;font-family:var(--serif);font-weight:900;color:#fff;
+.brand{display:flex;align-items:center;gap:10px;min-width:0;color:var(--ink)}
+.brand:hover{text-decoration:none}
+.logo{width:44px;height:40px;border-radius:10px;flex:none;display:grid;place-items:center;font-family:var(--serif);font-weight:900;font-size:13px;letter-spacing:.04em;color:#fff;
   background:linear-gradient(135deg,var(--red),#7a1020 60%,var(--blue));box-shadow:0 0 0 1px var(--line2),0 0 18px rgba(224,49,63,.35);overflow:hidden}
 .logo img{width:100%;height:100%;object-fit:cover}
 .brand b{font-family:var(--serif);font-size:18px;letter-spacing:.08em;white-space:nowrap}
@@ -151,9 +154,10 @@ footer div{max-width:1180px;margin:0 auto;display:grid;gap:6px}
 /* ── 綁定錢包頁（背景圖：assets/bind-bg.jpg、手機 assets/bind-bg-mobile.jpg） ── */
 .bindview{position:fixed;inset:0;z-index:50;display:grid;place-items:center;padding:20px;overflow:auto;
   background:linear-gradient(180deg,rgba(7,13,31,.55),rgba(7,13,31,.9)),url("assets/bind-bg.jpg") center/cover no-repeat,radial-gradient(circle at 50% 30%,#1b2b5c,#070d1f 70%)}
-.bindcard{width:min(440px,100%);text-align:center;display:grid;gap:14px;padding:30px 24px;border-radius:22px;
+.bindview::before{content:"";position:fixed;inset:-60%;background:var(--wm);transform:rotate(-24deg);pointer-events:none}
+.bindcard{position:relative;z-index:1;width:min(440px,100%);text-align:center;display:grid;gap:14px;padding:30px 24px;border-radius:22px;
   background:rgba(15,27,58,.86);border:1px solid var(--line2);box-shadow:0 30px 80px rgba(0,0,0,.55),0 0 0 1px rgba(224,49,63,.2);backdrop-filter:blur(8px)}
-.bindcard .logo{width:72px;height:72px;margin:0 auto;font-size:28px;border-radius:18px}
+.bindcard .logo{width:84px;height:84px;margin:0 auto;font-size:24px;letter-spacing:.06em;border-radius:22px}
 .bindcard h1{font-size:26px}
 .bindcard button{width:100%;padding:16px;font-size:17px}
 .bindcard details{text-align:left;font-size:12.5px;color:var(--muted)}
@@ -194,7 +198,7 @@ footer div{max-width:1180px;margin:0 auto;display:grid;gap:6px}
 <!-- 綁定錢包（從 Discord 的「綁定錢包」按鈕開啟：網址 #bind=金鑰） -->
 <div id="bindView" class="bindview" hidden>
   <div class="bindcard">
-    <div class="logo"><img src="assets/logo.png" alt="" onerror="this.remove()">鏢</div>
+    <div class="logo">ASC</div>
     <h1>連結錢包</h1>
     <p class="muted" id="bindWho">讀取中…</p>
     <button id="bindGo" disabled>連接錢包並簽名</button>
@@ -208,7 +212,7 @@ footer div{max-width:1180px;margin:0 auto;display:grid;gap:6px}
 <header>
   <div class="bar">
     <a class="brand" href="#top">
-      <span class="logo"><img src="assets/logo.png" alt="" onerror="this.remove()">鏢</span>
+      <span class="logo">ASC</span>
       <span><b>江湖鏢局金庫</b><small>ASC・鏈上鏢局</small></span>
     </a>
     <nav><a href="#market">即時幣值</a><a href="#mine">我的 ASC</a><a href="#rules">金庫規則</a><a href="#nft">信物</a><a href="#how">怎麼玩</a></nav>
