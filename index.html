@@ -2,94 +2,357 @@
 <html lang="zh-Hant">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>江湖鏢局金庫</title>
-<meta name="description" content="江湖鏢局的點數金庫與 NFT 資訊：查看各幣種池子、匯率，連接錢包領取兌換。">
+<meta name="description" content="江湖鏢局的鏈上金庫：即時幣值、用 ASC 兌換代幣、綁定錢包、信物 NFT。">
+<meta name="theme-color" content="#070d1f">
+<meta property="og:title" content="江湖鏢局金庫">
+<meta property="og:description" content="科技江湖・鏈上鏢局：持有越久，換得越多。">
+<meta property="og:image" content="assets/og.jpg">
+<link rel="icon" href="assets/favicon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@600;900&display=swap" rel="stylesheet">
 <style>
-:root{--bg:#f4f1ea;--card:#fffdf8;--ink:#2b2622;--muted:#7a7068;--line:#e3dccf;--accent:#a8322d;--ok:#2e7d4f;--warn:#b26a00;--chip:#efe8db}
-@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#171412;--card:#211d1a;--ink:#efe8de;--muted:#a59a8e;--line:#3a332d;--accent:#e0625a;--ok:#5cc28a;--warn:#e7a443;--chip:#2c2622}}
-:root[data-theme="dark"]{--bg:#171412;--card:#211d1a;--ink:#efe8de;--muted:#a59a8e;--line:#3a332d;--accent:#e0625a;--ok:#5cc28a;--warn:#e7a443;--chip:#2c2622}
+:root{
+  --bg:#070d1f;--bg2:#0b1530;--card:#0f1b3a;--card2:#13224a;--line:#22355f;--line2:#2e4678;
+  --ink:#e9eefb;--muted:#8fa0c6;--faint:#5b6b93;
+  --red:#e0313f;--red2:#ff5c63;--redbg:rgba(224,49,63,.14);
+  --blue:#3d8bff;--cyan:#41d3ff;--gold:#d4af6a;--ok:#33c48d;--warn:#f0a63a;
+  --up:#ff4d5a;--down:#2fc3a0;
+  --radius:16px;--serif:"Noto Serif TC","Songti TC",serif;
+}
 *{box-sizing:border-box}
 [hidden]{display:none!important}
-body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.6 system-ui,-apple-system,"PingFang TC","Noto Sans TC",sans-serif}
-header{max-width:960px;margin:0 auto;padding:28px 16px 8px;display:flex;gap:16px;align-items:center;justify-content:space-between;flex-wrap:wrap}
-h1{font-size:24px;margin:0;letter-spacing:.04em}
-h1 small{display:block;font-size:13px;color:var(--muted);font-weight:400;letter-spacing:0}
-main{max-width:960px;margin:0 auto;padding:8px 16px 48px;display:grid;gap:16px}
-section{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:20px}
-h2{font-size:17px;margin:0 0 12px}
-.muted{color:var(--muted);font-size:14px}
-button{border:0;border-radius:10px;background:var(--accent);color:#fff;font-size:15px;font-weight:600;padding:10px 16px;cursor:pointer}
-button.alt{background:transparent;color:var(--accent);border:1px solid var(--accent)}
-button[disabled]{opacity:.45;cursor:default}
-.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px}
-.pool{border:1px solid var(--line);border-radius:12px;padding:14px;display:grid;gap:6px}
-.pool .sym{font-size:18px;font-weight:700}
-.pool .rate{font-size:20px;font-weight:700;color:var(--accent)}
-.kv{display:flex;justify-content:space-between;gap:8px;font-size:14px}
+html{scroll-behavior:smooth;scroll-padding-top:72px}
+body{margin:0;min-height:100vh;color:var(--ink);font:15px/1.65 system-ui,-apple-system,"PingFang TC","Noto Sans TC",sans-serif;
+  background:
+    radial-gradient(1200px 600px at 80% -10%,rgba(61,139,255,.18),transparent 60%),
+    radial-gradient(900px 500px at -10% 30%,rgba(224,49,63,.12),transparent 60%),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='80' height='80'%3E%3Cpath d='M0 40h30l6-6h8l6 6h30M40 0v30l-6 6v8l6 6v30' fill='none' stroke='%2322355f' stroke-width='.6' opacity='.55'/%3E%3C/svg%3E"),
+    var(--bg)}
+a{color:var(--cyan);text-decoration:none}a:hover{text-decoration:underline}
+code,.mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12.5px;word-break:break-all}
+h1,h2,h3{font-family:var(--serif);letter-spacing:.06em;margin:0}
+h2{font-size:22px;display:flex;align-items:center;gap:10px}
+h2::before{content:"";width:6px;height:22px;border-radius:3px;background:linear-gradient(var(--red),var(--blue))}
+h3{font-size:16px}
+.muted{color:var(--muted)}.faint{color:var(--faint)}.small{font-size:13px}
+.ok{color:var(--ok)}.err{color:var(--red2)}.warn{color:var(--warn)}
+
+/* ── 頂部 ── */
+header{position:sticky;top:0;z-index:20;background:rgba(7,13,31,.82);backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+.bar{max-width:1180px;margin:0 auto;padding:10px 16px;display:flex;align-items:center;gap:14px}
+.brand{display:flex;align-items:center;gap:10px;min-width:0}
+.logo{width:40px;height:40px;border-radius:10px;flex:none;display:grid;place-items:center;font-family:var(--serif);font-weight:900;color:#fff;
+  background:linear-gradient(135deg,var(--red),#7a1020 60%,var(--blue));box-shadow:0 0 0 1px var(--line2),0 0 18px rgba(224,49,63,.35);overflow:hidden}
+.logo img{width:100%;height:100%;object-fit:cover}
+.brand b{font-family:var(--serif);font-size:18px;letter-spacing:.08em;white-space:nowrap}
+.brand small{display:block;color:var(--muted);font-size:11px;letter-spacing:.2em}
+nav{display:flex;gap:4px;margin-left:auto;overflow-x:auto;scrollbar-width:none}
+nav::-webkit-scrollbar{display:none}
+nav a{color:var(--muted);padding:6px 10px;border-radius:8px;font-size:14px;white-space:nowrap}
+nav a:hover{color:var(--ink);background:var(--card);text-decoration:none}
+.who{font-size:13px;color:var(--muted);white-space:nowrap}
+
+button,.btn{border:0;border-radius:12px;background:linear-gradient(135deg,var(--red),#b01c2c);color:#fff;font-family:inherit;font-weight:600;font-size:15px;line-height:1;padding:12px 18px;cursor:pointer;
+  box-shadow:0 6px 18px rgba(224,49,63,.25);transition:transform .12s,filter .12s;white-space:nowrap;display:inline-flex;align-items:center;justify-content:center;gap:6px}
+button:hover{filter:brightness(1.08)}button:active{transform:translateY(1px)}
+button.alt{background:transparent;border:1px solid var(--line2);color:var(--ink);box-shadow:none}
+button.blue{background:linear-gradient(135deg,var(--blue),#1d4fb8);box-shadow:0 6px 18px rgba(61,139,255,.25)}
+button[disabled]{opacity:.4;cursor:not-allowed;filter:none}
+
+/* ── 主視覺（背景圖：assets/hero-bg.jpg、手機 assets/hero-bg-mobile.jpg） ── */
+.hero{position:relative;overflow:hidden;border-bottom:1px solid var(--line);
+  background:linear-gradient(180deg,rgba(7,13,31,.35),rgba(7,13,31,.95)),url("assets/hero-bg.jpg") center/cover no-repeat,linear-gradient(120deg,#0b1530,#1a0d24)}
+.hero-in{max-width:1180px;margin:0 auto;padding:56px 16px 36px;display:grid;gap:22px}
+.hero h1{font-size:clamp(30px,5.4vw,56px);font-weight:900;line-height:1.15;text-shadow:0 4px 30px rgba(0,0,0,.6)}
+.hero h1 em{font-style:normal;color:var(--red2)}
+.hero p{max-width:620px;margin:0;color:#c6d1ee}
+.stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+.stat{background:rgba(15,27,58,.75);border:1px solid var(--line);border-radius:14px;padding:12px 14px;backdrop-filter:blur(4px)}
+.stat span{display:block;color:var(--muted);font-size:12px;letter-spacing:.1em}
+.stat b{font-size:20px;font-variant-numeric:tabular-nums}
+
+main{max-width:1180px;margin:0 auto;padding:26px 16px 60px;display:grid;gap:26px}
+section{display:grid;gap:14px}
+.card{background:linear-gradient(180deg,var(--card),var(--bg2));border:1px solid var(--line);border-radius:var(--radius);padding:18px;position:relative}
+.card.glow{box-shadow:0 0 0 1px rgba(224,49,63,.15),0 20px 50px rgba(0,0,0,.35)}
+.kv{display:flex;justify-content:space-between;gap:10px;font-size:14px;padding:3px 0}
 .kv span:first-child{color:var(--muted)}
-.chip{display:inline-block;background:var(--chip);border-radius:999px;padding:2px 10px;font-size:12px;color:var(--muted)}
-.bar{height:6px;border-radius:3px;background:var(--chip);overflow:hidden}
-.bar i{display:block;height:100%;background:var(--accent)}
-code{font-size:12px;word-break:break-all}
-a{color:var(--accent)}
-#msg{min-height:1.5em;margin-top:8px}
-.ok{color:var(--ok)}.err{color:var(--accent)}.warn{color:var(--warn)}
+.kv b{font-variant-numeric:tabular-nums;text-align:right}
+.chip{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line2);border-radius:999px;padding:2px 10px;font-size:12px;color:var(--muted)}
+.chip.on{color:var(--ok);border-color:rgba(51,196,141,.4)}.chip.off{color:var(--warn);border-color:rgba(240,166,58,.4)}
+.live{width:8px;height:8px;border-radius:50%;background:var(--red);box-shadow:0 0 0 0 rgba(224,49,63,.7);animation:pulse 1.6s infinite}
+@keyframes pulse{70%{box-shadow:0 0 0 8px rgba(224,49,63,0)}100%{box-shadow:0 0 0 0 rgba(224,49,63,0)}}
 .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.tabs{display:flex;gap:6px;flex-wrap:wrap}
+.tabs button{padding:7px 14px;font-size:13px;border-radius:999px;background:var(--card);border:1px solid var(--line2);box-shadow:none;color:var(--muted)}
+.tabs button.on{color:#fff;border-color:var(--red);background:var(--redbg)}
+
+/* ── 即時幣值：左右兩邊池子，中間價格 ── */
+.market{display:grid;grid-template-columns:1fr 1.5fr 1fr;gap:14px;align-items:stretch}
+.side{display:grid;gap:10px;align-content:start}
+.side .coin{display:flex;align-items:center;gap:10px}
+.icon{width:42px;height:42px;border-radius:50%;flex:none;display:grid;place-items:center;font-weight:800;font-size:13px;color:#fff;overflow:hidden;box-shadow:0 0 0 2px var(--line2)}
+.icon img{width:100%;height:100%;object-fit:cover}
+.icon.asc{background:radial-gradient(circle at 30% 30%,#ff7a82,var(--red) 50%,#5d0b16)}
+.icon.tok{background:radial-gradient(circle at 30% 30%,#7fc0ff,var(--blue) 50%,#0f2a66)}
+.big{font-size:26px;font-weight:800;font-variant-numeric:tabular-nums;line-height:1.2}
+.tank{height:150px;border-radius:12px;border:1px solid var(--line2);background:var(--bg);position:relative;overflow:hidden}
+.tank i{position:absolute;left:0;right:0;bottom:0;transition:height 1.2s cubic-bezier(.2,.8,.2,1)}
+.tank i::after{content:"";position:absolute;left:-50%;top:-8px;width:200%;height:16px;border-radius:40%;background:inherit;filter:brightness(1.25);animation:wave 4s linear infinite}
+@keyframes wave{to{transform:translateX(25%)}}
+.tank.asc i{background:linear-gradient(0deg,#6d0f1c,var(--red))}
+.tank.tok i{background:linear-gradient(0deg,#0f2a66,var(--blue))}
+.tank .lbl{position:absolute;inset:auto 10px 8px 10px;display:flex;justify-content:space-between;font-size:12px;color:#fff;text-shadow:0 1px 4px #000;z-index:1}
+.center{display:grid;gap:10px;align-content:start;text-align:center}
+.price{font-size:clamp(30px,4.6vw,44px);font-weight:900;font-variant-numeric:tabular-nums;line-height:1.1;transition:color .4s}
+.price.up{color:var(--up)}.price.down{color:var(--down)}
+.delta{font-size:14px;font-variant-numeric:tabular-nums}
+.delta.up{color:var(--up)}.delta.down{color:var(--down)}
+.flow{display:flex;align-items:center;justify-content:center;gap:8px;color:var(--muted);font-size:13px}
+.flow .dots{display:flex;gap:4px}.flow .dots i{width:6px;height:6px;border-radius:50%;background:var(--cyan);opacity:.25;animation:flow 1.4s infinite}
+.flow .dots i:nth-child(2){animation-delay:.2s}.flow .dots i:nth-child(3){animation-delay:.4s}.flow .dots i:nth-child(4){animation-delay:.6s}
+@keyframes flow{50%{opacity:1}}
+.chart{width:100%;height:170px;display:block}
+.chart .ln{fill:none;stroke:var(--red2);stroke-width:2;vector-effect:non-scaling-stroke}
+.chart .ar{fill:url(#g)}
+.chart .gd{stroke:var(--line);stroke-width:1;vector-effect:non-scaling-stroke}
+.range{display:flex;justify-content:space-between;font-size:11px;color:var(--faint)}
+.mix{display:flex;height:10px;border-radius:5px;overflow:hidden;background:var(--bg)}
+.mix i{display:block;height:100%;transition:width 1s}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--muted)}
+.legend b{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:5px;vertical-align:-1px}
+
+/* ── 我的 ── */
+.grid2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+.grid3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
+label{display:grid;gap:6px;font-size:13px;color:var(--muted)}
+input,select{width:100%;background:var(--bg);border:1px solid var(--line2);border-radius:10px;color:var(--ink);font-family:inherit;font-size:15px;padding:11px 12px;outline:none}
+input:focus,select:focus{border-color:var(--red)}
+.preview{background:var(--bg);border:1px dashed var(--line2);border-radius:12px;padding:12px;display:grid;gap:2px}
+.msg{min-height:1.4em;font-size:14px}
+.tiers{display:grid;grid-template-columns:repeat(8,minmax(0,1fr));gap:6px}
+.tier{border:1px solid var(--line);border-radius:10px;padding:8px 4px;text-align:center;font-size:12px;color:var(--muted);background:var(--bg)}
+.tier b{display:block;font-size:16px;color:var(--ink)}
+.tier.now{border-color:var(--red);background:var(--redbg);color:#ffd5d8}
+.tier.done b{color:var(--gold)}
+.progress{height:6px;border-radius:3px;background:var(--bg);overflow:hidden}.progress i{display:block;height:100%;background:linear-gradient(90deg,var(--red),var(--gold))}
 .nft{display:flex;gap:16px;align-items:center;flex-wrap:wrap}
-.nft img{width:96px;height:96px;border-radius:12px;object-fit:cover;background:var(--chip)}
-ol{padding-left:20px;margin:0}
-footer{max-width:960px;margin:0 auto;padding:0 16px 32px;color:var(--muted);font-size:13px}
+.nft .pic{width:120px;height:120px;border-radius:14px;flex:none;background:linear-gradient(135deg,var(--card2),var(--bg));border:1px solid var(--line2);display:grid;place-items:center;color:var(--faint);font-size:12px;overflow:hidden}
+.nft .pic img{width:100%;height:100%;object-fit:cover}
+ol.steps{margin:0;padding:0;list-style:none;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;counter-reset:s}
+ol.steps li{counter-increment:s;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;font-size:14px;color:var(--muted)}
+ol.steps li::before{content:counter(s,cjk-ideographic);display:block;font-family:var(--serif);font-size:22px;color:var(--red2);margin-bottom:4px}
+footer{border-top:1px solid var(--line);padding:22px 16px 40px;color:var(--faint);font-size:12.5px}
+footer div{max-width:1180px;margin:0 auto;display:grid;gap:6px}
+
+/* ── 綁定錢包頁（背景圖：assets/bind-bg.jpg、手機 assets/bind-bg-mobile.jpg） ── */
+.bindview{position:fixed;inset:0;z-index:50;display:grid;place-items:center;padding:20px;overflow:auto;
+  background:linear-gradient(180deg,rgba(7,13,31,.55),rgba(7,13,31,.9)),url("assets/bind-bg.jpg") center/cover no-repeat,radial-gradient(circle at 50% 30%,#1b2b5c,#070d1f 70%)}
+.bindcard{width:min(440px,100%);text-align:center;display:grid;gap:14px;padding:30px 24px;border-radius:22px;
+  background:rgba(15,27,58,.86);border:1px solid var(--line2);box-shadow:0 30px 80px rgba(0,0,0,.55),0 0 0 1px rgba(224,49,63,.2);backdrop-filter:blur(8px)}
+.bindcard .logo{width:72px;height:72px;margin:0 auto;font-size:28px;border-radius:18px}
+.bindcard h1{font-size:26px}
+.bindcard button{width:100%;padding:16px;font-size:17px}
+.bindcard details{text-align:left;font-size:12.5px;color:var(--muted)}
+.bindcard pre{white-space:pre-wrap;background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:10px;margin:8px 0 0}
+
+/* ── 響應式：平板 ── */
+@media (max-width:960px){
+  .market{grid-template-columns:1fr 1fr}
+  .market .center{grid-column:1/-1;order:-1}
+  .grid3{grid-template-columns:1fr 1fr}
+  .tiers{grid-template-columns:repeat(4,minmax(0,1fr))}
+  ol.steps{grid-template-columns:1fr 1fr}
+}
+/* ── 響應式：手機 ── */
+@media (max-width:640px){
+  body{font-size:14.5px}
+  .bar{flex-wrap:wrap;gap:8px}
+  nav{order:3;width:100%;margin-left:0}
+  .bar>.row{margin-left:auto}
+  .who{display:none}
+  .hero{background:linear-gradient(180deg,rgba(7,13,31,.35),rgba(7,13,31,.95)),url("assets/hero-bg-mobile.jpg") center/cover no-repeat,linear-gradient(160deg,#0b1530,#1a0d24)}
+  .hero-in{padding:34px 16px 24px}
+  .stats{grid-template-columns:1fr 1fr}
+  .market,.grid2,.grid3{grid-template-columns:1fr}
+  .tank{height:110px}
+  .chart{height:140px}
+  .tiers{grid-template-columns:repeat(4,minmax(0,1fr))}
+  ol.steps{grid-template-columns:1fr}
+  .bindview{background:linear-gradient(180deg,rgba(7,13,31,.5),rgba(7,13,31,.92)),url("assets/bind-bg-mobile.jpg") center/cover no-repeat,radial-gradient(circle at 50% 30%,#1b2b5c,#070d1f 70%)}
+  button{width:100%}
+  .bar button,.tabs button{width:auto}
+}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 </style>
 </head>
 <body>
+
+<!-- 綁定錢包（從 Discord 的「綁定錢包」按鈕開啟：網址 #bind=金鑰） -->
+<div id="bindView" class="bindview" hidden>
+  <div class="bindcard">
+    <div class="logo"><img src="assets/logo.png" alt="" onerror="this.remove()">鏢</div>
+    <h1>連結錢包</h1>
+    <p class="muted" id="bindWho">讀取中…</p>
+    <button id="bindGo" disabled>連接錢包並簽名</button>
+    <p id="bindMsg" class="msg"></p>
+    <details><summary>要簽署的文字（不花 Gas、不授權任何資產）</summary><pre id="bindText">…</pre></details>
+    <p class="faint small">機器人和網站永遠不會向你要私鑰或助記詞。</p>
+  </div>
+</div>
+
+<div id="app">
 <header>
-  <h1>江湖鏢局金庫<small>點數兌換・NFT 信物</small></h1>
-  <div class="row"><span id="who" class="muted"></span><button id="connect">連接錢包</button></div>
+  <div class="bar">
+    <a class="brand" href="#top">
+      <span class="logo"><img src="assets/logo.png" alt="" onerror="this.remove()">鏢</span>
+      <span><b>江湖鏢局金庫</b><small>ASC・鏈上鏢局</small></span>
+    </a>
+    <nav><a href="#market">即時幣值</a><a href="#mine">我的 ASC</a><a href="#rules">金庫規則</a><a href="#nft">信物</a><a href="#how">怎麼玩</a></nav>
+    <div class="row"><span class="who" id="who"></span><button id="connect">連接錢包</button></div>
+  </div>
 </header>
+
+<div class="hero" id="top">
+  <div class="hero-in">
+    <h1>持有越久<br>換得<em>越多</em></h1>
+    <p>江湖鏢局的點數是鏈上代幣 <b>ASC</b>。金庫裡的代幣由鏢局守護，先離開的人留下買路錢，留下來的人分得更多。所有規則都寫在公開的 Polygon 合約上。</p>
+    <div class="stats">
+      <div class="stat"><span>ASC 流通量</span><b id="sSupply">—</b></div>
+      <div class="stat"><span>金庫池子</span><b id="sPool">—</b></div>
+      <div class="stat"><span>兌換狀態</span><b id="sOpen">—</b></div>
+      <div class="stat"><span>本期結束</span><b id="sEnd">—</b></div>
+    </div>
+  </div>
+</div>
+
 <main>
-  <section>
-    <h2>金庫池子</h2>
-    <p class="muted" id="rateNote">每點價值＝池子未分配餘額 ÷ 全服點數。兌換時點數銷毀，匯率不變；新點數稀釋匯率，總鏢頭存款時回升。</p>
-    <div class="grid" id="pools"><p class="muted">讀取中…</p></div>
-    <p class="muted" id="limits"></p>
-  </section>
-  <section>
-    <h2>領取門檻</h2>
-    <p class="muted">要持有下列任一種 NFT 的錢包才能領取（清單是空的代表沒有門檻）。門檻由總鏢頭在 Discord 管理，並同步到合約。</p>
-    <div id="gates" class="muted">讀取中…</div>
-  </section>
-  <section id="mine" hidden>
-    <h2>我的兌換</h2>
-    <p id="gateWarn" class="warn" hidden></p>
-    <div class="grid" id="owed"></div>
-    <div class="row" style="margin-top:12px"><button id="claimAll" disabled>全部領取</button></div>
-    <p id="msg"></p>
-  </section>
-  <section>
-    <h2>NFT 信物</h2>
-    <div class="nft">
-      <img id="nftImg" alt="我的 NFT" hidden>
-      <div style="flex:1;min-width:220px">
-        <div class="kv"><span>已鑄造</span><span id="minted">—</span></div>
-        <div class="bar" style="margin:6px 0 10px"><i id="mintBar" style="width:0"></i></div>
-        <div class="kv"><span>白名單鑄造</span><span id="wlOpen">—</span></div>
-        <div class="kv" id="myNftRow" hidden><span>我的狀態</span><span id="myNft">—</span></div>
-        <div class="row" style="margin-top:10px"><button id="mint" hidden>白名單鑄造（免費）</button></div>
-        <p class="muted" id="nftMsg"></p>
+  <!-- 即時幣值 -->
+  <section id="market">
+    <div class="row" style="justify-content:space-between">
+      <h2>即時幣值</h2>
+      <div class="row"><span class="live"></span><span class="small muted" id="tick">連線中…</span></div>
+    </div>
+    <div class="tabs" id="tokenTabs"></div>
+    <div class="market">
+      <div class="card side">
+        <div class="coin"><span class="icon asc"><img src="assets/asc.png" alt="" onerror="this.remove()">ASC</span><div><b>ASC 點數</b><div class="small muted">玩家手上的點數</div></div></div>
+        <div class="big" id="mSupply">—</div>
+        <div class="tank asc"><i id="tankAsc" style="height:0"></i><div class="lbl"><span>流通</span><span id="mIssued"></span></div></div>
+        <div class="kv"><span>累計發出</span><b id="mIssued2">—</b></div>
+        <div class="kv"><span>已兌換銷毀</span><b id="mBurned">—</b></div>
+      </div>
+      <div class="card center glow">
+        <div class="small muted">每 1 ASC 價值（扣手續費前）</div>
+        <div class="price" id="mPrice">—</div>
+        <div class="delta" id="mDelta">&nbsp;</div>
+        <div class="flow"><span>ASC</span><span class="dots"><i></i><i></i><i></i><i></i></span><span id="mSym">代幣</span></div>
+        <svg class="chart" id="chart" viewBox="0 0 600 170" preserveAspectRatio="none" aria-label="幣值走勢"></svg>
+        <div class="range"><span id="cFrom"></span><span id="cInfo"></span><span id="cTo"></span></div>
+        <div class="small muted" id="m100">—</div>
+      </div>
+      <div class="card side">
+        <div class="coin"><span class="icon tok" id="tokIcon">—</span><div><b id="tName">代幣</b><div class="small muted">金庫池子</div></div></div>
+        <div class="big" id="mAvail">—</div>
+        <div class="tank tok"><i id="tankTok" style="height:0"></i><div class="lbl"><span>可兌換</span><span id="mBal"></span></div></div>
+        <div class="mix" id="mix"></div>
+        <div class="legend"><span><b style="background:var(--blue)"></b>可兌換</span><span><b style="background:var(--gold)"></b>保底</span><span><b style="background:var(--red)"></b>鎖到下一期</span></div>
       </div>
     </div>
   </section>
-  <section>
-    <h2>怎麼兌換</h2>
-    <ol class="muted">
-      <li>在 Discord 完成江湖晉升、綁定錢包</li>
-      <li>在「💱｜點數兌換」申請，選擇要換的幣種</li>
-      <li>總鏢頭確認後，回到這裡連接錢包按「領取」</li>
+
+  <!-- 我的 ASC -->
+  <section id="mine">
+    <h2>我的 ASC</h2>
+    <div class="card" id="mineLocked"><div class="row" style="justify-content:space-between"><span class="muted">連接錢包後，可以看到你的 ASC、持有天數、能換多少，並直接兌換。</span><button class="blue" id="connect2">連接錢包</button></div></div>
+    <div id="mineBox" hidden>
+      <div class="grid3">
+        <div class="card"><div class="small muted">我的 ASC</div><div class="big" id="myAsc">—</div><div class="small muted" id="myAddr"></div></div>
+        <div class="card"><div class="small muted">持有天數・兌換比例</div><div class="big"><span id="myDays">—</span> <span class="small muted">天</span>・<span id="myKeep">—</span></div><div class="progress" style="margin-top:8px"><i id="myProg" style="width:0"></i></div><div class="small muted" id="myNext" style="margin-top:6px"></div></div>
+        <div class="card"><div class="small muted">全部換掉現在可得</div><div class="big" id="myAll">—</div><div class="small muted" id="myLeft"></div></div>
+      </div>
+      <div class="tiers" id="tiers" style="margin-top:14px"></div>
+      <p class="warn small" id="gateWarn" hidden></p>
+      <div class="grid2" style="margin-top:14px">
+        <div class="card glow">
+          <h3>兌換</h3>
+          <p class="small muted">用 ASC 換金庫裡的代幣，用掉的 ASC 會銷毀。金額只算到小數點後 1 位。</p>
+          <div class="grid2">
+            <label>代幣<select id="exToken"></select></label>
+            <label>要用的 ASC<input id="exPoints" type="number" min="1" step="1" inputmode="numeric" placeholder="例如 20"></label>
+          </div>
+          <div class="row small" style="margin:8px 0"><button class="alt" data-fill="min">最少</button><button class="alt" data-fill="max">本期最多</button><button class="alt" data-fill="all">全部</button></div>
+          <div class="preview" id="exPreview"><span class="muted small">輸入點數會顯示預估金額</span></div>
+          <div style="margin-top:10px"><button id="exGo" disabled>兌換</button></div>
+          <p class="msg" id="exMsg"></p>
+        </div>
+        <div class="card">
+          <h3>轉 ASC</h3>
+          <p class="small muted">轉給別的錢包（例如換新錢包）。只有兌換開啟時可以轉；<b>收到的 ASC 持有天數從 0 重新計算</b>。</p>
+          <label>收款錢包<input id="txTo" placeholder="0x…" autocomplete="off" spellcheck="false"></label>
+          <label style="margin-top:8px">數量<input id="txAmt" type="number" min="1" step="1" inputmode="numeric" placeholder="例如 100"></label>
+          <div style="margin-top:10px"><button class="blue" id="txGo" disabled>轉出</button></div>
+          <p class="msg" id="txMsg"></p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 規則 -->
+  <section id="rules">
+    <h2>金庫規則</h2>
+    <div class="grid2">
+      <div class="card">
+        <div class="kv"><span>兌換</span><b id="rOpen">—</b></div>
+        <div class="kv"><span>本期</span><b id="rPeriod">—</b></div>
+        <div class="kv"><span>每人每期上限</span><b id="rCap">—</b></div>
+        <div class="kv"><span>保底</span><b>存款 50%＋手續費 1/3（玩家換不到）</b></div>
+        <div class="kv"><span>手續費分配</span><b>1/3 保底・1/3 下一期・1/3 給持有者</b></div>
+        <div class="kv"><span>金庫 owner</span><b id="rOwner">—</b></div>
+        <div class="kv"><span>合約</span><b id="rVault">—</b></div>
+      </div>
+      <div class="card">
+        <h3>領取門檻</h3>
+        <p class="small muted">清單有 NFT 時，要持有其中任一種才能兌換；清單是空的代表沒有門檻。</p>
+        <div id="gates" class="small muted">讀取中…</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 信物 NFT -->
+  <section id="nft">
+    <h2>信物 NFT</h2>
+    <div class="card nft">
+      <div class="pic" id="nftPic">信物圖片</div>
+      <div style="flex:1;min-width:220px">
+        <div class="kv"><span>名稱</span><b id="nftName">—</b></div>
+        <div class="kv"><span>已鑄造</span><b id="minted">—</b></div>
+        <div class="progress" style="margin:6px 0 10px"><i id="mintBar" style="width:0"></i></div>
+        <div class="kv" id="wlRow" hidden><span>白名單鑄造</span><b id="wlOpen">—</b></div>
+        <div class="kv" id="myNftRow" hidden><span>我的狀態</span><b id="myNft">—</b></div>
+        <div class="row" style="margin-top:10px"><button id="mint" hidden>白名單鑄造（免費）</button><a class="small" id="nftLink" target="_blank" rel="noopener"></a></div>
+        <p class="msg" id="nftMsg"></p>
+      </div>
+    </div>
+  </section>
+
+  <!-- 怎麼玩 -->
+  <section id="how">
+    <h2>怎麼玩</h2>
+    <ol class="steps">
+      <li>在 Discord 破境結界按「綁定錢包」，用 MetaMask 簽名（不花 Gas）</li>
+      <li>總鏢頭把 ASC 發到你綁定的錢包；MetaMask「匯入代幣」貼上金庫地址就看得到</li>
+      <li>回到這裡連接同一個錢包，看即時幣值與自己能換多少</li>
+      <li>持有越久比例越高；需要時輸入點數兌換，代幣直接進錢包（需要一點 POL 當 Gas）</li>
     </ol>
   </section>
 </main>
-<footer id="foot"></footer>
+<footer><div id="foot"></div></footer>
+</div>
+
 <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.13.4/ethers.umd.min.js"></script>
 <script src="config.js"></script>
 <script src="app.js"></script>

@@ -1,23 +1,43 @@
-/* 江湖鏢局金庫網頁：直接讀 Polygon 鏈上資料，不經過任何伺服器（匯率另外向 Discord 機器人查全服點數，選填） */
+/* 江湖鏢局金庫網頁：直接讀 Polygon 鏈上的 AscPoint 金庫（點數＝ERC-20 代幣 ASC），不經過任何伺服器、沒有任何機密。
+ * 唯一會連到 Discord 機器人的是「綁定錢包」：網址 #bind=金鑰 時，簽名後送回機器人（config.js 的 botApi）。
+ * 合約介面見 2026_asc_web3_token 的 AGENTS.md（query 的數字陣列格式）。 */
 const C = window.ASC_CONFIG;
 const $ = (id) => document.getElementById(id);
+const E = ethers;
+
 const VAULT_ABI = [
-    "function tokens() view returns (address[])",
-    "function poolStatus(address) view returns (bool listed, uint256 balance, uint256 free, uint256 outstanding, uint256 round, uint256 roundBase, uint256 roundAllocated, uint256 roundLeft)",
-    "function userCapBps() view returns (uint16)",
-    "function roundCapBps() view returns (uint16)",
-    "function paused() view returns (bool)",
-    "function owed(address token, address user) view returns (uint256)",
-    "function userRemaining(address token, address user) view returns (uint256)",
-    "function claim(address token)",
-    "function claimMany(address[] tokens)",
-    "function gateNfts() view returns (address[])",
-    "function canClaim(address user) view returns (bool)"
+    "function query(string what) view returns (uint256[] values, string text)",
+    "function balanceOf(address) view returns (uint256)",
+    "function totalSupply() view returns (uint256)",
+    "function exchange(address token, uint256 points) returns (uint256)",
+    "function transfer(address to, uint256 value) returns (bool)",
+    "event Deposited(address indexed token, uint256 amount, uint256 totalDeposited)",
+    "event Exchanged(address indexed user, address indexed token, uint256 points, uint256 amount)",
+    "event ExchangeFee(address indexed token, uint256 toReserve, uint256 toNextPeriod, uint256 toHolders)",
+    "event ReserveWithdrawn(address indexed token, address indexed to, uint256 amount, uint256 reserveLeft)",
+    "event PeriodReset(uint256 start, uint256 end)",
+    "event Transfer(address indexed from, address indexed to, uint256 value)",
+    "error NotOwner(address caller)",
+    "error ZeroAmount()",
+    "error ExchangeClosed()",
+    "error NotEnoughPoints(uint256 balance)",
+    "error AmountTooSmall()",
+    "error ExceedsAvailable(uint256 available)",
+    "error OverPeriodCap(uint256 remaining, uint256 resetAt)",
+    "error NoGateNft()",
+    "error UnknownToken(address token)",
+    "error SameAddress()",
+    "error InvalidAddress(string value)",
+    "error ERC20InsufficientBalance(address sender, uint256 balance, uint256 needed)",
+    "error ERC20InvalidReceiver(address receiver)",
+    "error ReentrancyGuardReentrantCall()"
 ];
-const NAME_ABI = ["function name() view returns (string)", "function symbol() view returns (string)"];
 const ERC20_ABI = ["function symbol() view returns (string)", "function decimals() view returns (uint8)"];
 const NFT_ABI = [
+    "function name() view returns (string)",
     "function totalSupply() view returns (uint256)",
+    "function maxSupply() view returns (uint256)",
+    "function MAX_SUPPLY() view returns (uint256)",
     "function allowListMintOpen() view returns (bool)",
     "function allowList(address) view returns (bool)",
     "function balanceOf(address) view returns (uint256)",
@@ -25,123 +45,439 @@ const NFT_ABI = [
     "function tokenURI(uint256) view returns (string)",
     "function allowListMint() payable"
 ];
+const ZERO = "0x0000000000000000000000000000000000000000";
+const PERIOD = 365 * 86400;
+const TIERS = [[0, 7000], [30, 7500], [60, 8000], [90, 8500], [120, 9000], [180, 9400], [240, 9700], [360, 10000]];
 
-const provider = new ethers.JsonRpcProvider(C.rpcUrl, C.chainId, { staticNetwork: true });
-const vault = C.vault ? new ethers.Contract(C.vault, VAULT_ABI, provider) : null;
-const nft = C.nft ? new ethers.Contract(C.nft, NFT_ABI, provider) : null;
+const provider = new E.JsonRpcProvider(C.rpcUrl, C.chainId, { staticNetwork: true });
+const iface = new E.Interface(VAULT_ABI);
+const vault = C.vault ? new E.Contract(C.vault, VAULT_ABI, provider) : null;
+const nft = C.nft ? new E.Contract(C.nft, NFT_ABI, provider) : null;
+
 let account = null;
-let tokens = []; // [{ address, symbol, decimals, status }]
-let totalPoints = null;
-let gates = []; // [{ address, name }]
+let state = null; // 最新一次讀到的鏈上資料
+let selected = 0; // 選中的代幣（金庫存款順序）
+const meta = new Map();
+const live = new Map(); // token 小寫地址 -> [{ t, p }] 本次開啟後的即時點
+let hist = new Map(); // token 小寫地址 -> [{ t, p, supply, avail }]
+let lastPrice = new Map();
 
-const fmt = (v, d, sym) => `${Number(ethers.formatUnits(v, d)).toLocaleString("en-US", { maximumFractionDigits: Math.min(d, 6) })} ${sym}`;
-const short = (a) => `${a.slice(0, 6)}…${a.slice(-4)}`;
+/* ───────────── 小工具 ───────────── */
+const short = (a) => (a ? `${a.slice(0, 6)}…${a.slice(-4)}` : "");
 const link = (path, text) => `<a href="${C.explorer}/${path}" target="_blank" rel="noopener">${text}</a>`;
-const say = (el, text, cls) => { el.className = cls || "muted"; el.textContent = text; };
+const esc = (t) => String(t).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;", "'": "&#39;" }[c]));
+const say = (el, text, cls) => { el.className = "msg " + (cls || "muted"); el.textContent = text; };
 const ipfs = (u) => (String(u || "").startsWith("ipfs://") ? C.ipfsGateway + u.slice(7).replace(/^ipfs\//, "") : u);
+const num = (v, d, max = 4) => Number(E.formatUnits(v, d)).toLocaleString("en-US", { maximumFractionDigits: max });
+const unitOf = (d) => (d >= 1 ? 10n ** BigInt(d - 1) : 1n);
+const tenth = (v, d) => num(v - (v % unitOf(d)), d, 1); // 合約只算到小數點後 1 位
+const pct = (bps) => `${(bps / 100).toLocaleString("en-US", { maximumFractionDigits: 1 })}%`;
+const date = (ts) => new Date(ts * 1000).toLocaleDateString("zh-TW", { timeZone: "Asia/Taipei", year: "numeric", month: "2-digit", day: "2-digit" });
+const storage = {
+    get(k) { try { return JSON.parse(localStorage.getItem(k) || "null"); } catch (_) { return null; } },
+    set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (_) { /* 私密視窗或空間不足時略過 */ } }
+};
 
-async function loadBotStats() {
-    if (!C.botApi) return;
-    try {
-        const r = await fetch(C.botApi.replace(/\/$/, "") + "/api/exchange/stats", { signal: AbortSignal.timeout(6000) });
-        const j = await r.json();
-        if (j.ok) totalPoints = BigInt(j.totalPoints);
-    } catch (_) {
-        totalPoints = null;
+async function tokenMeta(address) {
+    const k = address.toLowerCase();
+    if (!meta.has(k)) {
+        const t = new E.Contract(address, ERC20_ABI, provider);
+        const [symbol, decimals] = await Promise.all([t.symbol().catch(() => "TOKEN"), t.decimals().catch(() => 18n)]);
+        meta.set(k, { symbol: String(symbol).slice(0, 12), decimals: Number(decimals) });
     }
+    return meta.get(k);
 }
 
-async function loadPools() {
-    if (!vault) {
-        $("pools").innerHTML = '<p class="muted">金庫合約尚未設定（site/config.js 的 vault）。</p>';
+/** 錯誤訊息轉成中文（合約的自訂錯誤） */
+function explain(e) {
+    if (e?.code === "ACTION_REJECTED" || e?.code === 4001 || e?.info?.error?.code === 4001) return "你取消了交易。";
+    let name = e?.revert?.name;
+    let args = e?.revert?.args;
+    const data = e?.data || e?.info?.error?.data?.data || e?.info?.error?.data;
+    if (!name && typeof data === "string" && data.startsWith("0x")) {
+        try { const p = iface.parseError(data); name = p?.name; args = p?.args; } catch (_) { /* 不是合約的錯誤 */ }
+    }
+    const map = {
+        ExchangeClosed: "兌換目前關閉中（關閉時也不能轉 ASC）。",
+        NotEnoughPoints: `ASC 不夠${args ? `（你有 ${args[0]}）` : ""}。`,
+        AmountTooSmall: "點數太少，換不到 0.1 個代幣，請多用一些點數。",
+        ExceedsAvailable: "超過池子可兌換的金額。",
+        OverPeriodCap: args ? `超過本期上限，本期還能換 ${num(args[0], tokenNow()?.decimals ?? 6)}，${date(Number(args[1]))} 換期。` : "超過本期上限。",
+        NoGateNft: "這個錢包沒有持有指定的 NFT，無法兌換。",
+        UnknownToken: "金庫沒有這種代幣。",
+        SameAddress: "不能轉給自己。",
+        InvalidAddress: "不能轉給金庫合約。",
+        ERC20InsufficientBalance: "ASC 不夠。",
+        ERC20InvalidReceiver: "收款地址不正確。",
+        ZeroAmount: "數量不能是 0。"
+    };
+    if (name && map[name]) return map[name];
+    return `失敗：${e?.shortMessage || e?.message || e}`;
+}
+
+/* ───────────── 讀取鏈上資料 ───────────── */
+
+/** query("pool 0x…")：每種代幣的池子＋這個帳號能拿多少 */
+async function readPool(who) {
+    const [values, text] = await vault.query(`pool ${who || ZERO}`);
+    const v = [...values];
+    const addrs = [...String(text).matchAll(/\|\| \S+ (0x[0-9a-fA-F]{40}):/g)].map((m) => E.getAddress(m[1]));
+    const tokens = await Promise.all(addrs.map(async (address, i) => {
+        const o = 5 + 8 * i;
+        return { address, ...(await tokenMeta(address)), balance: v[o], reserve: v[o + 1], locked: v[o + 2], available: v[o + 3], share100: v[o + 4], cap: v[o + 5], left: v[o + 6], all: v[o + 7] };
+    }));
+    return { points: v[0], gateOk: v[1] === 1n, periodEnd: Number(v[2]), days: Number(v[3]), keepBps: Number(v[4]), tokens };
+}
+
+async function readAll() {
+    const [pool, status, rule, supply] = await Promise.all([
+        readPool(account),
+        vault.query("status"),
+        vault.query("rule"),
+        vault.totalSupply()
+    ]);
+    const r = [...rule[0]];
+    const gatePart = String(rule[1]).split("Gate:")[1] ?? "";
+    return {
+        ...pool,
+        open: status[0][0] === 1n,
+        owner: /Owner (0x[0-9a-fA-F]{40})/.exec(status[1])?.[1] ?? null,
+        capBps: Number(r[0]), periodStart: Number(r[2]), periodEnd: Number(r[3]), issued: r[5], supply,
+        gates: [...gatePart.matchAll(/0x[0-9a-fA-F]{40}/g)].map((m) => E.getAddress(m[0]))
+    };
+}
+
+const tokenNow = () => state?.tokens[selected] ?? null;
+
+/* ───────────── 歷史幣值：從部署區塊開始重播金庫事件 ───────────── */
+
+async function getLogsRange(from, to) {
+    const out = [];
+    let step = 20000;
+    for (let start = from; start <= to;) {
+        const end = Math.min(start + step - 1, to);
+        try {
+            out.push(...(await provider.getLogs({ address: C.vault, fromBlock: start, toBlock: end })));
+            start = end + 1;
+        } catch (err) {
+            if (step <= 1000) throw err;
+            step = Math.floor(step / 2);
+        }
+    }
+    return out;
+}
+
+async function loadHistory() {
+    if (!vault || !C.deployBlock) return;
+    const key = `asc-history:${C.vault.toLowerCase()}`;
+    const cache = storage.get(key) ?? { last: C.deployBlock - 1, logs: [], times: {} };
+    const latest = await provider.getBlockNumber();
+    if (latest - cache.last > 3_000_000) return; // 太久沒開過、範圍太大就略過歷史（即時資料不受影響）
+    const fresh = cache.last < latest ? await getLogsRange(cache.last + 1, latest) : [];
+    for (const l of fresh) cache.logs.push({ b: l.blockNumber, i: l.index, h: l.transactionHash, topics: l.topics, data: l.data });
+    cache.last = latest;
+    const blocks = new Set([C.deployBlock, ...cache.logs.map((l) => l.b)]);
+    for (const b of blocks) if (!cache.times[b]) cache.times[b] = (await provider.getBlock(b))?.timestamp ?? 0;
+    storage.set(key, cache);
+    hist = replay(cache);
+}
+
+/** 依合約的規則重算每一筆交易之後的「每 1 ASC 價值」 */
+function replay(cache) {
+    let periodStart = cache.times[C.deployBlock];
+    let supply = 0n;
+    const pools = new Map();
+    const pool = (t) => {
+        const k = t.toLowerCase();
+        if (!pools.has(k)) pools.set(k, { bal: 0n, dep: 0n, fee: 0n, out: 0n, lockP: -1, lock: 0n });
+        return pools.get(k);
+    };
+    const curStart = (ts) => periodStart + Math.floor((ts - periodStart) / PERIOD) * PERIOD;
+    const logs = [...cache.logs].sort((a, b) => a.b - b.b || a.i - b.i);
+    const out = new Map();
+    for (let i = 0; i < logs.length; i++) {
+        const l = logs[i];
+        const ts = cache.times[l.b];
+        let ev;
+        try { ev = iface.parseLog({ topics: l.topics, data: l.data }); } catch (_) { ev = null; }
+        if (ev) {
+            const a = ev.args;
+            if (ev.name === "Transfer") {
+                if (a.from === ZERO) supply += a.value;
+                if (a.to === ZERO) supply -= a.value;
+            } else if (ev.name === "Deposited") {
+                const p = pool(a.token); p.bal += a.amount; p.dep += a.amount;
+            } else if (ev.name === "Exchanged") {
+                pool(a.token).bal -= a.amount;
+            } else if (ev.name === "ExchangeFee") {
+                const p = pool(a.token); p.fee += a.toReserve;
+                const s = curStart(ts);
+                if (p.lockP !== s) { p.lockP = s; p.lock = 0n; }
+                p.lock += a.toNextPeriod;
+            } else if (ev.name === "ReserveWithdrawn") {
+                const p = pool(a.token); p.bal -= a.amount; p.out += a.amount;
+            } else if (ev.name === "PeriodReset") {
+                periodStart = Number(a.start);
+            }
+        }
+        // 同一筆交易的事件全部處理完才記一個點
+        if (logs[i + 1]?.h === l.h) continue;
+        for (const [k, p] of pools) {
+            const reserveFull = (p.dep * 5000n) / 10000n + p.fee;
+            const reserve = reserveFull > p.out ? reserveFull - p.out : 0n;
+            const locked = p.lockP === curStart(ts) ? p.lock : 0n;
+            const avail = p.bal > reserve + locked ? p.bal - reserve - locked : 0n;
+            const m = meta.get(k);
+            if (!m || supply === 0n) continue;
+            if (!out.has(k)) out.set(k, []);
+            out.get(k).push({ t: ts, p: Number(E.formatUnits(avail, m.decimals)) / Number(supply), supply: Number(supply), avail: Number(E.formatUnits(avail, m.decimals)) });
+        }
+    }
+    return out;
+}
+
+/* ───────────── 畫面：即時幣值 ───────────── */
+
+function renderTabs() {
+    $("tokenTabs").innerHTML = state.tokens.length > 1
+        ? state.tokens.map((t, i) => `<button data-tok="${i}" class="${i === selected ? "on" : ""}">${esc(t.symbol)}</button>`).join("")
+        : "";
+    document.querySelectorAll("[data-tok]").forEach((b) => (b.onclick = () => { selected = Number(b.dataset.tok); renderAll(); }));
+}
+
+function renderMarket() {
+    const t = tokenNow();
+    const supply = state.supply;
+    $("mSupply").textContent = `${supply.toLocaleString()} ASC`;
+    $("mIssued").textContent = `累計 ${state.issued.toLocaleString()}`;
+    $("mIssued2").textContent = `${state.issued.toLocaleString()} ASC`;
+    $("mBurned").textContent = `${(state.issued - supply).toLocaleString()} ASC`;
+    $("tankAsc").style.height = `${state.issued > 0n ? Number((supply * 100n) / state.issued) : 0}%`;
+    $("sSupply").textContent = supply.toLocaleString();
+    $("sOpen").innerHTML = state.open ? '<span class="ok">開放中</span>' : '<span class="warn">關閉中</span>';
+    $("sEnd").textContent = date(state.periodEnd);
+    if (!t) {
+        $("mPrice").textContent = "—";
+        $("m100").textContent = "金庫還沒有存入任何代幣。";
+        $("sPool").textContent = "—";
         return;
     }
-    const [list, userCap, roundCap, paused] = await Promise.all([vault.tokens(), vault.userCapBps(), vault.roundCapBps(), vault.paused()]);
-    tokens = await Promise.all(list.map(async (address) => {
-        const t = new ethers.Contract(address, ERC20_ABI, provider);
-        const [symbol, decimals, status] = await Promise.all([t.symbol().catch(() => "?"), t.decimals().catch(() => 18), vault.poolStatus(address)]);
-        return { address, symbol, decimals: Number(decimals), status };
-    }));
-    const shown = tokens.filter((t) => t.status.listed || t.status.balance > 0n);
-    $("pools").innerHTML = shown.length ? shown.map((t) => {
-        const s = t.status;
-        const used = s.roundBase > 0n ? Number((s.roundAllocated * 10000n) / s.roundBase) / 100 : 0;
-        const rate = totalPoints && totalPoints > 0n ? `每 100 點 ≈ ${fmt((100n * s.free) / totalPoints, t.decimals, t.symbol)}` : "";
-        return `<div class="pool">
-  <div class="row" style="justify-content:space-between"><span class="sym">${t.symbol}</span><span class="chip">${s.listed ? `第 ${s.round} 輪` : "已下架"}</span></div>
-  ${rate ? `<div class="rate">${rate}</div>` : ""}
-  <div class="kv"><span>未分配</span><span>${fmt(s.free, t.decimals, t.symbol)}</span></div>
-  <div class="kv"><span>待玩家領取</span><span>${fmt(s.outstanding, t.decimals, t.symbol)}</span></div>
-  <div class="kv"><span>本輪還能分配</span><span>${fmt(s.roundLeft, t.decimals, t.symbol)}</span></div>
-  <div class="bar" title="本輪已分配 ${used}%"><i style="width:${Math.min(used / (Number(roundCap) / 100) * 100, 100)}%"></i></div>
-  <div class="muted" style="font-size:12px">${link(`token/${t.address}`, short(t.address))}</div>
-</div>`;
-    }).join("") : '<p class="muted">金庫還沒有上架任何代幣。</p>';
-    $("limits").textContent = `每個錢包每輪最多 ${Number(userCap) / 100}%、每輪全體最多 ${Number(roundCap) / 100}%（每次存款是新的一輪）${paused ? "｜目前暫停新的分配，已分配的仍可領取" : ""}${totalPoints ? `｜全服點數 ${totalPoints.toLocaleString()}` : C.botApi ? "｜機器人離線，暫時無法顯示匯率" : ""}`;
+    $("mSym").textContent = t.symbol;
+    $("tName").textContent = t.symbol;
+    $("tokIcon").textContent = t.symbol.slice(0, 4);
+    $("sPool").textContent = `${num(t.balance, t.decimals, 2)} ${t.symbol}`;
+    $("mAvail").textContent = `${num(t.available, t.decimals)} ${t.symbol}`;
+    $("mBal").textContent = `池子 ${num(t.balance, t.decimals, 2)}`;
+    $("tankTok").style.height = `${t.balance > 0n ? Number((t.available * 100n) / t.balance) : 0}%`;
+    const w = (x) => (t.balance > 0n ? Number((x * 10000n) / t.balance) / 100 : 0);
+    $("mix").innerHTML = `<i style="width:${w(t.available)}%;background:var(--blue)" title="可兌換"></i><i style="width:${w(t.reserve)}%;background:var(--gold)" title="保底"></i><i style="width:${w(t.locked)}%;background:var(--red)" title="鎖到下一期"></i>`;
+
+    const price = supply > 0n ? Number(E.formatUnits(t.available, t.decimals)) / Number(supply) : 0;
+    const k = t.address.toLowerCase();
+    const prev = lastPrice.get(k);
+    const el = $("mPrice");
+    el.textContent = `${price.toLocaleString("en-US", { maximumFractionDigits: 6 })} ${t.symbol}`;
+    el.classList.remove("up", "down");
+    if (prev !== undefined && price !== prev) {
+        el.classList.add(price > prev ? "up" : "down");
+        setTimeout(() => el.classList.remove("up", "down"), 2500);
+    }
+    lastPrice.set(k, price);
+    const pts = [...(hist.get(k) ?? []), ...(live.get(k) ?? [])];
+    const now = Math.floor(Date.now() / 1000);
+    if (!live.has(k)) live.set(k, []);
+    const lv = live.get(k);
+    if (!lv.length || lv[lv.length - 1].p !== price || now - lv[lv.length - 1].t > 300) lv.push({ t: now, p: price });
+    const dayAgo = [...pts].reverse().find((x) => x.t <= now - 86400) ?? pts[0];
+    const d = $("mDelta");
+    if (dayAgo && dayAgo.p > 0) {
+        const ch = ((price - dayAgo.p) / dayAgo.p) * 100;
+        d.className = "delta " + (ch > 0 ? "up" : ch < 0 ? "down" : "");
+        d.textContent = `${ch > 0 ? "▲" : ch < 0 ? "▼" : "■"} ${Math.abs(ch).toFixed(2)}%（${dayAgo.t <= now - 86400 ? "24 小時" : "上線以來"}）`;
+    } else d.textContent = " ";
+    $("m100").innerHTML = `100 ASC ≈ <b>${num(t.share100, t.decimals)} ${esc(t.symbol)}</b>（扣手續費前）・持有未滿 30 天實拿 70%`;
+    drawChart([...pts, { t: now, p: price }]);
 }
 
-async function loadGates() {
-    if (!vault) return;
-    const list = await vault.gateNfts();
-    gates = await Promise.all(list.map(async (address) => {
-        const c = new ethers.Contract(address, NAME_ABI, provider);
-        const name = await c.name().catch(() => c.symbol().catch(() => "NFT"));
-        return { address, name };
-    }));
-    $("gates").innerHTML = gates.length
-        ? gates.map((g) => `<div class="kv"><span>${escapeHtml(g.name)}</span><span>${link(`address/${g.address}`, short(g.address))}</span></div>`).join("")
-        : "目前沒有設定門檻，任何被分配到的錢包都能領取。";
+function drawChart(points) {
+    const svg = $("chart");
+    const pts = points.filter((x) => Number.isFinite(x.p));
+    if (pts.length < 2) {
+        svg.innerHTML = '<text x="300" y="90" text-anchor="middle" fill="#5b6b93" font-size="14">走勢資料累積中…</text>';
+        $("cFrom").textContent = $("cTo").textContent = $("cInfo").textContent = "";
+        return;
+    }
+    const W = 600, H = 170, P = 10;
+    const t0 = pts[0].t, t1 = pts[pts.length - 1].t || t0 + 1;
+    let lo = Math.min(...pts.map((x) => x.p)), hi = Math.max(...pts.map((x) => x.p));
+    if (hi === lo) { hi += hi * 0.05 || 1; lo -= lo * 0.05 || 0; }
+    const X = (t) => P + ((t - t0) / Math.max(t1 - t0, 1)) * (W - 2 * P);
+    const Y = (p) => H - P - ((p - lo) / (hi - lo)) * (H - 2 * P);
+    // 階梯線：幣值只在交易發生時改變
+    let d = `M${X(pts[0].t)},${Y(pts[0].p)}`;
+    for (let i = 1; i < pts.length; i++) d += `H${X(pts[i].t)}V${Y(pts[i].p)}`;
+    const area = `${d}V${H - P}H${X(t0)}Z`;
+    const grid = [0.25, 0.5, 0.75].map((f) => `<line class="gd" x1="0" x2="${W}" y1="${P + f * (H - 2 * P)}" y2="${P + f * (H - 2 * P)}"/>`).join("");
+    const last = pts[pts.length - 1];
+    svg.innerHTML = `<defs><linearGradient id="g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#e0313f" stop-opacity=".35"/><stop offset="1" stop-color="#3d8bff" stop-opacity="0"/></linearGradient></defs>
+${grid}<path class="ar" d="${area}"/><path class="ln" d="${d}"/><circle cx="${X(last.t)}" cy="${Y(last.p)}" r="4" fill="#ff5c63"><animate attributeName="r" values="3;6;3" dur="1.6s" repeatCount="indefinite"/></circle>`;
+    $("cFrom").textContent = date(t0);
+    $("cTo").textContent = "現在";
+    $("cInfo").textContent = `高 ${hi.toPrecision(4)}・低 ${lo.toPrecision(4)}`;
 }
 
-const escapeHtml = (t) => String(t).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;", "'": "&#39;" }[c]));
+/* ───────────── 畫面：我的 ASC ───────────── */
 
-async function loadMine() {
-    if (!account || !vault) return;
-    $("mine").hidden = false;
-    const ok = await vault.canClaim(account);
-    $("gateWarn").hidden = ok;
-    if (!ok) $("gateWarn").textContent = `這個錢包沒有持有指定的 NFT（${gates.map((g) => g.name).join("、")}），暫時無法領取。金額會保留，持有任一種之後再回來領。`;
-    const rows = await Promise.all(tokens.map(async (t) => ({ t, owed: await vault.owed(t.address, account), left: t.status.listed ? await vault.userRemaining(t.address, account) : 0n })));
-    const has = rows.filter((r) => r.owed > 0n);
-    $("owed").innerHTML = rows.filter((r) => r.owed > 0n || r.t.status.listed).map((r) => `<div class="pool">
-  <span class="sym">${r.t.symbol}</span>
-  <div class="kv"><span>可領取</span><span><b>${fmt(r.owed, r.t.decimals, r.t.symbol)}</b></span></div>
-  <div class="kv"><span>本輪還能換</span><span>${fmt(r.left, r.t.decimals, r.t.symbol)}</span></div>
-  ${r.owed > 0n ? `<button class="alt" data-claim="${r.t.address}"${ok ? "" : " disabled"}>領取 ${r.t.symbol}</button>` : ""}
-</div>`).join("") || '<p class="muted">目前沒有可領取的金額。在 Discord 申請兌換、總鏢頭確認後就會出現在這裡。</p>';
-    $("claimAll").disabled = has.length < 2 || !ok;
-    $("claimAll").onclick = () => send((v) => v.claimMany(has.map((r) => r.t.address)), "全部領取");
-    document.querySelectorAll("[data-claim]").forEach((b) => (b.onclick = () => send((v) => v.claim(b.dataset.claim), "領取")));
+function previewFor(t, p) {
+    const supply = state.supply;
+    if (!t || supply === 0n || p <= 0n) return null;
+    const share = (t.available * p) / supply;
+    const raw = (share * BigInt(state.keepBps)) / 10000n;
+    const unit = unitOf(t.decimals);
+    const get = raw - (raw % unit);
+    return { share, get, fee: share - get };
 }
 
-async function loadNft() {
-    if (!nft) return;
-    const [supply, open] = await Promise.all([nft.totalSupply(), nft.allowListMintOpen()]);
-    $("minted").textContent = `${supply} / ${C.nftMaxSupply}`;
-    $("mintBar").style.width = `${Math.min(Number(supply) / C.nftMaxSupply * 100, 100)}%`;
-    $("wlOpen").textContent = open ? "開放中" : "未開放";
+function renderMine() {
     if (!account) return;
-    const [allowed, bal] = await Promise.all([nft.allowList(account), nft.balanceOf(account)]);
+    $("mineLocked").hidden = true;
+    $("mineBox").hidden = false;
+    const t = tokenNow();
+    $("myAsc").textContent = `${state.points.toLocaleString()} ASC`;
+    $("myAddr").innerHTML = link(`address/${account}`, short(account));
+    $("myDays").textContent = state.points > 0n ? state.days : 0;
+    $("myKeep").textContent = pct(state.keepBps);
+    const next = TIERS.find(([d]) => d > state.days);
+    const cur = [...TIERS].reverse().find(([d]) => d <= state.days) ?? TIERS[0];
+    $("myProg").style.width = next ? `${((state.days - cur[0]) / (next[0] - cur[0])) * 100}%` : "100%";
+    $("myNext").textContent = state.points === 0n ? "還沒有 ASC" : next ? `再 ${next[0] - state.days} 天升到 ${pct(next[1])}` : "已達最高比例 100%";
+    $("tiers").innerHTML = TIERS.map(([d, b]) => `<div class="tier ${d === cur[0] ? "now" : d < cur[0] ? "done" : ""}"><b>${pct(b)}</b>${d === 0 ? "未滿 30 天" : `${d} 天`}</div>`).join("");
+    $("myAll").textContent = t ? `${tenth(t.all, t.decimals)} ${t.symbol}` : "—";
+    $("myLeft").textContent = t ? `本期還能換 ${num(t.left, t.decimals)} ${t.symbol}・${date(state.periodEnd)} 換期` : "";
+    $("gateWarn").hidden = state.gateOk;
+    if (!state.gateOk) $("gateWarn").textContent = "這個錢包沒有持有領取門檻的 NFT，暫時不能兌換（ASC 會一直保留）。";
+    const sel = $("exToken");
+    sel.innerHTML = state.tokens.map((x, i) => `<option value="${i}" ${i === selected ? "selected" : ""}>${esc(x.symbol)}</option>`).join("");
+    updatePreview();
+    updateTransfer();
+}
+
+function updatePreview() {
+    const t = state?.tokens[Number($("exToken").value || 0)];
+    const raw = $("exPoints").value.trim();
+    const box = $("exPreview");
+    const go = $("exGo");
+    go.disabled = true;
+    if (!t) { box.innerHTML = '<span class="muted small">金庫還沒有代幣。</span>'; return; }
+    if (!/^\d+$/.test(raw) || raw === "0") { box.innerHTML = `<span class="muted small">輸入要用的 ASC（你有 ${state.points.toLocaleString()}）</span>`; return; }
+    const p = BigInt(raw);
+    const r = previewFor(t, p);
+    const problems = [];
+    if (!state.open) problems.push("兌換目前關閉中");
+    if (!state.gateOk) problems.push("沒有持有門檻 NFT");
+    if (p > state.points) problems.push(`ASC 不夠（你有 ${state.points}）`);
+    if (r && r.get === 0n) problems.push("點數太少，換不到 0.1");
+    if (r && r.get > t.left) problems.push(`超過本期上限（還能換 ${num(t.left, t.decimals)}）`);
+    box.innerHTML = r ? `<div class="kv"><span>完整份額</span><b>${num(r.share, t.decimals)} ${esc(t.symbol)}</b></div>
+<div class="kv"><span>你拿 ${pct(state.keepBps)}</span><b class="${problems.length ? "" : "ok"}">${num(r.get, t.decimals, 1)} ${esc(t.symbol)}</b></div>
+<div class="kv"><span>留給金庫（1/3 保底・1/3 下一期・1/3 持有者）</span><b>${num(r.fee, t.decimals)}</b></div>
+${problems.length ? `<div class="warn small">${problems.join("・")}</div>` : '<div class="small muted">實際金額以送出當下的鏈上狀態為準。</div>'}` : "";
+    go.disabled = !!problems.length || !r;
+    go.textContent = r && !problems.length ? `用 ${p} ASC 兌換 ${num(r.get, t.decimals, 1)} ${t.symbol}` : "兌換";
+}
+
+function fill(kind) {
+    const t = state?.tokens[Number($("exToken").value || 0)];
+    if (!t || state.points === 0n) return;
+    let p = state.points;
+    if (kind !== "all") {
+        // 二分搜尋：最少＝剛好換得到 0.1；本期最多＝不超過本期上限的最大點數
+        let lo = 1n, hi = state.points, ans = null;
+        while (lo <= hi) {
+            const mid = (lo + hi) / 2n;
+            const r = previewFor(t, mid);
+            const ok = kind === "min" ? r && r.get > 0n : r && r.get <= t.left;
+            if (kind === "min" ? ok : ok) {
+                ans = mid;
+                if (kind === "min") hi = mid - 1n; else lo = mid + 1n;
+            } else if (kind === "min") lo = mid + 1n; else hi = mid - 1n;
+        }
+        if (ans === null) return say($("exMsg"), kind === "min" ? "你的 ASC 目前換不到 0.1。" : "本期額度已用完。", "warn");
+        p = ans;
+    }
+    $("exPoints").value = String(p);
+    updatePreview();
+}
+
+function updateTransfer() {
+    const to = $("txTo").value.trim();
+    const amt = $("txAmt").value.trim();
+    let problem = "";
+    if (!state.open) problem = "兌換關閉時不能轉 ASC";
+    else if (to && !E.isAddress(to)) problem = "地址格式不對";
+    else if (to && E.isAddress(to) && E.getAddress(to) === E.getAddress(account)) problem = "不能轉給自己";
+    else if (to && E.isAddress(to) && E.getAddress(to) === E.getAddress(C.vault)) problem = "不能轉給金庫合約";
+    else if (amt && (!/^\d+$/.test(amt) || amt === "0")) problem = "數量要是正整數";
+    else if (amt && BigInt(amt) > state.points) problem = `ASC 不夠（你有 ${state.points}）`;
+    $("txGo").disabled = !!problem || !to || !amt;
+    if (problem) say($("txMsg"), problem, "warn");
+    else if ($("txMsg").classList.contains("warn")) say($("txMsg"), "");
+}
+
+/* ───────────── 規則、門檻 ───────────── */
+
+async function renderRules() {
+    $("rOpen").innerHTML = state.open ? '<span class="chip on">開放中</span>' : '<span class="chip off">關閉中</span>';
+    $("rPeriod").textContent = `${date(state.periodStart)} ～ ${date(state.periodEnd)}`;
+    $("rCap").textContent = `池子目前餘額的 ${pct(state.capBps)}（每種代幣分開）`;
+    $("rOwner").innerHTML = state.owner ? `${link(`address/${state.owner}`, short(state.owner))}${C.safe && state.owner.toLowerCase() === C.safe.toLowerCase() ? "（Safe 多簽）" : ""}` : "—";
+    $("rVault").innerHTML = link(`address/${C.vault}`, short(C.vault));
+    if (!state.gates.length) return ($("gates").textContent = "目前沒有設定門檻，持有 ASC 的錢包都能兌換。");
+    const rows = await Promise.all(state.gates.map(async (g) => {
+        const name = await new E.Contract(g, ["function name() view returns (string)"], provider).name().catch(() => "NFT");
+        return `<div class="kv"><span>${esc(name)}</span><b>${link(`address/${g}`, short(g))}</b></div>`;
+    }));
+    $("gates").innerHTML = rows.join("");
+}
+
+/* ───────────── 信物 NFT（合約介面可能不同，讀不到的欄位就隱藏） ───────────── */
+
+async function renderNft() {
+    if (!nft) return;
+    const opt = (p) => p.then((v) => v).catch(() => null);
+    const [name, supply, max1, max2, open] = await Promise.all([opt(nft.name()), opt(nft.totalSupply()), opt(nft.maxSupply()), opt(nft.MAX_SUPPLY()), opt(nft.allowListMintOpen())]);
+    const max = Number(max1 ?? max2 ?? C.nftMaxSupply ?? 0);
+    $("nftName").textContent = name ?? "—";
+    $("minted").textContent = supply !== null ? `${supply}${max ? ` / ${max}` : ""}` : "—";
+    $("mintBar").style.width = supply !== null && max ? `${Math.min((Number(supply) / max) * 100, 100)}%` : "0";
+    $("wlRow").hidden = open === null;
+    if (open !== null) $("wlOpen").textContent = open ? "開放中" : "未開放";
+    $("nftLink").innerHTML = link(`address/${C.nft}`, `合約 ${short(C.nft)}`);
+    if (!account) return;
+    const [allowed, bal] = await Promise.all([opt(nft.allowList(account)), opt(nft.balanceOf(account))]);
     $("myNftRow").hidden = false;
-    $("myNft").textContent = bal > 0n ? `持有 ${bal} 枚` : allowed ? "在白名單內，可以鑄造" : "不在白名單內";
+    $("myNft").textContent = bal && bal > 0n ? `持有 ${bal} 枚` : allowed ? "在白名單內，可以鑄造" : "尚未持有";
     $("mint").hidden = !(allowed && open);
-    $("mint").onclick = () => sendNft();
-    if (bal > 0n) {
+    $("mint").onclick = mintNft;
+    if (bal && bal > 0n) {
         try {
             const id = await nft.tokenOfOwnerByIndex(account, 0);
-            const meta = await (await fetch(ipfs(await nft.tokenURI(id)), { signal: AbortSignal.timeout(6000) })).json();
-            if (meta.image) {
-                $("nftImg").src = ipfs(meta.image);
-                $("nftImg").hidden = false;
-            }
+            const m = await (await fetch(ipfs(await nft.tokenURI(id)), { signal: AbortSignal.timeout(6000) })).json();
+            if (m.image) $("nftPic").innerHTML = `<img src="${esc(ipfs(m.image))}" alt="我的信物">`;
         } catch (_) { /* 沒有 metadata 就不顯示圖 */ }
     }
 }
 
+/* ───────────── 錢包與交易 ───────────── */
+
+function openInMetaMask() {
+    location.href = "https://metamask.app.link/dapp/" + location.host + location.pathname + location.hash;
+}
+
 async function walletSigner() {
     if (!window.ethereum) {
-        location.href = "https://metamask.app.link/dapp/" + location.host + location.pathname;
-        throw new Error("請安裝 MetaMask，或用 MetaMask App 開啟此頁");
+        openInMetaMask();
+        throw new Error("找不到錢包：電腦請安裝 MetaMask，手機請用 MetaMask App 開啟此頁");
     }
     const hex = "0x" + C.chainId.toString(16);
     try {
@@ -150,38 +486,39 @@ async function walletSigner() {
         if (e && e.code === 4902) await window.ethereum.request({ method: "wallet_addEthereumChain", params: [{ chainId: hex, chainName: C.chainName, nativeCurrency: { name: C.currency, symbol: C.currency, decimals: 18 }, rpcUrls: [C.rpcUrl], blockExplorerUrls: [C.explorer] }] });
         else throw e;
     }
-    return new ethers.BrowserProvider(window.ethereum).getSigner();
+    return new E.BrowserProvider(window.ethereum).getSigner();
 }
 
-async function send(fn, label) {
-    const msg = $("msg");
+async function sendTx(msgEl, label, fn) {
     try {
         const signer = await walletSigner();
-        say(msg, `請在錢包確認「${label}」交易…`);
-        const tx = await fn(vault.connect(signer));
-        say(msg, `交易已送出，等待上鏈…`);
+        say(msgEl, `請在錢包確認「${label}」…`);
+        const c = vault.connect(signer);
+        const tx = await fn(c);
+        say(msgEl, "交易已送出，等待上鏈…");
         await tx.wait();
-        say(msg, "已上鏈，更新資料中…");
+        say(msgEl, "已上鏈，更新資料中…");
         await refresh();
-        msg.innerHTML = `<span class="ok">完成！</span> ${link(`tx/${tx.hash}`, "查看交易")}`;
+        msgEl.className = "msg";
+        msgEl.innerHTML = `<span class="ok">完成！</span> ${link(`tx/${tx.hash}`, "查看交易")}`;
     } catch (e) {
-        say(msg, e?.code === "ACTION_REJECTED" || e?.code === 4001 ? "你取消了交易。" : `失敗：${e?.shortMessage || e?.message || e}`, "err");
+        say(msgEl, explain(e), "err");
     }
 }
 
-async function sendNft() {
+async function mintNft() {
     const msg = $("nftMsg");
     try {
         const signer = await walletSigner();
-        say(msg, "請在錢包確認鑄造交易（免費，只需 Gas）…");
+        say(msg, "請在錢包確認鑄造（免費，只需 Gas）…");
         const tx = await nft.connect(signer).allowListMint({ value: 0 });
         say(msg, "交易已送出，等待上鏈…");
         await tx.wait();
-        say(msg, "已上鏈，更新資料中…");
         await refresh();
-        msg.innerHTML = `<span class="ok">鑄造完成！回到 Discord 的信物驗證頻道按「驗證信物」。</span> ${link(`tx/${tx.hash}`, "查看交易")}`;
+        msg.className = "msg";
+        msg.innerHTML = `<span class="ok">鑄造完成！回到 Discord 的破境結界按「破解結界」。</span> ${link(`tx/${tx.hash}`, "查看交易")}`;
     } catch (e) {
-        say(msg, e?.code === "ACTION_REJECTED" || e?.code === 4001 ? "你取消了交易。" : `失敗：${e?.shortMessage || e?.message || e}`, "err");
+        say(msg, explain(e), "err");
     }
 }
 
@@ -193,17 +530,115 @@ async function connect() {
         $("connect").textContent = "重新整理";
         await refresh();
     } catch (e) {
-        say($("msg"), e?.message || String(e), "err");
+        say($("exMsg"), e?.message || String(e), "err");
+        alertTop(e?.message || String(e));
     }
 }
 
-async function refresh() {
-    await loadBotStats();
-    await Promise.all([loadPools().catch((e) => ($("pools").innerHTML = `<p class="err">讀取金庫失敗：${e.shortMessage || e.message}</p>`)), loadNft().catch(() => {}), loadGates().catch(() => {})]);
-    await loadMine().catch(() => {});
+function alertTop(text) {
+    $("tick").textContent = text;
 }
 
-$("connect").onclick = () => (account ? refresh() : connect());
-$("foot").innerHTML = `${C.chainName}｜金庫 ${C.vault ? link(`address/${C.vault}`, short(C.vault)) : "未設定"}｜NFT ${C.nft ? link(`address/${C.nft}`, short(C.nft)) : "未設定"}｜所有資料直接讀取自區塊鏈`;
-if (window.ethereum) window.ethereum.on?.("accountsChanged", () => location.reload());
-refresh();
+/* ───────────── 主流程 ───────────── */
+
+function renderAll() {
+    if (!state) return;
+    renderTabs();
+    renderMarket();
+    renderMine();
+}
+
+let busy = false;
+async function refresh() {
+    if (!vault || busy) return;
+    busy = true;
+    try {
+        state = await readAll();
+        if (selected >= state.tokens.length) selected = 0;
+        renderAll();
+        renderRules().catch(() => {});
+        renderNft().catch(() => {});
+        $("tick").textContent = `更新於 ${new Date().toLocaleTimeString("zh-TW", { hour12: false })}`;
+    } catch (e) {
+        $("tick").textContent = `讀取失敗：${e.shortMessage || e.message}`;
+    } finally {
+        busy = false;
+    }
+}
+
+function startSite() {
+    $("connect").onclick = () => (account ? refresh() : connect());
+    $("connect2").onclick = connect;
+    $("exToken").onchange = () => { selected = Number($("exToken").value); renderAll(); };
+    $("exPoints").oninput = updatePreview;
+    document.querySelectorAll("[data-fill]").forEach((b) => (b.onclick = () => fill(b.dataset.fill)));
+    $("exGo").onclick = () => {
+        const t = state.tokens[Number($("exToken").value)];
+        const p = BigInt($("exPoints").value);
+        sendTx($("exMsg"), "兌換", (c) => c.exchange(t.address, p));
+    };
+    $("txTo").oninput = $("txAmt").oninput = updateTransfer;
+    $("txGo").onclick = () => {
+        const to = E.getAddress($("txTo").value.trim());
+        if (!confirm(`確定把 ${$("txAmt").value} ASC 轉給 ${to}？\n收到的 ASC 持有天數會從 0 重新計算。`)) return;
+        sendTx($("txMsg"), "轉 ASC", (c) => c.transfer(to, BigInt($("txAmt").value)));
+    };
+    $("foot").innerHTML = `<span>${esc(C.chainName)}｜金庫 ${link(`address/${C.vault}`, short(C.vault))}｜信物 ${C.nft ? link(`address/${C.nft}`, short(C.nft)) : "—"}｜所有資料直接讀取自區塊鏈</span><span>機器人和網站永遠不會向你要私鑰或助記詞。合約未經專業審計，請只放可承擔風險的金額。</span>`;
+    if (window.ethereum?.on) window.ethereum.on("accountsChanged", () => location.reload());
+    if (!vault) {
+        $("tick").textContent = "config.js 還沒有填金庫地址";
+        return;
+    }
+    refresh().then(() => loadHistory().then(renderAll).catch(() => {}));
+    setInterval(() => { if (!document.hidden) refresh(); }, Math.max(Number(C.refreshSeconds) || 15, 5) * 1000);
+}
+
+/* ───────────── 綁定錢包（#bind=金鑰，從 Discord 開啟） ───────────── */
+
+async function startBind(token) {
+    $("app").hidden = true;
+    $("bindView").hidden = false;
+    document.title = "連結錢包｜江湖鏢局";
+    const msg = $("bindMsg");
+    const api = String(C.botApi || "").replace(/\/$/, "");
+    if (!api) return say(msg, "網站還沒有設定機器人網址（config.js 的 botApi），請聯絡總鏢頭。", "err");
+    let session;
+    try {
+        const r = await fetch(`${api}/api/bind/${token}`, { signal: AbortSignal.timeout(10000) });
+        session = await r.json();
+        if (!session.ok) throw new Error(session.error || "連結無效");
+    } catch (e) {
+        $("bindWho").textContent = "";
+        return say(msg, e.message === "Failed to fetch" ? "連不到機器人，請確認機器人在線上後重新整理。" : e.message, "err");
+    }
+    $("bindWho").innerHTML = `Discord：<b>${esc(session.username)}</b>`;
+    $("bindText").textContent = session.message;
+    $("bindGo").disabled = false;
+    $("bindGo").onclick = async () => {
+        if (!window.ethereum) {
+            say(msg, "找不到錢包。電腦請安裝 MetaMask；手機會跳到 MetaMask App 開啟此頁。", "warn");
+            return setTimeout(openInMetaMask, 800);
+        }
+        $("bindGo").disabled = true;
+        try {
+            say(msg, "請在錢包中選擇要綁定的帳戶…");
+            const [addr] = await window.ethereum.request({ method: "eth_requestAccounts" });
+            say(msg, "請在錢包中確認簽名（不會花費 Gas）…");
+            const signature = await window.ethereum.request({ method: "personal_sign", params: [E.hexlify(E.toUtf8Bytes(session.message)), addr] });
+            say(msg, "驗證中…");
+            const r = await fetch(`${api}/api/bind/${token}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ address: addr, signature }) }).then((x) => x.json());
+            if (!r.ok) throw new Error(r.error || "綁定失敗");
+            $("bindGo").hidden = true;
+            msg.className = "msg ok";
+            msg.textContent = `綁定成功：${short(r.address)}\n可以關閉此頁，回到 Discord 按「我的錢包」查看。`;
+            history.replaceState?.(null, "", location.pathname);
+        } catch (e) {
+            say(msg, e?.code === 4001 ? "你取消了簽名。" : e.message || String(e), "err");
+            $("bindGo").disabled = false;
+        }
+    };
+}
+
+const bindToken = /(?:^#|&)bind=([0-9a-f]{48})/.exec(location.hash)?.[1];
+if (bindToken) startBind(bindToken);
+else startSite();

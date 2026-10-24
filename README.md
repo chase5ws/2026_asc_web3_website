@@ -1,61 +1,55 @@
 # 江湖鏢局金庫網頁
 
-給玩家看的公開網頁：顯示點數金庫每個幣種池子的餘額、輪次與匯率、NFT 鑄造進度與領取門檻；玩家連接 MetaMask 後可以看到自己能領多少、一鍵全部領取，在白名單內也可以直接鑄造 NFT。
+給玩家用的公開網頁（科技江湖風格，深藍＋紅，電腦／平板／手機各有版面）：
 
-- **純靜態網頁**（`index.html`、`app.js`、`config.js`），所有資料直接讀 Polygon 鏈上，不經過任何伺服器、沒有任何機密。
-- 匯率需要「全服點數」，只有 Discord 機器人知道：`config.js` 填了 `botApi` 才會顯示匯率；機器人離線時網頁照常可以領取，只是不顯示匯率。
-- 相關專案：金庫合約 `2026_asc_web3_token`、Discord 機器人 `2026_asc_discord_bot`。
+- **即時幣值**：左邊 ASC（玩家手上的點數）、右邊金庫池子（可兌換的代幣），中間是「每 1 ASC 價值」與走勢圖，每 15 秒自動更新，漲跌會閃色。走勢圖從合約部署區塊開始重播鏈上事件算出來（存在瀏覽器裡，下次只讀新的）。
+- **我的 ASC**：連接錢包後顯示 ASC、持有天數、兌換比例（70%～100% 的階梯）、全部換掉可得多少、本期還能換多少。
+- **兌換**：輸入點數即時預估金額（和合約同樣的算法：只到小數點後 1 位、每期上限、NFT 門檻），按下直接呼叫合約 `exchange`。
+- **轉 ASC**：轉到別的錢包（只有兌換開啟時可以；收到的 ASC 持有天數重新計算）。
+- **金庫規則**、**領取門檻 NFT**、**信物 NFT**（鑄造進度、白名單鑄造）。
+- **綁定錢包頁**：Discord 機器人的「綁定錢包」按鈕會開 `網站網址/#bind=金鑰`，畫面只有背景圖和「連接錢包並簽名」；簽名後送回機器人（`config.js` 的 `botApi`）。
 
-## 設定
+**純靜態網頁**（`index.html`、`app.js`、`config.js`、`assets/`），金庫資料直接讀 Polygon 鏈上，沒有任何機密。和 Discord 機器人唯一的連結是綁定錢包。
 
-編輯 `config.js`：
+相關專案：金庫合約 `2026_asc_web3_token`（AscPoint）、Discord 機器人 `2026_asc_discord_bot`（只負責綁定錢包）。
+
+## 設定（`config.js`）
 
 | 欄位 | 說明 |
 |---|---|
-| `vault` | 點數金庫（AscPointVault）合約地址，部署後填寫 |
-| `nft` | AscCatSamurai NFT 合約（已填好） |
-| `botApi` | 選填。Discord 機器人的對外網址（機器人的 `PUBLIC_URL`），用來顯示匯率 |
-| `chainId`、`rpcUrl`、`explorer` | 預設 Polygon 主網；在 Amoy 測試網試跑時改成 80002、`https://rpc-amoy.polygon.technology`、`https://amoy.polygonscan.com` |
+| `vault` | 金庫 AscPoint 地址（已填：`0x9a431fED8Bc5fa595E5c9fdB1abb0a3119fBD5Ad`） |
+| `deployBlock` | 金庫部署區塊（96045773），走勢圖從這裡開始 |
+| `safe` | 金庫 owner（Safe），只用來顯示 |
+| `nft` | 信物 NFT 合約（`0x39c774673A25B0f1F600Bf39edF639c0f44a7488`） |
+| `botApi` | **要填**：Discord 機器人的對外網址（機器人的 `PUBLIC_URL`），綁定錢包要用 |
+| `refreshSeconds` | 即時幣值更新秒數 |
+| `chainId`、`rpcUrl`、`explorer` | 預設 Polygon 主網 |
+
+機器人那邊要把這個網站的網址填進 `WEBSITE_URL`（或 `config.json` 的 `nft.website_url`），「綁定錢包」才會開這個網站。
+
+## 圖片
+
+看 [`assets/README.md`](assets/README.md)：每個圖片欄位的檔名與尺寸。沒放圖片時用漸層代替。
 
 ## 放在哪裡
-
-### GitHub Codespaces（可以，但不會 24 小時開著）
-
-1. 在 repo 頁面按 **Code → Codespaces → Create codespace**。`.devcontainer/devcontainer.json` 會在 Codespace 開機時自動執行 `node serve.js`，在 8080 埠架好網頁。
-2. 打開下方的 **連接埠（Ports）** 分頁，在 8080 上按右鍵 → **Port Visibility → Public**，那個 `https://….app.github.dev` 網址就是給玩家的網址。
-3. 如果網頁沒起來，在終端機執行 `npm start`。
-
-限制：
-- Codespace 閒置一段時間（預設 30 分鐘，最多可調到 4 小時）就會停止，停止後網址打不開；重新打開 Codespace 才會恢復。
-- 每個 Codespace 的網址都不一樣，刪掉重建網址就變了。
-- 適合測試、給少數人看；要給所有玩家長期使用，請用下面的免費靜態主機。
 
 ### 24 小時不停機的免費做法（擇一）
 
 | 主機 | 私人 repo | 做法 |
 |---|---|---|
-| **Cloudflare Pages** | 可以 | Cloudflare → Workers & Pages → Create → Pages → 連接 GitHub 選這個 repo，Build command 留空、Output directory 填 `/` |
-| **Vercel** | 可以 | Vercel → Add New Project → 匯入這個 repo，Framework 選 Other，直接部署 |
-| **GitHub Pages** | 需要 GitHub Pro／Team | Settings → Pages → Source 選「GitHub Actions」，推送後 `.github/workflows/pages.yml` 自動部署 |
+| **Cloudflare Pages** | 可以 | Workers & Pages → Create → Pages → 連接 GitHub 選這個 repo，Build command 留空、Output directory 填 `/` |
+| **Vercel** | 可以 | Add New Project → 匯入這個 repo，Framework 選 Other |
+| **GitHub Pages** | 需要 Pro／Team | Settings → Pages → Source 選「GitHub Actions」，推送後 `.github/workflows/pages.yml` 自動部署（含 `assets/`） |
 
-以上都會在你推送到 `main` 後自動更新。網頁內容沒有機密，也可以把 repo 設成公開，直接用 GitHub Pages。
+### GitHub Codespaces（測試用，不會 24 小時開著）
+開 Codespace 後會自動 `node serve.js`（8080），在 Ports 分頁把 8080 設成 Public。
 
 ### 本機預覽
-
 ```bash
 npm start   # http://localhost:8080
 ```
 
-## 檔案
-
-```
-index.html   版面與樣式（淺色／深色、手機寬度）
-app.js       讀鏈上資料、連接錢包、領取、鑄造
-config.js    鏈、合約地址、機器人網址
-serve.js     零依賴的靜態伺服器（Codespaces 與本機預覽用；只提供上面三個檔案）
-```
-
 ## 注意
-
-- 網頁用的 ethers 6.13.4 從 cdnjs 載入。
-- 合約的函式介面改了（例如 `poolStatus` 回傳順序），`app.js` 開頭的 ABI 要一起改。
+- ethers 6.13.4 從 cdnjs 載入；字型 Noto Serif TC 從 Google Fonts 載入。
+- 合約介面（`query` 的數字陣列格式）改了的話，`app.js` 的 `readPool`／`readAll` 要一起改。
+- 走勢圖要讀很多鏈上事件，公開 RPC 對區塊範圍有限制，程式會自動分段；讀不到時只顯示即時資料。
