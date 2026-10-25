@@ -4,15 +4,20 @@
 
 左上角與綁定頁中間的圖示是文字「ASC」，綁定頁背景另有「ASC鏢局」斜向重複的浮水印（`index.html` 的 `--wm`），不需要圖片。
 
+瀏覽器分頁圖示已經做好（`favicon.svg`、`favicon.png` 64×64、`apple-touch-icon.png` 180×180、`icon-512.png` 512×512，都是紅藍漸層的「ASC」），想換成自己的圖時，用同樣的檔名與尺寸覆蓋即可。
+
 | 檔名 | 用在哪裡 | 建議尺寸 | 說明 |
 |---|---|---|---|
-| `favicon.png` | 瀏覽器分頁圖示 | 64×64 | 可以用 logo 縮小 |
 | `hero-bg.jpg` | 首頁主視覺（電腦、平板） | 2560×1200 | 文字在左側，畫面重點放中間偏右；上方會疊一層深色漸層 |
 | `hero-bg-mobile.jpg` | 首頁主視覺（手機，寬度 640px 以下） | 1080×1350 | 直式 4:5 |
 | `bind-bg.jpg` | 綁定錢包頁背景（電腦） | 1920×1080 | 正中間會蓋一張卡片，重點放四周 |
 | `bind-bg-mobile.jpg` | 綁定錢包頁背景（手機） | 1080×1920 | 直式 9:16 |
 | `asc.png` | 即時幣值裡的 ASC 代幣圖示 | 256×256 | 會裁成圓形 |
 | `og.jpg` | 分享到 Discord／社群時的預覽圖 | 1200×630 | |
+
+## 鏢局故事的漫畫（已放好）
+
+從漫畫第一話裁切：`story-samurai.jpg`（橫幅、第二章）、`story-sky.jpg`（第一章）、`story-street.jpg`（第三章）、`story-attack.jpg`、`story-qi.jpg`、`story-slash.jpg`、`story-return.jpg`（第四章）、`story-spread.jpg`（整頁跨頁）。換圖時用同樣的檔名覆蓋；章節對應的圖片在 `shared/lang.js` 的 `ASC_STORY`；故事頁封面用 `story-samurai.jpg`，首頁圖卡用 `story-samurai.jpg`、`story-qi.jpg`。
 
 - 風格：江湖＋區塊鏈的「科技江湖」，深藍底、紅色點綴（例如：夜色中的鏢局、帶電路紋的山水、發光的鏢旗與令牌）。
 - 背景圖用 JPG，盡量壓在 500 KB 以內；圖示用 PNG。

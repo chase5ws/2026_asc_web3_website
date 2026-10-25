@@ -13,6 +13,13 @@ window.ASC_CONFIG = {
     safe: "0x7c532A61349814633CdE4f81652Cb0E35BEB75f6",
     // 信物 NFT 合約
     nft: "0x39c774673A25B0f1F600Bf39edF639c0f44a7488",
+    // 信物 V2（配件記在鏈上；部署後填地址與部署區塊）
+    nftV2: "",
+    v2DeployBlock: 0,
+    // V2 的圖片、配件圖層、traits.json 放在這個 GitHub Pages（2026_asc_web3_ipfs）
+    v2Site: "https://chase5ws.github.io/2026_asc_web3_ipfs",
+    // Polygon USDT（V2 付款、捐獻金庫）
+    usdt: "0xc2132D05D31c914a87C6611C10748AEb04B58e8F",
     // 讀不到合約的總量上限時使用
     nftMaxSupply: 500,
     // Discord 機器人的對外網址（機器人的 PUBLIC_URL，例如 https://xxx.up.railway.app）：錢包綁定頁要把簽名送回機器人

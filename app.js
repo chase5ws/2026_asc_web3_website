@@ -62,6 +62,36 @@ const live = new Map(); // token 小寫地址 -> [{ t, p }] 本次開啟後的�
 let hist = new Map(); // token 小寫地址 -> [{ t, p, supply, avail }]
 let lastPrice = new Map();
 
+/* ───────────── 語言（文字在 lang.js） ───────────── */
+const TEXT = window.ASC_TEXT;
+const STORY = window.ASC_STORY;
+let lang = (() => {
+    try { const v = localStorage.getItem("asc-lang"); if (v === "zh" || v === "en") return v; } catch (_) { /* 沒有儲存空間 */ }
+    return /^zh/i.test(navigator.language || "") ? "zh" : "en";
+})();
+/** 取文字：L("鍵", { 變數 }) */
+function L(key, vars = {}) {
+    const raw = TEXT[lang]?.[key] ?? TEXT.zh[key] ?? key;
+    return raw.replace(/\{(\w+)\}/g, (m, k) => (vars[k] === undefined ? m : vars[k]));
+}
+function applyText() {
+    document.documentElement.lang = lang === "zh" ? "zh-Hant" : "en";
+    document.title = L("page.title");
+    document.querySelectorAll("[data-i18n]").forEach((el) => (el.textContent = L(el.dataset.i18n)));
+    document.querySelectorAll("[data-i18n-html]").forEach((el) => (el.innerHTML = L(el.dataset.i18nHtml)));
+    document.querySelectorAll("[data-i18n-ph]").forEach((el) => (el.placeholder = L(el.dataset.i18nPh)));
+    document.querySelectorAll("[data-lang-toggle]").forEach((el) => (el.textContent = L("lang")));
+}
+function setLang(v) {
+    lang = v;
+    try { localStorage.setItem("asc-lang", v); } catch (_) { /* 沒有儲存空間 */ }
+    applyText();
+    renderStory();
+    if (account) $("connect").textContent = L("refresh");
+    renderFoot();
+    if (state) { renderAll(); renderRules().catch(() => {}); renderNft().catch(() => {}); }
+}
+
 /* ───────────── 小工具 ───────────── */
 const short = (a) => (a ? `${a.slice(0, 6)}…${a.slice(-4)}` : "");
 const link = (path, text) => `<a href="${C.explorer}/${path}" target="_blank" rel="noopener">${text}</a>`;
@@ -72,7 +102,7 @@ const num = (v, d, max = 4) => Number(E.formatUnits(v, d)).toLocaleString("en-US
 const unitOf = (d) => (d >= 1 ? 10n ** BigInt(d - 1) : 1n);
 const tenth = (v, d) => num(v - (v % unitOf(d)), d, 1); // 合約只算到小數點後 1 位
 const pct = (bps) => `${(bps / 100).toLocaleString("en-US", { maximumFractionDigits: 1 })}%`;
-const date = (ts) => new Date(ts * 1000).toLocaleDateString("zh-TW", { timeZone: "Asia/Taipei", year: "numeric", month: "2-digit", day: "2-digit" });
+const date = (ts) => new Date(ts * 1000).toLocaleDateString(lang === "zh" ? "zh-TW" : "en-CA", { timeZone: "Asia/Taipei", year: "numeric", month: "2-digit", day: "2-digit" });
 const storage = {
     get(k) { try { return JSON.parse(localStorage.getItem(k) || "null"); } catch (_) { return null; } },
     set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (_) { /* 私密視窗或空間不足時略過 */ } }
@@ -90,29 +120,16 @@ async function tokenMeta(address) {
 
 /** 錯誤訊息轉成中文（合約的自訂錯誤） */
 function explain(e) {
-    if (e?.code === "ACTION_REJECTED" || e?.code === 4001 || e?.info?.error?.code === 4001) return "你取消了交易。";
+    if (e?.code === "ACTION_REJECTED" || e?.code === 4001 || e?.info?.error?.code === 4001) return L("err.cancel");
     let name = e?.revert?.name;
     let args = e?.revert?.args;
     const data = e?.data || e?.info?.error?.data?.data || e?.info?.error?.data;
     if (!name && typeof data === "string" && data.startsWith("0x")) {
         try { const p = iface.parseError(data); name = p?.name; args = p?.args; } catch (_) { /* 不是合約的錯誤 */ }
     }
-    const map = {
-        ExchangeClosed: "兌換目前關閉中（關閉時也不能轉 ASC）。",
-        NotEnoughPoints: `ASC 不夠${args ? `（你有 ${args[0]}）` : ""}。`,
-        AmountTooSmall: "點數太少，換不到 0.1 個代幣，請多用一些點數。",
-        ExceedsAvailable: "超過池子可兌換的金額。",
-        OverPeriodCap: args ? `超過本期上限，本期還能換 ${num(args[0], tokenNow()?.decimals ?? 6)}，${date(Number(args[1]))} 換期。` : "超過本期上限。",
-        NoGateNft: "這個錢包沒有持有指定的 NFT，無法兌換。",
-        UnknownToken: "金庫沒有這種代幣。",
-        SameAddress: "不能轉給自己。",
-        InvalidAddress: "不能轉給金庫合約。",
-        ERC20InsufficientBalance: "ASC 不夠。",
-        ERC20InvalidReceiver: "收款地址不正確。",
-        ZeroAmount: "數量不能是 0。"
-    };
-    if (name && map[name]) return map[name];
-    return `失敗：${e?.shortMessage || e?.message || e}`;
+    if (name === "OverPeriodCap") return args ? L("err.OverPeriodCap", { v: num(args[0], tokenNow()?.decimals ?? 6), date: date(Number(args[1])) }) : L("err.OverPeriodCap0");
+    if (name && TEXT.zh["err." + name]) return L("err." + name);
+    return L("err.fail", { e: e?.shortMessage || e?.message || e });
 }
 
 /* ───────────── 讀取鏈上資料 ───────────── */
@@ -249,16 +266,16 @@ function renderMarket() {
     const t = tokenNow();
     const supply = state.supply;
     $("mSupply").textContent = `${supply.toLocaleString()} ASC`;
-    $("mIssued").textContent = `累計 ${state.issued.toLocaleString()}`;
+    $("mIssued").textContent = L("m.issuedTotal", { n: state.issued.toLocaleString() });
     $("mIssued2").textContent = `${state.issued.toLocaleString()} ASC`;
     $("mBurned").textContent = `${(state.issued - supply).toLocaleString()} ASC`;
     $("tankAsc").style.height = `${state.issued > 0n ? Number((supply * 100n) / state.issued) : 0}%`;
     $("sSupply").textContent = supply.toLocaleString();
-    $("sOpen").innerHTML = state.open ? '<span class="ok">開放中</span>' : '<span class="warn">關閉中</span>';
+    $("sOpen").innerHTML = state.open ? `<span class="ok">${L("open")}</span>` : `<span class="warn">${L("closed")}</span>`;
     $("sEnd").textContent = date(state.periodEnd);
     if (!t) {
         $("mPrice").textContent = "—";
-        $("m100").textContent = "金庫還沒有存入任何代幣。";
+        $("m100").textContent = L("m.noToken");
         $("sPool").textContent = "—";
         return;
     }
@@ -267,10 +284,10 @@ function renderMarket() {
     $("tokIcon").textContent = t.symbol.slice(0, 4);
     $("sPool").textContent = `${num(t.balance, t.decimals, 2)} ${t.symbol}`;
     $("mAvail").textContent = `${num(t.available, t.decimals)} ${t.symbol}`;
-    $("mBal").textContent = `池子 ${num(t.balance, t.decimals, 2)}`;
+    $("mBal").textContent = L("m.poolBal", { n: num(t.balance, t.decimals, 2) });
     $("tankTok").style.height = `${t.balance > 0n ? Number((t.available * 100n) / t.balance) : 0}%`;
     const w = (x) => (t.balance > 0n ? Number((x * 10000n) / t.balance) / 100 : 0);
-    $("mix").innerHTML = `<i style="width:${w(t.available)}%;background:var(--blue)" title="可兌換"></i><i style="width:${w(t.reserve)}%;background:var(--gold)" title="保底"></i><i style="width:${w(t.locked)}%;background:var(--red)" title="鎖到下一期"></i>`;
+    $("mix").innerHTML = `<i style="width:${w(t.available)}%;background:var(--blue)" title="${L("m.avail")}"></i><i style="width:${w(t.reserve)}%;background:var(--gold)" title="${L("m.reserve")}"></i><i style="width:${w(t.locked)}%;background:var(--red)" title="${L("m.locked")}"></i>`;
 
     const price = supply > 0n ? Number(E.formatUnits(t.available, t.decimals)) / Number(supply) : 0;
     const k = t.address.toLowerCase();
@@ -293,9 +310,9 @@ function renderMarket() {
     if (dayAgo && dayAgo.p > 0) {
         const ch = ((price - dayAgo.p) / dayAgo.p) * 100;
         d.className = "delta " + (ch > 0 ? "up" : ch < 0 ? "down" : "");
-        d.textContent = `${ch > 0 ? "▲" : ch < 0 ? "▼" : "■"} ${Math.abs(ch).toFixed(2)}%（${dayAgo.t <= now - 86400 ? "24 小時" : "上線以來"}）`;
+        d.textContent = `${ch > 0 ? "▲" : ch < 0 ? "▼" : "■"} ${Math.abs(ch).toFixed(2)}% (${dayAgo.t <= now - 86400 ? L("m.day") : L("m.since")})`;
     } else d.textContent = " ";
-    $("m100").innerHTML = `100 ASC ≈ <b>${num(t.share100, t.decimals)} ${esc(t.symbol)}</b>（扣手續費前）・持有未滿 30 天實拿 70%`;
+    $("m100").innerHTML = L("m.per100", { v: `${num(t.share100, t.decimals)} ${esc(t.symbol)}` });
     drawChart([...pts, { t: now, p: price }]);
 }
 
@@ -303,7 +320,7 @@ function drawChart(points) {
     const svg = $("chart");
     const pts = points.filter((x) => Number.isFinite(x.p));
     if (pts.length < 2) {
-        svg.innerHTML = '<text x="300" y="90" text-anchor="middle" fill="#5b6b93" font-size="14">走勢資料累積中…</text>';
+        svg.innerHTML = `<text x="300" y="90" text-anchor="middle" fill="#5b6b93" font-size="14">${L("m.loading")}</text>`;
         $("cFrom").textContent = $("cTo").textContent = $("cInfo").textContent = "";
         return;
     }
@@ -322,8 +339,8 @@ function drawChart(points) {
     svg.innerHTML = `<defs><linearGradient id="g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#e0313f" stop-opacity=".35"/><stop offset="1" stop-color="#3d8bff" stop-opacity="0"/></linearGradient></defs>
 ${grid}<path class="ar" d="${area}"/><path class="ln" d="${d}"/><circle cx="${X(last.t)}" cy="${Y(last.p)}" r="4" fill="#ff5c63"><animate attributeName="r" values="3;6;3" dur="1.6s" repeatCount="indefinite"/></circle>`;
     $("cFrom").textContent = date(t0);
-    $("cTo").textContent = "現在";
-    $("cInfo").textContent = `高 ${hi.toPrecision(4)}・低 ${lo.toPrecision(4)}`;
+    $("cTo").textContent = L("m.now");
+    $("cInfo").textContent = L("m.hilo", { hi: hi.toPrecision(4), lo: lo.toPrecision(4) });
 }
 
 /* ───────────── 畫面：我的 ASC ───────────── */
@@ -350,12 +367,12 @@ function renderMine() {
     const next = TIERS.find(([d]) => d > state.days);
     const cur = [...TIERS].reverse().find(([d]) => d <= state.days) ?? TIERS[0];
     $("myProg").style.width = next ? `${((state.days - cur[0]) / (next[0] - cur[0])) * 100}%` : "100%";
-    $("myNext").textContent = state.points === 0n ? "還沒有 ASC" : next ? `再 ${next[0] - state.days} 天升到 ${pct(next[1])}` : "已達最高比例 100%";
-    $("tiers").innerHTML = TIERS.map(([d, b]) => `<div class="tier ${d === cur[0] ? "now" : d < cur[0] ? "done" : ""}"><b>${pct(b)}</b>${d === 0 ? "未滿 30 天" : `${d} 天`}</div>`).join("");
+    $("myNext").textContent = state.points === 0n ? L("mine.none") : next ? L("mine.next", { d: next[0] - state.days, p: pct(next[1]) }) : L("mine.max");
+    $("tiers").innerHTML = TIERS.map(([d, b]) => `<div class="tier ${d === cur[0] ? "now" : d < cur[0] ? "done" : ""}"><b>${pct(b)}</b>${d === 0 ? L("mine.tier0") : L("mine.tierN", { d })}</div>`).join("");
     $("myAll").textContent = t ? `${tenth(t.all, t.decimals)} ${t.symbol}` : "—";
-    $("myLeft").textContent = t ? `本期還能換 ${num(t.left, t.decimals)} ${t.symbol}・${date(state.periodEnd)} 換期` : "";
+    $("myLeft").textContent = t ? L("mine.left", { v: `${num(t.left, t.decimals)} ${t.symbol}`, date: date(state.periodEnd) }) : "";
     $("gateWarn").hidden = state.gateOk;
-    if (!state.gateOk) $("gateWarn").textContent = "這個錢包沒有持有領取門檻的 NFT，暫時不能兌換（ASC 會一直保留）。";
+    if (!state.gateOk) $("gateWarn").textContent = L("mine.gate");
     const sel = $("exToken");
     sel.innerHTML = state.tokens.map((x, i) => `<option value="${i}" ${i === selected ? "selected" : ""}>${esc(x.symbol)}</option>`).join("");
     updatePreview();
@@ -368,22 +385,22 @@ function updatePreview() {
     const box = $("exPreview");
     const go = $("exGo");
     go.disabled = true;
-    if (!t) { box.innerHTML = '<span class="muted small">金庫還沒有代幣。</span>'; return; }
-    if (!/^\d+$/.test(raw) || raw === "0") { box.innerHTML = `<span class="muted small">輸入要用的 ASC（你有 ${state.points.toLocaleString()}）</span>`; return; }
+    if (!t) { box.innerHTML = `<span class="muted small">${L("ex.noToken")}</span>`; return; }
+    if (!/^\d+$/.test(raw) || raw === "0") { box.innerHTML = `<span class="muted small">${L("ex.enter", { n: state.points.toLocaleString() })}</span>`; return; }
     const p = BigInt(raw);
     const r = previewFor(t, p);
     const problems = [];
-    if (!state.open) problems.push("兌換目前關閉中");
-    if (!state.gateOk) problems.push("沒有持有門檻 NFT");
-    if (p > state.points) problems.push(`ASC 不夠（你有 ${state.points}）`);
-    if (r && r.get === 0n) problems.push("點數太少，換不到 0.1");
-    if (r && r.get > t.left) problems.push(`超過本期上限（還能換 ${num(t.left, t.decimals)}）`);
-    box.innerHTML = r ? `<div class="kv"><span>完整份額</span><b>${num(r.share, t.decimals)} ${esc(t.symbol)}</b></div>
-<div class="kv"><span>你拿 ${pct(state.keepBps)}</span><b class="${problems.length ? "" : "ok"}">${num(r.get, t.decimals, 1)} ${esc(t.symbol)}</b></div>
-<div class="kv"><span>留給金庫（1/3 保底・1/3 下一期・1/3 持有者）</span><b>${num(r.fee, t.decimals)}</b></div>
-${problems.length ? `<div class="warn small">${problems.join("・")}</div>` : '<div class="small muted">實際金額以送出當下的鏈上狀態為準。</div>'}` : "";
+    if (!state.open) problems.push(L("ex.pClosed"));
+    if (!state.gateOk) problems.push(L("ex.pGate"));
+    if (p > state.points) problems.push(L("ex.pPoints", { n: state.points }));
+    if (r && r.get === 0n) problems.push(L("ex.pSmall"));
+    if (r && r.get > t.left) problems.push(L("ex.pCap", { v: num(t.left, t.decimals) }));
+    box.innerHTML = r ? `<div class="kv"><span>${L("ex.share")}</span><b>${num(r.share, t.decimals)} ${esc(t.symbol)}</b></div>
+<div class="kv"><span>${L("ex.keep", { p: pct(state.keepBps) })}</span><b class="${problems.length ? "" : "ok"}">${num(r.get, t.decimals, 1)} ${esc(t.symbol)}</b></div>
+<div class="kv"><span>${L("ex.fee")}</span><b>${num(r.fee, t.decimals)}</b></div>
+${problems.length ? `<div class="warn small">${problems.join("・")}</div>` : `<div class="small muted">${L("ex.note")}</div>`}` : "";
     go.disabled = !!problems.length || !r;
-    go.textContent = r && !problems.length ? `用 ${p} ASC 兌換 ${num(r.get, t.decimals, 1)} ${t.symbol}` : "兌換";
+    go.textContent = r && !problems.length ? L("ex.go", { p, v: `${num(r.get, t.decimals, 1)} ${t.symbol}` }) : L("ex.title");
 }
 
 function fill(kind) {
@@ -402,7 +419,7 @@ function fill(kind) {
                 if (kind === "min") hi = mid - 1n; else lo = mid + 1n;
             } else if (kind === "min") lo = mid + 1n; else hi = mid - 1n;
         }
-        if (ans === null) return say($("exMsg"), kind === "min" ? "你的 ASC 目前換不到 0.1。" : "本期額度已用完。", "warn");
+        if (ans === null) return say($("exMsg"), kind === "min" ? L("ex.fillMin") : L("ex.fillMax"), "warn");
         p = ans;
     }
     $("exPoints").value = String(p);
@@ -413,12 +430,12 @@ function updateTransfer() {
     const to = $("txTo").value.trim();
     const amt = $("txAmt").value.trim();
     let problem = "";
-    if (!state.open) problem = "兌換關閉時不能轉 ASC";
-    else if (to && !E.isAddress(to)) problem = "地址格式不對";
-    else if (to && E.isAddress(to) && E.getAddress(to) === E.getAddress(account)) problem = "不能轉給自己";
-    else if (to && E.isAddress(to) && E.getAddress(to) === E.getAddress(C.vault)) problem = "不能轉給金庫合約";
-    else if (amt && (!/^\d+$/.test(amt) || amt === "0")) problem = "數量要是正整數";
-    else if (amt && BigInt(amt) > state.points) problem = `ASC 不夠（你有 ${state.points}）`;
+    if (!state.open) problem = L("tx.closed");
+    else if (to && !E.isAddress(to)) problem = L("tx.bad");
+    else if (to && E.isAddress(to) && E.getAddress(to) === E.getAddress(account)) problem = L("tx.self");
+    else if (to && E.isAddress(to) && E.getAddress(to) === E.getAddress(C.vault)) problem = L("tx.vault");
+    else if (amt && (!/^\d+$/.test(amt) || amt === "0")) problem = L("tx.int");
+    else if (amt && BigInt(amt) > state.points) problem = L("ex.pPoints", { n: state.points });
     $("txGo").disabled = !!problem || !to || !amt;
     if (problem) say($("txMsg"), problem, "warn");
     else if ($("txMsg").classList.contains("warn")) say($("txMsg"), "");
@@ -427,12 +444,12 @@ function updateTransfer() {
 /* ───────────── 規則、門檻 ───────────── */
 
 async function renderRules() {
-    $("rOpen").innerHTML = state.open ? '<span class="chip on">開放中</span>' : '<span class="chip off">關閉中</span>';
+    $("rOpen").innerHTML = state.open ? `<span class="chip on">${L("open")}</span>` : `<span class="chip off">${L("closed")}</span>`;
     $("rPeriod").textContent = `${date(state.periodStart)} ～ ${date(state.periodEnd)}`;
-    $("rCap").textContent = `池子目前餘額的 ${pct(state.capBps)}（每種代幣分開）`;
-    $("rOwner").innerHTML = state.owner ? `${link(`address/${state.owner}`, short(state.owner))}${C.safe && state.owner.toLowerCase() === C.safe.toLowerCase() ? "（Safe 多簽）" : ""}` : "—";
+    $("rCap").textContent = L("r.capV", { p: pct(state.capBps) });
+    $("rOwner").innerHTML = state.owner ? `${link(`address/${state.owner}`, short(state.owner))}${C.safe && state.owner.toLowerCase() === C.safe.toLowerCase() ? L("r.safe") : ""}` : "—";
     $("rVault").innerHTML = link(`address/${C.vault}`, short(C.vault));
-    if (!state.gates.length) return ($("gates").textContent = "目前沒有設定門檻，持有 ASC 的錢包都能兌換。");
+    if (!state.gates.length) return ($("gates").textContent = L("r.noGate"));
     const rows = await Promise.all(state.gates.map(async (g) => {
         const name = await new E.Contract(g, ["function name() view returns (string)"], provider).name().catch(() => "NFT");
         return `<div class="kv"><span>${esc(name)}</span><b>${link(`address/${g}`, short(g))}</b></div>`;
@@ -451,19 +468,19 @@ async function renderNft() {
     $("minted").textContent = supply !== null ? `${supply}${max ? ` / ${max}` : ""}` : "—";
     $("mintBar").style.width = supply !== null && max ? `${Math.min((Number(supply) / max) * 100, 100)}%` : "0";
     $("wlRow").hidden = open === null;
-    if (open !== null) $("wlOpen").textContent = open ? "開放中" : "未開放";
-    $("nftLink").innerHTML = link(`address/${C.nft}`, `合約 ${short(C.nft)}`);
+    if (open !== null) $("wlOpen").textContent = open ? L("open") : L("closed");
+    $("nftLink").innerHTML = link(`address/${C.nft}`, L("nft.contract", { a: short(C.nft) }));
     if (!account) return;
     const [allowed, bal] = await Promise.all([opt(nft.allowList(account)), opt(nft.balanceOf(account))]);
     $("myNftRow").hidden = false;
-    $("myNft").textContent = bal && bal > 0n ? `持有 ${bal} 枚` : allowed ? "在白名單內，可以鑄造" : "尚未持有";
+    $("myNft").textContent = bal && bal > 0n ? L("nft.hold", { n: bal }) : allowed ? L("nft.allowed") : L("nft.notYet");
     $("mint").hidden = !(allowed && open);
     $("mint").onclick = mintNft;
     if (bal && bal > 0n) {
         try {
             const id = await nft.tokenOfOwnerByIndex(account, 0);
             const m = await (await fetch(ipfs(await nft.tokenURI(id)), { signal: AbortSignal.timeout(6000) })).json();
-            if (m.image) $("nftPic").innerHTML = `<img src="${esc(ipfs(m.image))}" alt="我的信物">`;
+            if (m.image) $("nftPic").innerHTML = `<img src="${esc(ipfs(m.image))}" alt="">`;
         } catch (_) { /* 沒有 metadata 就不顯示圖 */ }
     }
 }
@@ -477,7 +494,7 @@ function openInMetaMask() {
 async function walletSigner() {
     if (!window.ethereum) {
         openInMetaMask();
-        throw new Error("找不到錢包：電腦請安裝 MetaMask，手機請用 MetaMask App 開啟此頁");
+        throw new Error(L("err.noWallet"));
     }
     const hex = "0x" + C.chainId.toString(16);
     try {
@@ -492,15 +509,15 @@ async function walletSigner() {
 async function sendTx(msgEl, label, fn) {
     try {
         const signer = await walletSigner();
-        say(msgEl, `請在錢包確認「${label}」…`);
+        say(msgEl, L("tx.wallet", { label }));
         const c = vault.connect(signer);
         const tx = await fn(c);
-        say(msgEl, "交易已送出，等待上鏈…");
+        say(msgEl, L("tx.sent"));
         await tx.wait();
-        say(msgEl, "已上鏈，更新資料中…");
+        say(msgEl, L("tx.mined"));
         await refresh();
         msgEl.className = "msg";
-        msgEl.innerHTML = `<span class="ok">完成！</span> ${link(`tx/${tx.hash}`, "查看交易")}`;
+        msgEl.innerHTML = `<span class="ok">${L("tx.done")}</span> ${link(`tx/${tx.hash}`, L("tx.view"))}`;
     } catch (e) {
         say(msgEl, explain(e), "err");
     }
@@ -510,13 +527,13 @@ async function mintNft() {
     const msg = $("nftMsg");
     try {
         const signer = await walletSigner();
-        say(msg, "請在錢包確認鑄造（免費，只需 Gas）…");
+        say(msg, L("nft.confirm"));
         const tx = await nft.connect(signer).allowListMint({ value: 0 });
-        say(msg, "交易已送出，等待上鏈…");
+        say(msg, L("tx.sent"));
         await tx.wait();
         await refresh();
         msg.className = "msg";
-        msg.innerHTML = `<span class="ok">鑄造完成！回到 Discord 的破境結界按「破解結界」。</span> ${link(`tx/${tx.hash}`, "查看交易")}`;
+        msg.innerHTML = `<span class="ok">${L("nft.done")}</span> ${link(`tx/${tx.hash}`, L("tx.view"))}`;
     } catch (e) {
         say(msg, explain(e), "err");
     }
@@ -527,7 +544,7 @@ async function connect() {
         const signer = await walletSigner();
         account = await signer.getAddress();
         $("who").textContent = short(account);
-        $("connect").textContent = "重新整理";
+        $("connect").textContent = L("refresh");
         await refresh();
     } catch (e) {
         say($("exMsg"), e?.message || String(e), "err");
@@ -558,15 +575,44 @@ async function refresh() {
         renderAll();
         renderRules().catch(() => {});
         renderNft().catch(() => {});
-        $("tick").textContent = `更新於 ${new Date().toLocaleTimeString("zh-TW", { hour12: false })}`;
+        $("tick").textContent = L("tick.updated", { t: new Date().toLocaleTimeString(lang === "zh" ? "zh-TW" : "en-GB", { hour12: false }) });
     } catch (e) {
-        $("tick").textContent = `讀取失敗：${e.shortMessage || e.message}`;
+        $("tick").textContent = L("tick.fail", { e: e.shortMessage || e.message });
     } finally {
         busy = false;
     }
 }
 
+/* ───────────── 鏢局故事 ───────────── */
+
+let chapterIdx = 0;
+function renderStory() {
+    const st = STORY[lang] ?? STORY.zh;
+    $("about").innerHTML = st.about.map((a) => `<div class="card"><h3>${esc(a.title)}</h3><p>${esc(a.text)}</p></div>`).join("");
+    $("chapterTabs").innerHTML = st.chapters.map((c, i) => `<button data-ch="${i}" class="${i === chapterIdx ? "on" : ""}">${esc(c.tag)}・${esc(c.title)}</button>`).join("");
+    document.querySelectorAll("[data-ch]").forEach((b) => (b.onclick = () => { chapterIdx = Number(b.dataset.ch); renderStory(); }));
+    const c = st.chapters[chapterIdx];
+    $("chapter").innerHTML = `<div class="text"><h3><small>${esc(c.tag)}</small>${esc(c.title)}</h3>${c.text.map((p) => `<p>${esc(p)}</p>`).join("")}</div>
+<div class="art">${c.img.map((f) => `<img src="assets/${f}" alt="" loading="lazy" data-zoom>`).join("")}</div>`;
+    bindZoom();
+}
+
+function bindZoom() {
+    document.querySelectorAll("[data-zoom]").forEach((img) => (img.onclick = () => {
+        const z = document.createElement("div");
+        z.className = "zoom";
+        z.innerHTML = `<img src="${img.src}" alt="">`;
+        z.onclick = () => z.remove();
+        document.body.appendChild(z);
+    }));
+}
+
+function renderFoot() {
+    $("foot").innerHTML = `<span>${L("foot.1", { chain: esc(C.chainName), vault: link(`address/${C.vault}`, short(C.vault)), nft: C.nft ? link(`address/${C.nft}`, short(C.nft)) : "—" })}</span><span>${L("safety")} ${L("foot.2")}</span>`;
+}
+
 function startSite() {
+    renderStory();
     $("connect").onclick = () => (account ? refresh() : connect());
     $("connect2").onclick = connect;
     $("exToken").onchange = () => { selected = Number($("exToken").value); renderAll(); };
@@ -575,18 +621,18 @@ function startSite() {
     $("exGo").onclick = () => {
         const t = state.tokens[Number($("exToken").value)];
         const p = BigInt($("exPoints").value);
-        sendTx($("exMsg"), "兌換", (c) => c.exchange(t.address, p));
+        sendTx($("exMsg"), L("ex.title"), (c) => c.exchange(t.address, p));
     };
     $("txTo").oninput = $("txAmt").oninput = updateTransfer;
     $("txGo").onclick = () => {
         const to = E.getAddress($("txTo").value.trim());
-        if (!confirm(`確定把 ${$("txAmt").value} ASC 轉給 ${to}？\n收到的 ASC 持有天數會從 0 重新計算。`)) return;
-        sendTx($("txMsg"), "轉 ASC", (c) => c.transfer(to, BigInt($("txAmt").value)));
+        if (!confirm(L("tx.confirm", { n: $("txAmt").value, to }))) return;
+        sendTx($("txMsg"), L("tx.title"), (c) => c.transfer(to, BigInt($("txAmt").value)));
     };
-    $("foot").innerHTML = `<span>${esc(C.chainName)}｜金庫 ${link(`address/${C.vault}`, short(C.vault))}｜信物 ${C.nft ? link(`address/${C.nft}`, short(C.nft)) : "—"}｜所有資料直接讀取自區塊鏈</span><span>機器人和網站永遠不會向你要私鑰或助記詞。合約未經專業審計，請只放可承擔風險的金額。</span>`;
+    renderFoot();
     if (window.ethereum?.on) window.ethereum.on("accountsChanged", () => location.reload());
     if (!vault) {
-        $("tick").textContent = "config.js 還沒有填金庫地址";
+        $("tick").textContent = L("tick.noVault");
         return;
     }
     refresh().then(() => loadHistory().then(renderAll).catch(() => {}));
@@ -598,47 +644,50 @@ function startSite() {
 async function startBind(token) {
     $("app").hidden = true;
     $("bindView").hidden = false;
-    document.title = "連結錢包｜江湖鏢局";
+    document.title = `${L("bind.title")}｜ASC`;
+    $("bindWho").textContent = L("bind.loading");
     const msg = $("bindMsg");
     const api = String(C.botApi || "").replace(/\/$/, "");
-    if (!api) return say(msg, "網站還沒有設定機器人網址（config.js 的 botApi），請聯絡總鏢頭。", "err");
+    if (!api) return say(msg, L("bind.noApi"), "err");
     let session;
     try {
         const r = await fetch(`${api}/api/bind/${token}`, { signal: AbortSignal.timeout(10000) });
         session = await r.json();
-        if (!session.ok) throw new Error(session.error || "連結無效");
+        if (!session.ok) throw new Error(session.error || L("bind.invalid"));
     } catch (e) {
         $("bindWho").textContent = "";
-        return say(msg, e.message === "Failed to fetch" ? "連不到機器人，請確認機器人在線上後重新整理。" : e.message, "err");
+        return say(msg, e.message === "Failed to fetch" ? L("bind.offline") : e.message, "err");
     }
     $("bindWho").innerHTML = `Discord：<b>${esc(session.username)}</b>`;
     $("bindText").textContent = session.message;
     $("bindGo").disabled = false;
     $("bindGo").onclick = async () => {
         if (!window.ethereum) {
-            say(msg, "找不到錢包。電腦請安裝 MetaMask；手機會跳到 MetaMask App 開啟此頁。", "warn");
+            say(msg, L("bind.noWallet"), "warn");
             return setTimeout(openInMetaMask, 800);
         }
         $("bindGo").disabled = true;
         try {
-            say(msg, "請在錢包中選擇要綁定的帳戶…");
+            say(msg, L("bind.pick"));
             const [addr] = await window.ethereum.request({ method: "eth_requestAccounts" });
-            say(msg, "請在錢包中確認簽名（不會花費 Gas）…");
+            say(msg, L("bind.sign"));
             const signature = await window.ethereum.request({ method: "personal_sign", params: [E.hexlify(E.toUtf8Bytes(session.message)), addr] });
-            say(msg, "驗證中…");
+            say(msg, L("bind.verify"));
             const r = await fetch(`${api}/api/bind/${token}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ address: addr, signature }) }).then((x) => x.json());
-            if (!r.ok) throw new Error(r.error || "綁定失敗");
+            if (!r.ok) throw new Error(r.error || L("bind.fail"));
             $("bindGo").hidden = true;
             msg.className = "msg ok";
-            msg.textContent = `綁定成功：${short(r.address)}\n可以關閉此頁，回到 Discord 按「我的錢包」查看。`;
+            msg.textContent = L("bind.ok", { a: short(r.address) });
             history.replaceState?.(null, "", location.pathname);
         } catch (e) {
-            say(msg, e?.code === 4001 ? "你取消了簽名。" : e.message || String(e), "err");
+            say(msg, e?.code === 4001 ? L("bind.cancel") : e.message || String(e), "err");
             $("bindGo").disabled = false;
         }
     };
 }
 
+applyText();
+document.querySelectorAll("[data-lang-toggle]").forEach((b) => (b.onclick = () => { setLang(lang === "zh" ? "en" : "zh"); if (bindToken) startBind(bindToken); }));
 const bindToken = /(?:^#|&)bind=([0-9a-f]{48})/.exec(location.hash)?.[1];
 if (bindToken) startBind(bindToken);
 else startSite();

@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>江湖鏢局金庫</title>
+<meta name="description" content="江湖鏢局的鏈上金庫：即時幣值、用 ASC 兌換代幣、綁定錢包、信物 NFT、鏢局故事。">
+<meta name="theme-color" content="#070d1f">
+<meta property="og:title" content="江湖鏢局金庫">
+<meta property="og:description" content="科技江湖・鏈上鏢局：持有越久，換得越多。">
+<meta property="og:image" content="../assets/og.jpg">
+<link rel="icon" type="image/svg+xml" href="../assets/favicon.svg">
+<link rel="icon" type="image/png" sizes="64x64" href="../assets/favicon.png">
+<link rel="apple-touch-icon" href="../assets/apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@600;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../shared/style.css">
+</head>
+<body data-page="nft" data-root="../">
+<main class="page">
+  <section class="screen">
+    <div class="eyebrow reveal" data-i18n="nft.eyebrow"></div>
+    <h1 class="display reveal d1" data-i18n-html="nft.heroTitle"></h1>
+    <p class="lead reveal d2" data-i18n="nft.lead"></p>
+    <div class="card nft reveal d3">
+      <div class="pic" id="nftPic" data-i18n="nft.pic"></div>
+      <div style="flex:1;min-width:220px">
+        <div class="kv"><span data-i18n="nft.name"></span><b id="nftName">—</b></div>
+        <div class="kv"><span data-i18n="nft.minted"></span><b id="minted">—</b></div>
+        <div class="progress" style="margin:6px 0 10px"><i id="mintBar" style="width:0"></i></div>
+        <div class="kv" id="wlRow" hidden><span data-i18n="nft.wl"></span><b id="wlOpen">—</b></div>
+        <div class="kv" id="myNftRow" hidden><span data-i18n="nft.me"></span><b id="myNft">—</b></div>
+        <div class="row" style="margin-top:10px"><button id="mint" hidden data-i18n="nft.mint"></button><a class="small" id="nftLink" target="_blank" rel="noopener"></a></div>
+        <p class="msg" id="nftMsg"></p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ───────── 信物 V2 ───────── -->
+  <section class="screen" id="v2">
+    <div class="eyebrow reveal" data-i18n="v2.eyebrow"></div>
+    <h2 class="display reveal d1" style="font-size:clamp(30px,5vw,58px)" data-i18n-html="v2.title"></h2>
+    <p class="lead reveal d2" data-i18n="v2.lead"></p>
+    <p class="warn" id="v2NotSet" hidden data-i18n="v2.notSet"></p>
+    <div class="grid2" id="v2Top" hidden>
+      <div class="card glow reveal">
+        <div class="kv"><span data-i18n="v2.minted"></span><b id="v2Minted">—</b></div>
+        <div class="progress" style="margin:6px 0 10px"><i id="v2Bar" style="width:0"></i></div>
+        <div class="kv"><span data-i18n="v2.sale"></span><b id="v2Sale">—</b></div>
+        <div class="small muted" style="margin-top:8px" data-i18n="v2.price"></div>
+        <div class="kv"><span data-i18n="v2.pRandom"></span><b id="v2pRandom">—</b></div>
+        <div class="kv"><span data-i18n="v2.pCustom"></span><b id="v2pCustom">—</b></div>
+        <div class="kv"><span data-i18n="v2.pChange"></span><b id="v2pChange">—</b></div>
+        <div class="kv"><span data-i18n="v2.pVip"></span><b id="v2pVip">—</b></div>
+        <div class="kv"><span data-i18n="v2.pGacha"></span><b id="v2pGacha">—</b></div>
+      </div>
+      <div class="card reveal d1">
+        <div class="kv"><span data-i18n="v2.me"></span><b id="v2Vip">—</b></div>
+        <div class="kv"><span data-i18n="v2.usdt"></span><b id="v2Usdt">—</b></div>
+        <div class="small muted" id="v2RandomLeft"></div>
+        <div class="row" style="margin-top:12px"><button id="v2RandomBtn" data-i18n="v2.random"></button><button class="blue" id="v2VipBtn"></button></div>
+        <p class="small muted" data-i18n="v2.vipDesc"></p>
+        <div id="v2ClaimBox" hidden style="margin-top:10px;border-top:1px solid var(--line);padding-top:10px">
+          <h3 data-i18n="v2.claimTitle"></h3>
+          <p class="small muted" data-i18n="v2.claimDesc"></p>
+          <button class="alt" id="v2ClaimBtn"></button>
+        </div>
+        <p class="msg" id="v2TopMsg"></p>
+      </div>
+    </div>
+  </section>
+
+  <section class="screen" id="v2Workshop" hidden>
+    <div class="reveal"><div class="eyebrow" data-i18n="v2.wsEyebrow"></div><h2 class="display" style="font-size:clamp(28px,4.6vw,52px)" data-i18n="v2.wsTitle"></h2></div>
+    <div class="ws reveal">
+      <div class="stack" id="v2Preview"></div>
+      <div class="card">
+        <div class="tabs" style="margin-bottom:10px"><button class="on" id="v2ModeNew" data-i18n="v2.modeNew"></button><button id="v2ModeChange" data-i18n="v2.modeChange"></button></div>
+        <label id="v2PickRow" hidden><span data-i18n="v2.pick"></span><select id="v2Pick"></select></label>
+        <div id="v2Slots"></div>
+        <div class="row small" style="margin:10px 0"><button class="alt" id="v2Shuffle" data-i18n="v2.shuffle"></button></div>
+        <div class="preview small" id="v2Status"></div>
+        <div style="margin-top:10px"><button id="v2Go" disabled></button></div>
+        <p class="msg" id="v2WsMsg"></p>
+      </div>
+    </div>
+  </section>
+
+  <section class="screen" id="v2Gacha" hidden>
+    <div class="reveal"><div class="eyebrow" data-i18n="v2.gEyebrow"></div><h2 class="display" style="font-size:clamp(28px,4.6vw,52px)" data-i18n="v2.gTitle"></h2></div>
+    <div class="grid2">
+      <div class="card glow reveal">
+        <p class="small muted" data-i18n="v2.gDesc"></p>
+        <div class="row" style="margin:10px 0"><button id="v2G1"></button><button class="blue" id="v2G10"></button></div>
+        <div id="v2GResult"></div>
+        <p class="msg" id="v2GMsg"></p>
+        <details style="margin-top:8px"><summary class="small muted" data-i18n="v2.gOdds"></summary><div class="small" id="v2Odds"></div></details>
+      </div>
+      <div class="card reveal d1"><h3 data-i18n="v2.bag"></h3><div class="bag" id="v2Bag"></div></div>
+    </div>
+  </section>
+
+  <section class="screen" id="v2Mine" hidden>
+    <div class="reveal"><div class="eyebrow" data-i18n="v2.myEyebrow"></div><h2 class="display" style="font-size:clamp(28px,4.6vw,52px)" data-i18n="v2.myTitle"></h2></div>
+    <div class="gallery reveal" id="v2Gallery"></div>
+  </section>
+
+  <section class="screen" id="v2Log" hidden>
+    <div class="reveal"><div class="eyebrow" data-i18n="v2.logEyebrow"></div><h2 class="display" style="font-size:clamp(28px,4.6vw,52px)" data-i18n="v2.logTitle"></h2></div>
+    <p class="small muted reveal" data-i18n="v2.logDesc"></p>
+    <div class="card reveal" style="overflow-x:auto"><table class="log"><thead><tr><th data-i18n="v2.col.time"></th><th data-i18n="v2.col.user"></th><th data-i18n="v2.col.what"></th><th data-i18n="v2.col.basis"></th><th data-i18n="v2.col.result"></th><th data-i18n="v2.col.check"></th></tr></thead><tbody id="v2LogBody"></tbody></table>
+      <div class="row small" style="margin-top:8px;justify-content:space-between"><span class="faint" data-i18n="v2.weightNote"></span><button class="alt" id="v2LogMore" hidden data-i18n="v2.logMore"></button></div>
+    </div>
+  </section>
+  <a class="next reveal" href="../"><span><small data-i18n="next">下一頁</small><b data-i18n="page.home"></b></span><span class="arrow">→</span></a>
+</main>
+<footer><div id="foot"></div></footer>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.13.4/ethers.umd.min.js"></script>
+<script src="../config.js"></script>
+<script src="../shared/lang.js"></script>
+<script src="v2-lang.js"></script>
+<script src="../shared/core.js"></script>
+<script src="page.js"></script>
+<script src="v2.js"></script>
+</body>
+</html>
