@@ -1,4 +1,4 @@
-/* 信物 V2：隨機鑄造、VIP、舊信物領回、自選配件／換裝（即時預覽）、轉蛋與背包、我的喵武士、隨機執行紀錄（瀏覽器驗算）
+/* 信物 V2：隨機鑄造、VIP、自選配件／換裝（即時預覽）、轉蛋與背包、我的喵武士、隨機執行紀錄（瀏覽器驗算）
  * 合約：2026_asc_web3_ipfs/contract/contracts/AscCatSamuraiV2.sol；配件對照表與圖層：{v2Site}/traits.json、{v2Site}/layers/ */
 (function () {
     const A = window.ASC;
@@ -8,14 +8,14 @@
     const CATS = 5;
     const ABI = [
         "function totalSupply() view returns (uint256)", "function nextId() view returns (uint256)", "function maxSupply() view returns (uint256)",
-        "function saleOpen() view returns (bool)", "function paused() view returns (bool)", "function legacyCount() view returns (uint256)",
+        "function saleOpen() view returns (bool)", "function paused() view returns (bool)",
         "function prices() view returns (uint256, uint256, uint256, uint256, uint256)", "function maxRandomPerWallet() view returns (uint256)",
         "function randomMinted(address) view returns (uint256)", "function isVip(address) view returns (bool)",
         "function balanceOf(address) view returns (uint256)", "function tokenOfOwnerByIndex(address, uint256) view returns (uint256)",
         "function traitsOf(uint256) view returns (uint8[5])", "function traitsRange(uint256, uint256) view returns (bool[], uint40[])",
         "function comboOwner(uint8[5]) view returns (uint256)", "function backpack(address) view returns (uint256[][5])",
         "function options(uint256) view returns (uint16[], bool[])", "function gachaPool() view returns (tuple(uint8 cat, uint8 idx, uint16 weight)[], uint32)",
-        "function claim(uint256[] ids)", "function randomMint() returns (uint256)", "function buyVip()",
+        "function randomMint() returns (uint256)", "function buyVip()",
         "function customMint(uint8[5] t) returns (uint256)", "function changeTraits(uint256 id, uint8[5] t)", "function gacha(uint256 times)",
         "event Minted(uint256 indexed tokenId, address indexed to, uint8 kind, uint40 traits)",
         "event TraitsChanged(uint256 indexed tokenId, address indexed owner, uint40 oldTraits, uint40 newTraits)",
@@ -23,16 +23,14 @@
         "event GachaPull(address indexed user, bytes32 seed, uint256 roll, uint256 totalWeight, bool hit, uint8 cat, uint8 idx)",
         "error SaleClosed()", "error SoldOut()", "error NotVip()", "error AlreadyVip()", "error WalletLimit()", "error BadTrait(uint256, uint256)",
         "error ComboTaken(uint256)", "error NoItem(uint256, uint256)", "error NotTokenOwner(uint256)", "error NoChange()", "error BadAmount()",
-        "error NotLegacy(uint256)", "error LegacyNotReady(uint256)", "error NotOldOwner(uint256)", "error NoRandomResult()", "error EmptyPool()",
+        "error NoRandomResult()", "error EmptyPool()",
         "error EnforcedPause()", "error ERC721InvalidSender(address)", "error ReentrancyGuardReentrantCall()", "error SafeERC20FailedOperation(address)",
         "error ERC20InsufficientBalance(address, uint256, uint256)", "error ERC20InsufficientAllowance(address, uint256, uint256)"
     ];
     const ERC20 = ["function balanceOf(address) view returns (uint256)", "function allowance(address, address) view returns (uint256)", "function approve(address, uint256) returns (bool)", "function transfer(address, uint256) returns (bool)"];
-    const OLD = ["function balanceOf(address) view returns (uint256)", "function tokenOfOwnerByIndex(address, uint256) view returns (uint256)"];
     const iface = new E.Interface(ABI);
     const nft = C.nftV2 ? new E.Contract(C.nftV2, ABI, A.provider) : null;
     const usdt = C.usdt ? new E.Contract(C.usdt, ERC20, A.provider) : null;
-    const oldNft = C.nft ? new E.Contract(C.nft, OLD, A.provider) : null;
     const coder = E.AbiCoder.defaultAbiCoder();
 
     const U = (v) => Number(E.formatUnits(v ?? 0n, 6)).toLocaleString("en-US", { maximumFractionDigits: 6 });
@@ -109,22 +107,16 @@
         busy = true;
         try {
             await loadStatic();
-            const [supply, nextId, max, sale, prices, maxR, legacy] = await Promise.all([nft.totalSupply(), nft.nextId(), nft.maxSupply(), nft.saleOpen(), nft.prices(), nft.maxRandomPerWallet(), nft.legacyCount()]);
-            info = { supply, nextId, max, sale, maxR, legacy: Number(legacy), fee: { random: prices[0], custom: prices[1], change: prices[2], vip: prices[3], gacha: prices[4] } };
+            const [supply, nextId, max, sale, prices, maxR] = await Promise.all([nft.totalSupply(), nft.nextId(), nft.maxSupply(), nft.saleOpen(), nft.prices(), nft.maxRandomPerWallet()]);
+            info = { supply, nextId, max, sale, maxR, fee: { random: prices[0], custom: prices[1], change: prices[2], vip: prices[3], gacha: prices[4] } };
             me = null;
             const a = A.account;
             if (a) {
-                const [vip, rMinted, bal, bag, n, [exists]] = await Promise.all([nft.isVip(a), nft.randomMinted(a), usdt.balanceOf(a), nft.backpack(a), nft.balanceOf(a), nft.traitsRange(0, legacy)]);
+                const [vip, rMinted, bal, bag, n] = await Promise.all([nft.isVip(a), nft.randomMinted(a), usdt.balanceOf(a), nft.backpack(a), nft.balanceOf(a)]);
                 const ids = await Promise.all(Array.from({ length: Number(n) }, (_, i) => nft.tokenOfOwnerByIndex(a, i)));
                 const tokens = await Promise.all(ids.map(async (id) => ({ id: Number(id), t: (await nft.traitsOf(id)).map(Number) })));
                 tokens.sort((x, y) => x.id - y.id);
-                let claimable = [];
-                if (oldNft) {
-                    const on = Number(await oldNft.balanceOf(a).catch(() => 0n));
-                    const oldIds = await Promise.all(Array.from({ length: on }, (_, i) => oldNft.tokenOfOwnerByIndex(a, i).then(Number).catch(() => -1)));
-                    claimable = oldIds.filter((id) => id >= 0 && id < info.legacy && !exists[id]).sort((x, y) => x - y);
-                }
-                me = { vip, rMinted, bal, bag: bag.map((r) => r.map(Number)), tokens, claimable };
+                me = { vip, rMinted, bal, bag: bag.map((r) => r.map(Number)), tokens };
             }
             render();
         } catch (e) {
@@ -153,12 +145,6 @@
         $("v2RandomLeft").textContent = me && info.maxR > 0n ? L("v2.randomLeft", { n: Math.max(Number(info.maxR - me.rMinted), 0) }) : "";
         $("v2RandomBtn").disabled = !info.sale;
         $("v2VipBtn").hidden = !!me?.vip;
-        $("v2ClaimBox").hidden = !me;
-        if (me) {
-            $("v2ClaimBtn").hidden = !me.claimable.length;
-            $("v2ClaimBtn").textContent = L("v2.claim", { ids: me.claimable.map((i) => "#" + i).join(" ") });
-            $("v2ClaimBox").querySelector("p").textContent = me.claimable.length ? L("v2.claimDesc") : L("v2.claimNone");
-        }
         renderOdds();
         renderBag();
         renderGallery();
@@ -362,7 +348,6 @@
             if (m) { $("v2TopMsg").innerHTML += ` → #${m.args.tokenId}`; sel = unpack(m.args.traits); mode = "new"; renderWorkshop(); loadLog(); }
         };
         $("v2VipBtn").onclick = () => payThen($("v2TopMsg"), L("v2.buyVip", { p: U(info.fee.vip) }), info.fee.vip, (c) => c.buyVip());
-        $("v2ClaimBtn").onclick = () => payThen($("v2TopMsg"), L("v2.claim", { ids: me.claimable.map((i) => "#" + i).join(" ") }), 0n, (c) => c.claim(me.claimable));
         $("v2ModeNew").onclick = () => setMode("new");
         $("v2ModeChange").onclick = () => setMode("change");
         $("v2Pick").onchange = () => setMode("change", Number($("v2Pick").value));
