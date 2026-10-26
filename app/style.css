@@ -226,3 +226,12 @@ button:disabled,.btn:disabled{opacity:.45;cursor:not-allowed}
 .lot .meta .rk{margin-right:auto}
 .foot{max-width:1180px;margin:0 auto;padding:12px 24px 40px;color:var(--muted);font-size:12px;display:flex;flex-wrap:wrap;gap:6px 16px}
 .foot a{color:var(--muted)}
+/* 電腦版不顯示錢包狀態列（驗證、VIP、額度、ASC 改在各區塊裡看） */
+@media (min-width:861px){.top .status{display:none!important}}
+/* 顏色：錢包紅、首頁藍、NFT 紅、Token 橘 */
+:root{--orange:#e8772e}
+.connect,.connect.on{background:var(--red);border:0;color:#fff}
+.sw3 .thumb,.sw3.p-home .thumb{background:var(--blue);box-shadow:none}
+.sw3.p-nft .thumb{background:var(--red)}
+.sw3.p-tok .thumb{background:var(--orange)}
+.subs[data-subs="tok"] .sub.on{background:var(--orange)}

@@ -23,7 +23,7 @@
     function catCard(id, on, onClick, check) {
         const b = el(`<button type="button" class="${on ? "on" : ""}"></button>`);
         if (revealed(id)) { const st = document.createElement("div"); st.className = "stack"; LK.compose(st, picksOf(id)); b.appendChild(st); }
-        else b.appendChild(el(`<span class="boxed">?</span>`));
+        else b.appendChild(el(`<img class="boxed" src="./assets/box.png" alt="?" loading="lazy" style="object-fit:cover;border-style:solid">`));
         if (check) b.appendChild(el(`<span class="chk">${on ? "✓" : ""}</span>`));
         b.appendChild(el(`<span>#${id}${tok(id)?.ref != null ? ` · V1 #${tok(id).ref}` : ""}</span>`));
         if (onClick) b.onclick = onClick;
