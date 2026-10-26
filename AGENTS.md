@@ -37,3 +37,4 @@
 - 2026-10-24：**改接已上線的 AscPoint**（ASC、`query`、`exchange`、`transfer`）；新增即時幣值（左右兩邊池子、中間價格與走勢圖）、我的 ASC 與持有比例階梯、兌換預估、轉 ASC、規則與門檻；**綁定錢包頁從機器人搬到網站**（`#bind=`）；改成科技江湖風格（深藍＋紅）、三種裝置版面；圖片欄位 `assets/`；信物 NFT 改為 `0x39c7…7488`；移除機器人的 `/api/exchange/stats`（匯率分母改用鏈上 totalSupply）。
 - 2026-10-25：中英文版（`lang.js`、右上角切換）；整頁「ASC鏢局」斜向浮水印；新增「鏢局故事」區塊（目標、名稱由來、師徒文化＋四章故事與漫畫裁圖 `assets/story-*.jpg`，點圖放大）；網站圖示 `assets/favicon.svg` 等。
 - 2026-10-25：**改成多頁網站**（每頁一個資料夾：行情首頁、wallet、story、rules、nft、bind），Apple 式一整個畫面一段＋往下捲提示＋淡入＋下一頁；共用程式搬到 `shared/`；舊的 `app.js`、`lang.js` 不再使用；機器人綁定連結改為 `/bind/#bind=`。
+- 2026-10-26：**改成一頁式並串接 V2**（`index.html`＋`app/`）：鑄造／解盲、VIP、換裝（疊圖試穿、脫下）、轉蛋（結果動畫）、背包、配件市場（上架／購買／下架）、行情走勢、買入、兌換、我的點數、轉出 ASC。外觀與走勢讀 `2026_asc_web3_ipfs` 的 `v2/state.json`／`v2/price.json` 再補最新鏈上事件。舊多頁版移到 `_to_delete/website-old/`；`bind/`、`shared/` 保留給綁定頁。測試：雲端 hardhat 本機鏈＋假 MetaMask（Playwright），每個功能都送過真交易；外觀與 sync_v2.py 結果逐顆比對一致；手機 390 寬沒有橫向捲動。

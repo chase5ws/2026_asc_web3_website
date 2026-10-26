@@ -1,41 +1,42 @@
-# 江湖鏢局金庫網頁
+# ASC 鏢局網站（一頁式，串接 V2）
 
-給玩家用的公開網頁（科技江湖風格，深藍＋紅，電腦／平板／手機各有版面，**中文／English 可切換**，整頁有「ASC鏢局」斜向浮水印）：
+給玩家用的公開網頁（深藍＋紅，中文／English 可切換）。**一頁式**：最上方「連結錢包」、中英切換，下面 `喵武士 NFT｜首頁｜ASC Token` 三段切換，子選單固定在上方：
 
-**多頁網站**，每一頁一個資料夾，上方導覽列切換；每頁都是 Apple 式的一整個畫面一段，往下捲會淡入，畫面底部有「往下捲」提示，最後一段是「下一頁」大按鈕：
-
-| 網址 | 資料夾 | 內容 |
+| 區塊 | 網址 | 內容（全部直接讀寫 Polygon 上的 V2 合約） |
 |---|---|---|
-| `/` | `index.html`＋`home.js` | **行情**：大字即時幣值（每 1 ASC 值多少）→ 兩邊池子（左 ASC、右金庫代幣、中間走勢圖）→ 金庫數據 → 前往其他頁的圖卡 |
-| `/wallet/` | `wallet/` | **我的錢包**：ASC、持有天數與兌換比例階梯、全部可得、本期剩餘 → 兌換（即時預估、最少／本期最多／全部）、轉 ASC |
-| `/story/` | `story/` | **鏢局故事**：封面大圖 → 目標／名稱由來／師徒文化 → 四章故事各一整個畫面（圖文左右交錯）→ 漫畫第一話 |
-| `/rules/` | `rules/` | **金庫規則**：兌換狀態、期間、上限、保底、手續費、owner、門檻 NFT → 持有天數比例表 → 使用步驟 |
-| `/nft/` | `nft/` | **信物 NFT**：鑄造進度、白名單、我的信物、白名單鑄造 |
-| `/bind/#bind=金鑰` | `bind/` | **綁定錢包**（Discord 機器人開的頁，沒有導覽列）：簽名後送回機器人（`config.js` 的 `botApi`）。舊網址 `/#bind=` 會自動轉到這裡 |
+| 首頁 | `#home` | 路線圖、喵喵武士的喵太（四章故事）、技術架構、開發者 |
+| NFT · 鑄造 | `#nft/mint` | 已鑄造／我持有；Mint（白名單額度、費用）↔ 解盲盒（選取或全部解盲、RandomSeed 紀錄） |
+| NFT · 換裝 | `#nft/equip` | VIP 購買；選一隻已解盲的喵武士 → 疊圖預覽、各部位（可脫下）、我的配件試穿／轉蛋（機率、買次數、抽 1／10 次、結果）→ 確認換裝 |
+| NFT · 背包 | `#nft/bag` | 我的喵武士（點開 OpenSea）、配件數量 |
+| NFT · 市場 | `#nft/market` | 掛單（分類、排序、購買數量）、上架、我的掛單／下架 |
+| Token · 行情 | `#tok/price` | 每 1 ASC 價值、走勢圖、買入價、流通量、可兌換池、保底、手續費卡片（數字讀鏈上） |
+| Token · 買入・兌換 | `#tok/trade` | USDT 買 ASC（自動授權）↔ ASC 換 USDT（預估、持有天數比例） |
+| Token · 我的點數 | `#tok/mine` | 持有、比例、本期上限、比例階梯、轉出 ASC（33% 稅預估） |
+| 綁定錢包 | `/bind/#bind=金鑰` | Discord 機器人開的頁（沒變）；舊網址 `/#bind=` 會自動轉過去 |
 
-共用的東西在 `shared/`：`style.css`（全部樣式）、`core.js`（讀鏈、錢包、交易、導覽列、語言、捲動效果）、`lang.js`（中英文文字與故事）。
+需要付 ASC 的動作（鑄造、換裝、VIP、轉蛋、市場購買）會先自動送一次「授權」再送交易；ASC 不夠時直接提示，不會浪費 gas。錯誤訊息把合約的自訂錯誤翻成中文／英文（例如「這個錢包還沒驗證：先到 Discord 綁定」）。
 
-**純靜態網頁**，金庫資料直接讀 Polygon 鏈上，沒有任何機密。和 Discord 機器人唯一的連結是綁定錢包。
+## 檔案
 
-相關專案：金庫合約 `2026_asc_web3_token`（AscPoint）、Discord 機器人 `2026_asc_discord_bot`（只負責綁定錢包）。
-
-## 設定（`config.js`）
-
-| 欄位 | 說明 |
+| 檔案 | 說明 |
 |---|---|
-| `vault` | 金庫 AscPoint 地址（已填：`0x9a431fED8Bc5fa595E5c9fdB1abb0a3119fBD5Ad`） |
-| `deployBlock` | 金庫部署區塊（96045773），走勢圖從這裡開始 |
-| `safe` | 金庫 owner（Safe），只用來顯示 |
-| `nft` | 信物 NFT 合約（`0x39c774673A25B0f1F600Bf39edF639c0f44a7488`） |
-| `botApi` | **要填**：Discord 機器人的對外網址（機器人的 `PUBLIC_URL`），綁定錢包要用 |
-| `refreshSeconds` | 即時幣值更新秒數 |
-| `chainId`、`rpcUrl`、`explorer` | 預設 Polygon 主網 |
+| `index.html` | 整頁版面 |
+| `config.js` | 鏈、RPC、V2 四份合約地址、部署區塊、`assets`（外觀資料的 GitHub Pages）、`botApi` |
+| `app/i18n.js` | 中英文文字、故事、配件中文名（`ASC_NAMES.base`，traits.json 的 `zh` 優先） |
+| `app/chain.js` | ABI、唯讀 RPC、連錢包（自動切到 Polygon）、錯誤解析、ERC-20 授權、分段 getLogs |
+| `app/look.js` | traits.json、配件清單、每顆現在的外觀（讀 `v2/state.json` 再補最新事件，算法跟 sync_v2.py 相同）、疊圖 |
+| `app/price.js` | 走勢：讀 `v2/price.json` 再補最新事件 |
+| `app/ui.js` | 狀態、分頁（網址 hash）、語言、錢包狀態列、讀鏈、送交易訊息 |
+| `app/nft.js`、`app/market.js`、`app/token.js` | 各區塊 |
+| `bind/`、`shared/` | 綁定錢包頁（沿用舊程式） |
 
-機器人那邊要把這個網站的網址填進 `WEBSITE_URL`（或 `config.json` 的 `nft.website_url`），「綁定錢包」才會開這個網站。
+外觀資料（traits.json、圖層、配件縮圖 `v2/thumbs/`、`v2/state.json`、`v2/price.json`）都在 `2026_asc_web3_ipfs`，由它的 GitHub Action 更新；**新增配件部位只要改那邊的 traits.json，網站不用改**。
+
+舊的多頁版（wallet／story／rules／nft、home.js、app.js、lang.js）已移到 `GitHub/_to_delete/website-old/`。
 
 ## 文字與語言
 
-所有中英文文字與鏢局故事都在 `shared/lang.js`（`ASC_TEXT`、`ASC_STORY`），改文字只要改這個檔案。網頁依瀏覽器語言預設中文或英文，右上角按鈕切換，選擇會記在瀏覽器裡。
+網站的中英文文字與故事在 `app/i18n.js`（`ASC_T`、`ASC_STORY`）；綁定頁沿用 `shared/lang.js`。網頁依瀏覽器語言預設中文或英文，右上角按鈕切換，選擇會記在瀏覽器裡。
 
 ## 圖片
 

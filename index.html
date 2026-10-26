@@ -2,87 +2,251 @@
 <html lang="zh-Hant">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>江湖鏢局金庫</title>
-<meta name="description" content="江湖鏢局的鏈上金庫：即時幣值、用 ASC 兌換代幣、綁定錢包、信物 NFT、鏢局故事。">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ASC 鏢局・喵武士</title>
+<meta name="description" content="ASC 鏢局：喵武士 NFT 鑄造、解盲、VIP 換裝、轉蛋、配件市場，與 ASC 點數金庫的即時幣值、買入和兌換。">
+<meta property="og:title" content="ASC 鏢局・喵武士">
+<meta property="og:description" content="一個錢包，行走兩個江湖：喵武士 NFT 與 ASC 點數金庫。">
 <meta name="theme-color" content="#070d1f">
-<meta property="og:title" content="江湖鏢局金庫">
-<meta property="og:description" content="科技江湖・鏈上鏢局：持有越久，換得越多。">
-<meta property="og:image" content="./assets/og.jpg">
 <link rel="icon" type="image/svg+xml" href="./assets/favicon.svg">
 <link rel="icon" type="image/png" sizes="64x64" href="./assets/favicon.png">
 <link rel="apple-touch-icon" href="./assets/apple-touch-icon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@600;900&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="./shared/style.css">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@600;900&family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="./app/style.css">
 </head>
-<body data-page="home" data-root="./">
-<main class="page">
-  <section class="screen center-text">
-    <div class="eyebrow reveal" data-i18n="home.eyebrow"></div>
-    <h1 class="display reveal d1" data-i18n-html="home.title"></h1>
-    <div class="reveal d2"><div class="hero-price" id="hPrice">—</div><div class="small muted" id="hUnit" style="margin-top:8px"></div></div>
-    <div class="delta reveal d2" id="hDelta">&nbsp;</div>
-    <div class="row reveal d3" style="justify-content:center"><span class="live"></span><span class="small muted" id="tick" data-i18n="tick.connecting"></span></div>
-  </section>
+<body>
+<div class="app" id="app">
 
-  <section class="screen">
-    <div class="reveal"><div class="eyebrow" data-i18n="home.poolsEyebrow"></div><h2 class="display" style="font-size:clamp(28px,4.6vw,52px)" data-i18n="home.poolsTitle"></h2></div>
-    <p class="lead reveal d1" data-i18n="home.poolsLead"></p>
-    <div class="tabs" id="tokenTabs"></div>
-    <div class="market reveal d2">
-      <div class="card side">
-        <div class="coin"><span class="icon asc"><img src="assets/asc.png" alt="" onerror="this.remove()">ASC</span><div><b data-i18n="m.ascTitle"></b><div class="small muted" data-i18n="m.ascSub"></div></div></div>
-        <div class="big" id="mSupply">—</div>
-        <div class="tank asc"><i id="tankAsc" style="height:0"></i><div class="lbl"><span data-i18n="m.circ"></span><span id="mIssued"></span></div></div>
-        <div class="kv"><span data-i18n="m.issued"></span><b id="mIssued2">—</b></div>
-        <div class="kv"><span data-i18n="m.burned"></span><b id="mBurned">—</b></div>
-      </div>
-      <div class="card center glow">
-        <div class="small muted" data-i18n="m.priceLabel"></div>
-        <div class="price" id="mPrice">—</div>
-        <div class="delta" id="mDelta">&nbsp;</div>
-        <div class="flow"><span>ASC</span><span class="dots"><i></i><i></i><i></i><i></i></span><span id="mSym">—</span></div>
-        <svg class="chart" id="chart" viewBox="0 0 600 170" preserveAspectRatio="none"></svg>
-        <div class="range"><span id="cFrom"></span><span id="cInfo"></span><span id="cTo"></span></div>
-        <div class="small muted" id="m100">—</div>
-      </div>
-      <div class="card side">
-        <div class="coin"><span class="icon tok" id="tokIcon">—</span><div><b id="tName">—</b><div class="small muted" data-i18n="m.poolSub"></div></div></div>
-        <div class="big" id="mAvail">—</div>
-        <div class="tank tok"><i id="tankTok" style="height:0"></i><div class="lbl"><span data-i18n="m.avail"></span><span id="mBal"></span></div></div>
-        <div class="mix" id="mix"></div>
-        <div class="legend"><span><b style="background:var(--blue)"></b><span data-i18n="m.avail"></span></span><span><b style="background:var(--gold)"></b><span data-i18n="m.reserve"></span></span><span><b style="background:var(--red)"></b><span data-i18n="m.locked"></span></span></div>
-      </div>
-    </div>
-  </section>
+<header class="top">
+<div class="toprow">
+<a class="brand" href="#home"><span class="logo">ASC</span><span><b data-t="brand">ASC 鏢局</b><small>CAT SAMURAI · POLYGON</small></span></a>
+<div class="wallet">
+<button class="connect" id="connect" type="button"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="6" width="18" height="13" rx="2"></rect><path d="M16 12h2"></path><path d="M3 9h15a3 3 0 0 0 3-3"></path></svg><span id="connectText">連結錢包</span></button>
+</div>
+<div class="sw lang right-col" id="langSw" role="group" aria-label="語言 Language"><span class="thumb" aria-hidden="true"></span><button type="button" data-lang="zh">中文</button><button type="button" data-lang="en">EN</button></div>
+</div>
+<div class="status conn hidden">
+<span class="chip" id="chVer"></span>
+<span class="chip" id="chVip"></span>
+<span class="chip"><span data-t="c.allow">鑄造額度</span> <b id="chAllow">–</b></span>
+<span class="chip"><span data-t="c.asc">ASC</span> <b id="chAsc">–</b></span>
+</div>
+<div class="sw3 p-home" id="sw3" role="group" aria-label="NFT / 首頁 / Token"><span class="thumb" aria-hidden="true"></span><button type="button" data-go="nft" data-t="nav.nft">喵武士 NFT</button><button type="button" data-go="home" data-t="nav.home">首頁</button><button type="button" data-go="tok" data-t="nav.tok">ASC Token</button></div>
+<nav class="subnav" aria-label="子選單"><div class="subs" data-subs="nft">
+<button class="sub" data-sub="mint" type="button" data-t="s.mint">鑄造</button>
+<button class="sub" data-sub="equip" type="button" data-t="s.equip">換裝</button>
+<button class="sub" data-sub="bag" type="button" data-t="s.bag">背包</button>
+<button class="sub" data-sub="market" type="button" data-t="s.market">市場</button>
+</div>
+<div class="subs" data-subs="tok">
+<button class="sub" data-sub="price" type="button" data-t="s.price">行情</button>
+<button class="sub" data-sub="trade" type="button" data-t="s.trade">買入・兌換</button>
+<button class="sub" data-sub="mine" type="button" data-t="s.mine">我的點數</button>
+</div>
+</nav>
+</header>
 
-  <section class="screen short">
-    <div class="eyebrow reveal" data-i18n="home.statsEyebrow"></div>
-    <div class="stats reveal d1">
-      <div class="stat"><span data-i18n="stat.supply"></span><b id="sSupply">—</b></div>
-      <div class="stat"><span data-i18n="stat.pool"></span><b id="sPool">—</b></div>
-      <div class="stat"><span data-i18n="stat.open"></span><b id="sOpen">—</b></div>
-      <div class="stat"><span data-i18n="stat.end"></span><b id="sEnd">—</b></div>
-    </div>
-  </section>
+<div class="body">
+<main class="main">
 
-  <section class="screen">
-    <div class="reveal"><div class="eyebrow" data-i18n="home.exploreEyebrow"></div><h2 class="display" style="font-size:clamp(28px,4.6vw,52px)" data-i18n="home.exploreTitle"></h2></div>
-    <div class="tiles">
-      <a class="tile reveal" href="wallet/"><span class="bg" style="background-image:linear-gradient(135deg,#e0313f55,#0000)"></span><h3 data-i18n="tile.wallet"></h3><p data-i18n="tile.walletText"></p></a>
-      <a class="tile reveal d1" href="story/"><span class="bg" style="background-image:url(assets/story-samurai.jpg)"></span><h3 data-i18n="tile.story"></h3><p data-i18n="tile.storyText"></p></a>
-      <a class="tile reveal" href="rules/"><span class="bg" style="background-image:linear-gradient(135deg,#3d8bff55,#0000)"></span><h3 data-i18n="tile.rules"></h3><p data-i18n="tile.rulesText"></p></a>
-      <a class="tile reveal d1" href="nft/"><span class="bg" style="background-image:url(assets/story-qi.jpg)"></span><h3 data-i18n="tile.nft"></h3><p data-i18n="tile.nftText"></p></a>
-    </div>
-  </section>
+<!-- ═════ 首頁 ═════ -->
+<section data-page="home" style="display:flex;flex-direction:column;gap:20px">
+<div class="card hero">
+<span class="eyebrow" data-t="h.eyebrow">資鏢局 ASC</span>
+<h1 data-t="h.title">一個錢包，行走兩個江湖</h1>
+<p class="soft" data-t="h.lead"></p>
+<div class="toc"><a href="#road" data-t="h.toc6">路線圖</a><a href="#story" data-t="h.toc3">喵喵武士的喵太</a><a href="#arch" data-t="h.toc5">技術架構</a><a href="#dev" data-t="h.toc7">開發者</a></div>
+<div class="links" style="justify-content:center"><a id="lkDiscord" href="https://discord.gg/asc-official" target="_blank" rel="noopener" data-t="l.discord">加入 Discord</a><a href="https://ascdao.com/" target="_blank" rel="noopener" data-t="l.team">團隊介紹（官網）</a></div>
+</div>
+
+<div class="card" id="road">
+<span class="eyebrow" data-t="rd.eyebrow">路線圖</span>
+<h2 data-t="rd.title">鏢局走到哪裡了</h2>
+<div class="road">
+<div class="phase done"><span class="st" data-t="rd.s1">已完成</span><ul><li data-t="rd.d1"></li><li data-t="rd.d2"></li><li data-t="rd.d3"></li><li data-t="rd.d4"></li><li data-t="rd.d5"></li></ul></div>
+<div class="phase now"><span class="st" data-t="rd.s2">進行中</span><ul><li data-t="rd.n1"></li><li data-t="rd.n2"></li><li data-t="rd.n3"></li></ul></div>
+<div class="phase next"><span class="st" data-t="rd.s3">下一步</span><ul><li data-t="rd.x1"></li><li data-t="rd.x2"></li><li data-t="rd.x3"></li></ul></div>
+</div>
+</div>
+
+<div class="card" id="story">
+<span class="eyebrow" data-t="st.eyebrow">鏢局故事</span>
+<h2 data-t="st.title">喵喵武士的喵太</h2>
+<div class="chaps" id="chaps"></div>
+</div>
+
+<div class="card" id="arch">
+<span class="eyebrow" data-t="ar.eyebrow">技術架構</span>
+<h2 data-t="ar.title">四個系統，一條鏈</h2>
+<p class="soft" data-t="ar.lead"></p>
+<div class="arch" role="img" aria-label="ASC 技術架構圖">
+<div class="tier"><div class="lbl"><b data-t="ar.l1"></b><span>PLAYERS</span></div><div class="nodes"><div class="node"><b data-t="ar.u1"></b><p data-t="ar.u1d"></p><div class="tags"><i>MetaMask</i><i>Polygon</i></div></div><div class="node"><b data-t="ar.u2"></b><p data-t="ar.u2d"></p><div class="tags"><i>Discord</i></div></div></div></div>
+<div class="flow"><span></span><div><span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v16"></path><path d="M6 14l6 6 6-6"></path></svg><em style="font-style:normal" data-t="ar.f1"></em></span><span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v16"></path><path d="M6 14l6 6 6-6"></path></svg><em style="font-style:normal" data-t="ar.f2"></em></span></div></div>
+<div class="tier"><div class="lbl"><b data-t="ar.l2"></b><span>APPS</span></div><div class="nodes"><div class="node red"><b data-t="ar.w"></b><p data-t="ar.wd"></p><div class="tags"><i>GitHub Pages</i><i>ethers.js</i><i>中／EN</i></div></div><div class="node red"><b data-t="ar.b"></b><p data-t="ar.bd"></p><div class="tags"><i>Node.js</i><i>discord.js</i><i>Excel DB</i></div></div></div></div>
+<div class="flow"><span></span><div><span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 4v16"></path><path d="M3 8l4-4 4 4"></path><path d="M17 20V4"></path><path d="M13 16l4 4 4-4"></path></svg><em style="font-style:normal" data-t="ar.f3"></em></span><span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 4v16"></path><path d="M3 8l4-4 4 4"></path><path d="M17 20V4"></path><path d="M13 16l4 4 4-4"></path></svg><em style="font-style:normal" data-t="ar.f4"></em></span><span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 4v16"></path><path d="M3 8l4-4 4 4"></path><path d="M17 20V4"></path><path d="M13 16l4 4 4-4"></path></svg><em style="font-style:normal" data-t="ar.f5"></em></span></div></div>
+<div class="tier"><div class="lbl"><b data-t="ar.l3"></b><span>POLYGON</span></div><div class="nodes"><div class="node blue"><b data-t="ar.c1"></b><p data-t="ar.c1d"></p><div class="tags"><i>ERC-20</i><i>USDT</i></div></div><div class="node blue"><b data-t="ar.c2"></b><p data-t="ar.c2d"></p><div class="tags"><i>ERC-721</i><i>RandomSeed</i></div></div><div class="node blue"><b data-t="ar.c3"></b><p data-t="ar.c3d"></p><div class="tags"><i>ERC-1155</i></div></div><div class="node blue"><b data-t="ar.c4"></b><p data-t="ar.c4d"></p><div class="tags"><i>ASC</i></div></div><div class="node old"><b data-t="ar.c5"></b><p data-t="ar.c5d"></p><div class="tags"><i>ERC-721</i><i>#0–30</i></div></div></div></div>
+<div class="flow"><span></span><div><span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 4v16"></path><path d="M3 8l4-4 4 4"></path><path d="M17 20V4"></path><path d="M13 16l4 4 4-4"></path></svg><em style="font-style:normal" data-t="ar.f6"></em></span></div></div>
+<div class="tier"><div class="lbl"><b data-t="ar.l4"></b><span>GOVERNANCE</span></div><div class="nodes"><div class="node gold"><b data-t="ar.g1"></b><p data-t="ar.g1d"></p><div class="tags"><i>Safe</i><i>2-of-3</i></div></div><div class="node gold"><b data-t="ar.g2"></b><p data-t="ar.g2d"></p><div class="tags"><i>owner</i><i>admin</i><i>guardian</i><i>operator</i></div></div><div class="node gold"><b data-t="ar.g3"></b><p data-t="ar.g3d"></p><div class="tags"><i>GitHub Actions</i><i>JSON</i></div></div></div></div>
+</div>
+</div>
+
+<div class="card" id="dev">
+<span class="eyebrow" data-t="dv.eyebrow">開發者</span>
+<div class="devrow">
+<span class="avatar" aria-hidden="true">CT</span>
+<div style="display:flex;flex-direction:column;gap:6px;flex:1 1 260px;min-width:0">
+<h2>Chase.Tseng</h2>
+<p class="soft" data-t="dv.role"></p>
+<div class="links"><a href="https://github.com/chase5ws" target="_blank" rel="noopener">GitHub · chase5ws</a><a href="https://www.linkedin.com/in/chase5ws/" target="_blank" rel="noopener">LinkedIn</a></div>
+</div>
+</div>
+</div>
+</section>
+
+<!-- ═════ NFT ═════ -->
+<section data-page="nft" class="card hidden">
+<span class="eyebrow" data-t="nav.nft">喵武士 NFT</span>
+<div class="over" id="nftOver"><div class="cats" id="overCats" style="grid-template-columns:repeat(3,minmax(0,72px))"></div><div class="stat" style="flex:1 1 160px"><span data-t="k.minted">已鑄造</span><b style="font-size:20px" id="nMinted">–</b></div><div class="stat" style="flex:1 1 160px"><span data-t="k.mine">我持有</span><b style="font-size:20px" id="nMine">–</b></div></div>
+<h2 id="nftTitle"></h2>
+<div class="lock needwallet" data-t="lock">先在最上方連結錢包才能操作。</div>
+
+<div data-part="mint" style="display:flex;flex-direction:column;gap:14px">
+<div class="sw" id="mtSw" role="group" aria-label="Mint / 解盲盒" style="width:min(360px,100%);margin:0 auto"><span class="thumb" aria-hidden="true"></span><button type="button" data-mt="mint" style="min-height:44px;font-size:15px">Mint</button><button type="button" data-mt="reveal" style="min-height:44px;font-size:15px" data-t="n.revealTab">解盲盒</button></div>
+<div data-mtp="mint" class="split"><div class="box" style="aspect-ratio:1;max-height:320px;font:900 64px var(--serif)">?</div><div style="display:flex;flex-direction:column;gap:12px;justify-content:center"><b style="font-size:18px" data-t="n.mintT">白名單隨機盲盒</b><span class="soft"><span data-t="n.left">剩餘額度</span> <b id="nAllow">–</b> · <span data-t="n.fee">每次</span> <b id="nFee">–</b></span><div class="note warn hidden" id="nMintNote"></div><button class="btn" type="button" id="bMint" data-t="n.mintB">鑄造盲盒</button><div class="msg" id="mMint"></div></div></div>
+<div data-mtp="reveal" class="hidden" style="display:flex;flex-direction:column;gap:12px">
+<div class="panelhead"><h3 data-t="n.boxes">未解盲的盲盒</h3><span class="muted small" id="nBoxCount"></span></div>
+<div class="mycats" id="nBoxes"></div>
+<div style="display:flex;gap:10px;flex-wrap:wrap"><button class="btn alt" style="flex:1 1 140px" type="button" id="bRevealSel" data-t="n.revealSel">解盲選取的</button><button class="btn" style="flex:2 1 200px" type="button" id="bRevealAll" data-t="n.revealAll">全部解盲</button></div>
+<div class="msg" id="mReveal"></div>
+<span class="muted small" data-t="n.syncNote"></span>
+<details><summary class="soft" style="cursor:pointer;min-height:32px" data-t="n.seedT">隨機紀錄（RandomSeed）</summary><div id="nSeeds" class="muted small" style="display:flex;flex-direction:column;gap:4px;word-break:break-all"></div></details>
+</div>
+</div>
+
+<div data-part="equip" class="eq hidden">
+<div class="eq-left">
+<div class="vipbar"><span><b data-t="v.title">VIP 會員</b><small class="muted" id="vDesc"></small></span><div style="display:flex;gap:8px;align-items:center"><span class="soft small" id="vUntil"></span><select id="vPer" aria-label="期數" style="min-height:40px;background:var(--bg2);color:var(--ink);border:1px solid var(--line2);border-radius:10px;padding:0 8px"><option>1</option><option>3</option><option>6</option><option>12</option></select><button class="btn" style="min-height:40px;font-size:14px" type="button" id="bVip" data-t="v.buy">購買 VIP</button></div></div>
+<div class="msg" id="mVip"></div>
+<div class="panelhead"><h3 data-t="q.pick">選擇要換裝的喵武士</h3><span class="muted small"><span data-t="q.fee">換裝費</span> <b id="qFee">–</b></span></div>
+<div class="mycats" id="qCats"></div>
+<div class="eq-preview" id="qBox"><div class="stack" id="qPrev"></div><div class="eq-slots" id="eqSlots"></div></div>
+<div class="sw eqsw" id="eqSw" role="group" aria-label="我的 / 轉蛋"><span class="thumb" aria-hidden="true"></span><button type="button" data-eq="mine" data-t="q.mine">我的</button><button type="button" data-eq="gacha" data-t="q.gacha">轉蛋</button></div>
+<div id="eqMine" class="tiles"></div>
+<div id="eqGacha" class="hidden" style="display:flex;flex-direction:column;gap:10px"><div class="tiles" id="eqPool"></div><span class="soft small"><span data-t="g.have">轉蛋次數</span> <b id="gPulls">–</b> · <span data-t="g.each">每抽</span> <b id="gFee">–</b> · <span data-t="g.trade">抽到的配件可以交易</span></span>
+<div class="note warn hidden" id="gNote"></div>
+<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center"><select id="gN" aria-label="買幾次" style="min-height:44px;background:var(--bg2);color:var(--ink);border:1px solid var(--line2);border-radius:10px;padding:0 8px"><option>1</option><option>5</option><option selected>10</option><option>30</option></select><button class="btn alt" style="flex:1 1 90px;min-height:44px;font-size:14px" type="button" id="bBuyPulls" data-t="n.buyPulls">買次數</button><button class="btn" style="flex:1 1 90px;min-height:44px;font-size:14px" type="button" id="bPull1" data-t="n.pull1">抽 1 次</button><button class="btn blue" style="flex:1 1 90px;min-height:44px;font-size:14px" type="button" id="bPull10" data-t="n.pull10">抽 10 次</button></div>
+<div class="msg" id="mGacha"></div>
+<div class="results" id="gResults"></div>
+</div>
+<div style="display:flex;gap:10px;flex-wrap:wrap"><button class="btn alt" style="flex:1 1 120px" type="button" data-jump="nft:market" data-t="q.toMarket">去市場買配件</button><button class="btn alt" style="flex:1 1 120px" type="button" id="eqReset" data-t="q.reset">還原</button><button class="btn" style="flex:2 1 200px" type="button" id="bEquip" data-t="q.confirm">確認換裝</button></div>
+<span class="soft small" id="qNeed"></span>
+<div class="msg" id="mEquip"></div>
+<span class="muted small" data-t="q.fromBag"></span>
+</div>
+</div>
+
+<div data-part="bag" class="hidden" style="display:flex;flex-direction:column;gap:16px">
+<div class="panelhead"><h3 data-t="b.cats">我的喵武士</h3><span class="muted small" id="bCatCount"></span></div>
+<div class="mycats" id="bCats"></div>
+<div class="panelhead"><h3 data-t="b.parts">配件</h3><span class="muted small" id="bagCount"></span></div>
+<div class="tiles" id="bagParts"></div>
+</div>
+
+<div data-part="market" class="hidden" style="display:flex;flex-direction:column;gap:14px">
+<div class="mk-bar">
+<div class="chips" id="mkCats"></div>
+<select id="mkSort" aria-label="排序" style="min-height:40px;background:var(--bg2);color:var(--ink);border:1px solid var(--line2);border-radius:10px;padding:0 10px"><option value="low" data-t="m.low">價格：低 → 高</option><option value="high" data-t="m.high">價格：高 → 低</option></select>
+</div>
+<div class="msg" id="mBuy"></div>
+<div class="mk">
+<div class="mk-list" id="mkList"></div>
+<aside class="mk-side">
+<div class="panelhead"><h3 data-t="m.sell">上架配件</h3></div>
+<label class="f"><span class="muted small" data-t="m.pick">選擇背包裡的配件</span><select id="mkPick" style="min-height:44px;background:var(--bg2);color:var(--ink);border:1px solid var(--line2);border-radius:10px;padding:0 10px"></select></label>
+<div class="grid2"><label class="f"><span class="muted small" data-t="m.qty">數量</span><input class="in" style="font-size:16px;min-height:44px" id="mkQty" value="1" inputmode="numeric"></label><label class="f"><span class="muted small" data-t="m.price">單價（ASC）</span><input class="in" style="font-size:16px;min-height:44px" id="mkPrice" value="100" inputmode="numeric"></label></div>
+<div class="row"><span class="muted" data-t="m.get">賣出後你會收到</span><b id="mkGet">–</b></div>
+<span class="muted small" id="mkFee"></span>
+<button class="btn" type="button" id="bList" data-t="m.listB">上架</button>
+<div class="msg" id="mList"></div>
+<div class="panelhead" style="margin-top:6px"><h3 data-t="m.mine">我的掛單</h3></div>
+<div id="mkMine" style="display:flex;flex-direction:column;gap:8px"></div>
+</aside>
+</div>
+</div>
+</section>
+
+<!-- ═════ Token ═════ -->
+<section data-page="tok" class="card hidden">
+<span class="eyebrow">ASC TOKEN</span>
+<h2 id="tokTitle"></h2>
+
+<div data-part="price" style="display:flex;flex-direction:column;gap:12px">
+<span class="muted small" data-t="t.value">每 1 ASC 價值</span>
+<span style="font:900 48px/1.1 var(--serif)"><span id="tValue">–</span> <small class="muted" style="font-size:18px">USDT</small></span>
+<svg class="chart" id="tChart" viewBox="0 0 800 220" preserveAspectRatio="none" role="img" aria-label="走勢圖"></svg>
+<div class="grid4"><div class="stat"><span data-t="t.bp">買入價</span><b id="tBuy">–</b></div><div class="stat"><span data-t="t.supply">流通 ASC</span><b id="tSupply">–</b></div><div class="stat"><span data-t="t.pool">可兌換池</span><b id="tPool">–</b></div><div class="stat"><span data-t="t.reserve">保底（owner）</span><b id="tReserve">–</b></div></div>
+<div class="fees"><h3 data-t="fe.title">手續費與通縮</h3><div class="feegrid">
+<div class="fee"><b data-t="fe.r1"></b><span class="v" id="fe1" data-t="fe.r1v"></span><span class="d" data-t="fe.r1d"></span></div>
+<div class="fee"><b data-t="fe.r2"></b><span class="v" data-t="fe.r2v"></span><span class="d" id="fe2d" data-t="fe.r2d"></span></div>
+<div class="fee"><b data-t="fe.r3"></b><span class="v" data-t="fe.r3v"></span><span class="d" data-t="fe.r3d"></span></div>
+<div class="fee"><b data-t="fe.r4"></b><span class="v" id="fe4"></span><span class="d" data-t="fe.r4d"></span></div>
+<div class="fee"><b data-t="fe.r5"></b><span class="v" id="fe5" data-t="fe.r5v"></span><span class="d" data-t="fe.r5d"></span></div>
+<div class="fee"><b data-t="fe.r6"></b><span class="v" data-t="fe.r6v"></span><span class="d" data-t="fe.r6d"></span></div>
+</div><p class="muted small" data-t="fe.note"></p></div>
+</div>
+
+<div data-part="trade" class="hidden" style="display:flex;flex-direction:column;gap:14px">
+<div class="lock needwallet" data-t="lock">先在最上方連結錢包才能操作。</div>
+<div class="sw" id="trSw" role="group" aria-label="買入 / 兌換" style="width:min(360px,100%);margin:0 auto"><span class="thumb" aria-hidden="true"></span><button type="button" data-tr="buy" style="min-height:44px;font-size:15px" data-t="t.buyH">買入 ASC</button><button type="button" data-tr="redeem" style="min-height:44px;font-size:15px" data-t="t.exH">兌換 USDT</button></div>
+<div data-trp="buy" style="max-width:560px;width:100%;margin:0 auto;display:flex;flex-direction:column;gap:12px;padding:16px;border-radius:16px;background:var(--bg2);border:1px solid var(--line)">
+<label class="f"><span class="muted small"><span data-t="t.in">存入 USDT</span> · <span data-t="t.usdtBal">錢包 USDT</span> <b id="tUsdtBal">–</b></span><input class="in" id="tIn" type="text" inputmode="decimal" placeholder="0.00" autocomplete="off"></label>
+<div class="row"><span class="muted" data-t="t.get">預計得到</span><b id="tGet">–</b></div>
+<span class="muted small" id="tDepCap"></span>
+<span class="muted small" data-t="t.buyNote"></span>
+<button class="btn" type="button" id="bBuy" data-t="t.buyB">授權並買入 ASC</button>
+<div class="msg" id="mBuyAsc"></div>
+</div>
+<div data-trp="redeem" class="hidden" style="max-width:560px;width:100%;margin:0 auto;display:flex;flex-direction:column;gap:12px;padding:16px;border-radius:16px;background:var(--bg2);border:1px solid var(--line)">
+<label class="f"><span class="muted small"><span data-t="t.ex">兌換 ASC</span> · <span data-t="t.ascBal">錢包 ASC</span> <b id="tAscBal">–</b> <button type="button" id="tMax" class="x" style="margin-left:6px;min-height:26px;padding:0 10px;border-radius:999px;border:1px solid var(--line2);background:transparent;color:var(--soft)" data-t="t.max">全部</button></span><input class="in" id="tEx" type="text" inputmode="numeric" placeholder="0" autocomplete="off"></label>
+<div class="row"><span class="muted" data-t="t.back">預計拿回</span><b id="tBack">–</b></div>
+<span class="muted small" id="tKeep"></span>
+<span class="muted small" data-t="t.unit"></span>
+<button class="btn blue" type="button" id="bEx" data-t="t.exB">兌換成 USDT</button>
+<div class="msg" id="mEx"></div>
+</div>
+</div>
+
+<div data-part="mine" class="hidden" style="display:flex;flex-direction:column;gap:12px;max-width:760px">
+<div class="lock needwallet" data-t="lock">先在最上方連結錢包才能操作。</div>
+<div class="grid2"><div class="stat"><span data-t="t.hold">持有</span><b id="tHold">–</b></div><div class="stat"><span data-t="t.ratio">兌換比例</span><b id="tRatio">–</b></div><div class="stat"><span data-t="t.days">持有天數</span><b id="tDays">–</b></div><div class="stat"><span data-t="t.all">全部 ASC 現在可拿</span><b id="tAll">–</b></div><div class="stat"><span data-t="t.cap">本期上限</span><b id="tCap">–</b></div><div class="stat"><span data-t="t.left">本期還能換</span><b id="tLeft">–</b></div></div>
+<h3 data-t="t.ladder">持有天數與兌換比例</h3>
+<div class="ladder" id="tLadder"></div>
+<div class="note warn hidden" id="tFlag"></div>
+<h3 data-t="t.send">轉出 ASC</h3>
+<label class="f"><span class="muted small" data-t="t.to">收款地址</span><input class="in" style="font-size:15px;min-height:46px" id="tTo" type="text" placeholder="0x…" autocomplete="off" spellcheck="false"></label>
+<label class="f"><span class="muted small">ASC</span><input class="in" style="font-size:16px;min-height:46px" id="tAmt" type="text" inputmode="numeric" placeholder="0" autocomplete="off"></label>
+<div class="row"><span class="muted" data-t="t.recv">對方收到</span><b id="tRecv">–</b></div>
+<span class="muted small" id="tTax"></span>
+<button class="btn alt" type="button" id="bSend" data-t="t.sendB">轉出</button>
+<div class="msg" id="mSend"></div>
+</div>
+</section>
 </main>
-<footer><div id="foot"></div></footer>
+</div>
+<footer class="foot" id="foot"></footer>
+</div>
+
 <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.13.4/ethers.umd.min.js"></script>
 <script src="./config.js"></script>
-<script src="./shared/lang.js"></script>
-<script src="./shared/core.js"></script>
-<script src="home.js"></script>
+<script src="./app/i18n.js"></script>
+<script src="./app/chain.js"></script>
+<script src="./app/look.js"></script>
+<script src="./app/price.js"></script>
+<script src="./app/ui.js"></script>
+<script src="./app/nft.js"></script>
+<script src="./app/market.js"></script>
+<script src="./app/token.js"></script>
 </body>
 </html>
