@@ -19,7 +19,7 @@ window.ASC_CONFIG = {
     // 外觀資料（2026_asc_web3_ipfs 的 GitHub Pages）：traits.json、圖層 layers/、v2/state.json、v2/price.json、配件縮圖 v2/thumbs/
     assets: "https://chase5ws.github.io/2026_asc_web3_ipfs",
     // Discord 機器人的對外網址（機器人的 PUBLIC_URL）：錢包綁定頁要把簽名送回機器人
-    botApi: "",
+    botApi: "https://2026ascdiscordbot-production.up.railway.app",
     discord: "https://discord.gg/asc-official",
     // 鏈上資料多久更新一次（秒）
     refreshSeconds: 20
