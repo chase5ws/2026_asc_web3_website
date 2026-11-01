@@ -4,6 +4,7 @@
     const { C, write } = CH;
     const { S, D, $, t, el, esc, send, payAsc, int, fee, date, tile, partName, optName, slotName, tierTag } = U;
     const Q = { id: null, try: {}, take: new Set(), slot: null, sel: new Set() };
+    const VIP_PLANS = [60, 90, 180, 360]; // 訂閱方案（天）
     const same = (box, sig) => { if (box._sig === sig) return true; box._sig = sig; return false; };
     const tok = (id) => LK.L.tokens[String(id)];
     const revealed = (id) => !!tok(id)?.revealed;
@@ -80,6 +81,21 @@
         $("vUntil").textContent = CH.account ? (isVip() ? t("v.until", { d: date(until) }) : t("v.none")) : "";
         $("bVip").disabled = !CH.account || price === 0n;
         $("vPer").disabled = price === 0n;
+        // VIP 方案：60／90／180／360 天（每期 vipDays 天，合約一次最多買 12 期）；顯示 ASC 與約當 USDT
+        const per = Number(D.vip.days || 30);
+        const plans = VIP_PLANS.map((d) => ({ d, n: d / per })).filter((x) => Number.isInteger(x.n) && x.n >= 1 && x.n <= 12);
+        const sel = $("vPer");
+        const planSig = JSON.stringify([plans, String(price), String(D.buyPrice), S.lang]);
+        if (sel._sig !== planSig) {
+            sel._sig = planSig;
+            const cur = sel.value;
+            sel.innerHTML = plans.map((x) => {
+                const asc = price * BigInt(x.n);
+                const usd = (Number(asc) * Number(D.buyPrice || 0n)) / 1e6;
+                return `<option value="${x.n}">${t("v.plan", { d: x.d, a: int(asc), u: usd.toLocaleString("en-US", { maximumFractionDigits: 0 }) })}</option>`;
+            }).join("");
+            if (cur && plans.some((x) => String(x.n) === cur)) sel.value = cur;
+        }
         $("qFee").textContent = fee(s[5]);
 
         const cats = D.ids.filter(revealed);

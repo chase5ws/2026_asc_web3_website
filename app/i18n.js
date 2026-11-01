@@ -49,3 +49,5 @@ Object.assign(window.ASC_T.zh, {"risk.short": "⚠️ 實驗性教育專案：AS
 Object.assign(window.ASC_T.en, {"risk.short": "⚠️ Experimental, educational project: ASC points and NFTs are not investments, with no promised profit or redemption, and you may lose everything; use only what you can afford to lose and follow your local laws.", "risk.link": "See the Terms", "risk.trade": "⚠️ Experimental, educational project, not an investment platform: buying ASC does not guarantee you can redeem at the same price; redemption rules and limits may change or pause, and you may lose everything. Nothing here is investment advice."});
 Object.assign(window.ASC_T.zh, {"l.terms": "服務條款", "l.privacy": "隱私權政策", "dv.contact": "聯絡"});
 Object.assign(window.ASC_T.en, {"l.terms": "Terms of Service", "l.privacy": "Privacy Policy", "dv.contact": "Contact"});
+Object.assign(window.ASC_T.zh, {"v.plan": "{d} 天｜{a} ASC（約 {u} USDT）", "v.price": "每天約 1 USDT（{p} ASC／{d} 天），付款直接銷毀"});
+Object.assign(window.ASC_T.en, {"v.plan": "{d} days · {a} ASC (≈ {u} USDT)", "v.price": "About 1 USDT a day ({p} ASC per {d} days), burned on payment"});
