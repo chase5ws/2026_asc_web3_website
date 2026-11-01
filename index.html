@@ -58,6 +58,7 @@
 <h1 data-t="h.title">一個錢包，行走兩個江湖</h1>
 <p class="soft" data-t="h.lead"></p>
 <div class="toc"><a href="#origin" data-t="h.toc8">鏢局緣起</a><a href="#road" data-t="h.toc6">路線圖</a><a href="#story" data-t="h.toc3">喵喵武士的喵太</a><a href="#arch" data-t="h.toc5">技術架構</a><a href="#dev" data-t="h.toc7">開發者</a></div>
+<p class="note warn small" style="max-width:640px"><span data-t="risk.short"></span> <a href="./terms/" data-t="risk.link">詳見服務條款</a></p>
 <div class="links" style="justify-content:center"><a id="lkDiscord" href="https://discord.gg/asc-official" target="_blank" rel="noopener" data-t="l.discord">加入 Discord</a><a href="https://ascdao.com/" target="_blank" rel="noopener" data-t="l.team">團隊介紹（官網）</a></div>
 </div>
 
@@ -200,6 +201,7 @@
 <span style="font:900 48px/1.1 var(--serif)"><span id="tValue">–</span> <small class="muted" style="font-size:18px">USDT</small></span>
 <svg class="chart" id="tChart" viewBox="0 0 800 220" preserveAspectRatio="none" role="img" aria-label="走勢圖"></svg>
 <div class="grid4"><div class="stat"><span data-t="t.bp">買入價</span><b id="tBuy">–</b></div><div class="stat"><span data-t="t.supply">流通 ASC</span><b id="tSupply">–</b></div><div class="stat"><span data-t="t.pool">可兌換池</span><b id="tPool">–</b></div><div class="stat"><span data-t="t.reserve">保底（owner）</span><b id="tReserve">–</b></div></div>
+<p class="note warn small"><span data-t="risk.short"></span> <a href="./terms/" data-t="risk.link">詳見服務條款</a></p>
 <div class="fees"><h3 data-t="fe.title">手續費與通縮</h3><div class="feegrid">
 <div class="fee"><b data-t="fe.r1"></b><span class="v" id="fe1" data-t="fe.r1v"></span><span class="d" data-t="fe.r1d"></span></div>
 <div class="fee"><b data-t="fe.r2"></b><span class="v" data-t="fe.r2v"></span><span class="d" id="fe2d" data-t="fe.r2d"></span></div>
@@ -212,6 +214,7 @@
 
 <div data-part="trade" class="hidden" style="display:flex;flex-direction:column;gap:14px">
 <div class="lock needwallet" data-t="lock">先在最上方連結錢包才能操作。</div>
+<p class="note warn small"><span data-t="risk.trade"></span> <a href="./terms/" data-t="risk.link">詳見服務條款</a></p>
 <div class="sw" id="trSw" role="group" aria-label="買入 / 兌換" style="width:min(360px,100%);margin:0 auto"><span class="thumb" aria-hidden="true"></span><button type="button" data-tr="buy" style="min-height:44px;font-size:15px" data-t="t.buyH">買入 ASC</button><button type="button" data-tr="redeem" style="min-height:44px;font-size:15px" data-t="t.exH">兌換 USDT</button></div>
 <div data-trp="buy" style="max-width:560px;width:100%;margin:0 auto;display:flex;flex-direction:column;gap:12px;padding:16px;border-radius:16px;background:var(--bg2);border:1px solid var(--line)">
 <label class="f"><span class="muted small"><span data-t="t.in">存入 USDT</span> · <span data-t="t.usdtBal">錢包 USDT</span> <b id="tUsdtBal">–</b></span><input class="in" id="tIn" type="text" inputmode="decimal" placeholder="0.00" autocomplete="off"></label>

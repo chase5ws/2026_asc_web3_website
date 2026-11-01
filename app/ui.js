@@ -213,7 +213,9 @@
     }
     function foot() {
         $("foot").innerHTML = [["ASC", C.vault], ["NFT", C.nft], [S.lang === "zh" ? "配件" : "Parts", C.parts], [S.lang === "zh" ? "市場" : "Market", C.market], ["Safe", C.safe]]
-            .map(([n, a]) => `<a href="${CH.link("address", a)}" target="_blank" rel="noopener">${esc(n)} ${CH.short(a)}</a>`).join("") + `<span>Polygon · chainId ${C.chainId}</span>`;
+            .map(([n, a]) => `<a href="${CH.link("address", a)}" target="_blank" rel="noopener">${esc(n)} ${CH.short(a)}</a>`).join("") + `<span>Polygon · chainId ${C.chainId}</span>` +
+            `<a href="./terms/">${S.lang === "zh" ? "服務條款" : "Terms of Service"}</a><a href="./privacy/">${S.lang === "zh" ? "隱私權政策" : "Privacy Policy"}</a>` +
+            `<span>© Chase.Tseng · <a href="mailto:chase5ws@gmail.com">chase5ws@gmail.com</a> · <a href="https://github.com/chase5ws" target="_blank" rel="noopener">GitHub</a> · <a href="https://www.linkedin.com/in/chase5ws/" target="_blank" rel="noopener">LinkedIn</a></span>`;
     }
     let lastLang = null;
     function draw() {
