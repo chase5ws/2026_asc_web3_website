@@ -77,7 +77,8 @@
     function renderEquip() {
         if (!D.ready) return;
         const s = D.nftS, until = Number(D.nftMe?.[1] || 0), price = D.vip.price;
-        $("vDesc").textContent = price > 0n ? t("v.price", { p: int(price), d: int(D.vip.days) }) : t("v.off");
+        const perDay = Number(D.vip.days) ? (Number(price) * Number(D.buyPrice || 0n)) / 1e6 / Number(D.vip.days) : 0;
+        $("vDesc").textContent = price > 0n ? t("v.price", { p: int(price), d: int(D.vip.days), u: perDay.toLocaleString("en-US", { maximumFractionDigits: 2 }) }) : t("v.off");
         $("vUntil").textContent = CH.account ? (isVip() ? t("v.until", { d: date(until) }) : t("v.none")) : "";
         $("bVip").disabled = !CH.account || price === 0n;
         $("vPer").disabled = price === 0n;

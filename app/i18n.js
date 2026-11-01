@@ -51,3 +51,5 @@ Object.assign(window.ASC_T.zh, {"l.terms": "服務條款", "l.privacy": "隱私�
 Object.assign(window.ASC_T.en, {"l.terms": "Terms of Service", "l.privacy": "Privacy Policy", "dv.contact": "Contact"});
 Object.assign(window.ASC_T.zh, {"v.plan": "{d} 天｜{a} ASC（約 {u} USDT）", "v.price": "每天約 1 USDT（{p} ASC／{d} 天），付款直接銷毀"});
 Object.assign(window.ASC_T.en, {"v.plan": "{d} days · {a} ASC (≈ {u} USDT)", "v.price": "About 1 USDT a day ({p} ASC per {d} days), burned on payment"});
+Object.assign(window.ASC_T.zh, {"v.price": "每天約 {u} USDT（{p} ASC／{d} 天），付款直接銷毀"});
+Object.assign(window.ASC_T.en, {"v.price": "About {u} USDT a day ({p} ASC per {d} days), burned on payment"});
