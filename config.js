@@ -5,7 +5,7 @@ window.ASC_CONFIG = {
     currency: "POL",
     rpcUrl: "https://polygon-bor-rpc.publicnode.com",
     explorer: "https://polygonscan.com",
-    opensea: "https://opensea.io/assets/matic",
+    opensea: "https://opensea.io/item/polygon",
     // V2 四份合約（2026_asc_web3_token/deployments/polygon.json）
     vault: "0xB0B0026dBb092adf290df75729619343d51cA4bD", // ASC 金庫 AscPointV2（ASC 本身是 ERC-20，0 位小數）
     nft: "0xc70E923942B9404268C4842E6A42CFE5be6152E0", // 喵武士 AscCatSamuraiV2
