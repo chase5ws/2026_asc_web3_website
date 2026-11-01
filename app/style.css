@@ -243,3 +243,4 @@ button:disabled,.btn:disabled{opacity:.45;cursor:not-allowed}
   .sw.eqsw{width:100%}
   .vipbar>div{flex-wrap:wrap}
 }
+img.avatar{object-fit:cover;padding:0;background:var(--card2)}

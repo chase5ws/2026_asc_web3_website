@@ -20,7 +20,7 @@ window.ASC_CONFIG = {
     assets: "https://chase5ws.github.io/2026_asc_web3_ipfs",
     // Discord 機器人的對外網址（機器人的 PUBLIC_URL）：錢包綁定頁要把簽名送回機器人
     botApi: "https://2026ascdiscordbot-production.up.railway.app",
-    discord: "https://discord.gg/asc-official",
+    discord: "https://discord.gg/biao-ju-1005137908476412034",
     // 鏈上資料多久更新一次（秒）
     refreshSeconds: 20
 };
