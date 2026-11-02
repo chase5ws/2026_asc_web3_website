@@ -188,9 +188,9 @@
         const rows = KINDS.map(([k, zh, en]) => {
             const r = st.roles[k], m = me(k), s = safeOf(r.owner);
             const mine = [m.owner && "owner", m.signer && L("Safe 簽署人", "Safe signer"), m.admin && "admin", m.op && "operator", m.pending && L("新主人", "pending")].filter(Boolean).join(L("、", ", ")) || "–";
-            return `<tr><td>${esc(L(zh, en))}</td><td>${addrLink(r.owner)}${s && s.th ? ` <span class="ad-tag">Safe ${s.th}/${s.owners.length}</span>` : ""}${r.pending && r.pending !== ZERO ? `<br><small class="muted">${L("等待接受", "pending")}：${addrLink(r.pending)}</small>` : ""}</td><td>${addrLink(r.admin)}</td><td>${k === "market" ? "—" : addrLink(r.operator)}</td><td><b>${esc(mine)}</b></td></tr>`;
+            return `<tr><td>${esc(L(zh, en))}</td><td>${addrLink(r.owner)}${s && s.th ? ` <span class="adm-tag">Safe ${s.th}/${s.owners.length}</span>` : ""}${r.pending && r.pending !== ZERO ? `<br><small class="muted">${L("等待接受", "pending")}：${addrLink(r.pending)}</small>` : ""}</td><td>${addrLink(r.admin)}</td><td>${k === "market" ? "—" : addrLink(r.operator)}</td><td><b>${esc(mine)}</b></td></tr>`;
         }).join("");
-        return `<div class="ad-scroll"><table class="ad-table"><thead><tr><th>${L("合約", "Contract")}</th><th>owner</th><th>admin</th><th>operator</th><th>${L("你的權限", "Your role")}</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+        return `<div class="adm-scroll"><table class="adm-table"><thead><tr><th>${L("合約", "Contract")}</th><th>owner</th><th>admin</th><th>operator</th><th>${L("你的權限", "Your role")}</th></tr></thead><tbody>${rows}</tbody></table></div>`;
     }
     function stateGrid(k) {
         const v = st.vault, n = st.nft, m = st.market;
@@ -204,38 +204,38 @@
             market: m && [[L("手續費", "Fee"), pct(m.feeBps)], [L("被標記賣家", "Flagged seller"), pct(m.flagFeeBps)], [L("單筆上限", "Max trade"), Number(m.maxTradeValue) ? `${int(m.maxTradeValue)} ASC` : L("不限", "None")], [L("暫停", "Paused"), m.paused ? L("是", "Yes") : L("否", "No")], [L("掛單數", "Listings"), int(m.count)]]
         }[k];
         if (!items) return "";
-        return `<div class="ad-state">${items.map(([a, b]) => `<div><span>${esc(a)}</span><b>${esc(b)}</b></div>`).join("")}</div>`;
+        return `<div class="adm-state">${items.map(([a, b]) => `<div><span>${esc(a)}</span><b>${esc(b)}</b></div>`).join("")}</div>`;
     }
     function field(x, i, [name, type, zh, en], pre) {
         const id = `ad-${x.c}-${x.fn}-${i}`;
         const val = pre?.[i] ?? "";
         const lab = `<span>${esc(L(zh, en))}</span>`;
-        if (type === "bool") return `<label class="ad-f">${lab}<select id="${id}"><option value="true"${String(val) === "true" ? " selected" : ""}>true</option><option value="false"${String(val) === "false" ? " selected" : ""}>false</option></select></label>`;
-        if (type === "addrs" || type === "uints") return `<label class="ad-f wide">${lab}<textarea id="${id}" rows="2" placeholder="${esc(HINT()[type])}">${esc(val)}</textarea></label>`;
-        return `<label class="ad-f${type === "str" || type.endsWith("8") ? " wide" : ""}">${lab}<input id="${id}" value="${esc(val)}" placeholder="${esc(HINT()[type] || "")}" autocomplete="off" spellcheck="false"></label>`;
+        if (type === "bool") return `<label class="adm-f">${lab}<select id="${id}"><option value="true"${String(val) === "true" ? " selected" : ""}>true</option><option value="false"${String(val) === "false" ? " selected" : ""}>false</option></select></label>`;
+        if (type === "addrs" || type === "uints") return `<label class="adm-f wide">${lab}<textarea id="${id}" rows="2" placeholder="${esc(HINT()[type])}">${esc(val)}</textarea></label>`;
+        return `<label class="adm-f${type === "str" || type.endsWith("8") ? " wide" : ""}">${lab}<input id="${id}" value="${esc(val)}" placeholder="${esc(HINT()[type] || "")}" autocomplete="off" spellcheck="false"></label>`;
     }
     function actionCard(x, idx) {
         let pre = null;
         try { pre = x.pre ? x.pre(st) : null; } catch (_) {}
         const send = canSend(x), bat = canBatch(x);
         if (!send && !bat) return "";
-        return `<div class="ad-act${x.danger ? " danger" : ""}" data-i="${idx}">
-<div class="ad-h"><b>${esc(L(x.zh, x.en))}</b><code>${esc(x.fn)}</code><span class="ad-lv ${x.lv}">${esc(L(...LV[x.lv]))}</span></div>
+        return `<div class="adm-act${x.danger ? " danger" : ""}" data-i="${idx}">
+<div class="adm-h"><b>${esc(L(x.zh, x.en))}</b><code>${esc(x.fn)}</code><span class="adm-lv ${x.lv}">${esc(L(...LV[x.lv]))}</span></div>
 ${x.d[0] ? `<p class="muted small">${esc(L(x.d[0], x.d[1]))}</p>` : ""}
-${x.a.length ? `<div class="ad-fields">${x.a.map((a, i) => field(x, i, a, pre)).join("")}</div>` : ""}
-<div class="ad-btns">${send ? `<button type="button" class="ad-send">${L("送出交易", "Send")}</button>` : ""}${bat ? `<button type="button" class="ad-add">${L("加入 Safe 批次", "Add to Safe batch")}</button>` : ""}</div>
-<div class="msg ad-msg"></div></div>`;
+${x.a.length ? `<div class="adm-fields">${x.a.map((a, i) => field(x, i, a, pre)).join("")}</div>` : ""}
+<div class="adm-btns">${send ? `<button type="button" class="adm-send">${L("送出交易", "Send")}</button>` : ""}${bat ? `<button type="button" class="adm-add">${L("加入 Safe 批次", "Add to Safe batch")}</button>` : ""}</div>
+<div class="msg adm-msg"></div></div>`;
     }
     function batchBar() {
         if (!batch.length && !KINDS.some(([k]) => safeOf(st.roles[k]?.owner))) return "";
-        const list = batch.map((b, i) => `<li><span>${esc(b.label)}</span><code>${esc(short(b.to))}</code><button type="button" class="ad-del" data-i="${i}" aria-label="remove">×</button></li>`).join("");
-        return `<div class="ad-batch"><div class="ad-h"><b>${L("Safe 批次", "Safe batch")}（${batch.length}）</b><span class="muted small">${L("owner 是 Safe：把要做的操作加進來，下載 JSON 後到 Safe → Apps → Transaction Builder 拖進去，簽名執行", "Owner is a Safe: add actions, download the JSON, then drop it into Safe → Apps → Transaction Builder")}</span></div>
+        const list = batch.map((b, i) => `<li><span>${esc(b.label)}</span><code>${esc(short(b.to))}</code><button type="button" class="adm-del" data-i="${i}" aria-label="remove">×</button></li>`).join("");
+        return `<div class="adm-batch"><div class="adm-h"><b>${L("Safe 批次", "Safe batch")}（${batch.length}）</b><span class="muted small">${L("owner 是 Safe：把要做的操作加進來，下載 JSON 後到 Safe → Apps → Transaction Builder 拖進去，簽名執行", "Owner is a Safe: add actions, download the JSON, then drop it into Safe → Apps → Transaction Builder")}</span></div>
 ${batch.length ? `<ol>${list}</ol>` : `<p class="muted small">${L("還沒有加入任何操作", "Nothing added yet")}</p>`}
-<div class="ad-btns"><button type="button" id="adDl"${batch.length ? "" : " disabled"}>${L("下載 Safe JSON", "Download Safe JSON")}</button><button type="button" id="adClr" class="alt"${batch.length ? "" : " disabled"}>${L("清空", "Clear")}</button></div></div>`;
+<div class="adm-btns"><button type="button" id="adDl"${batch.length ? "" : " disabled"}>${L("下載 Safe JSON", "Download Safe JSON")}</button><button type="button" id="adClr" class="alt"${batch.length ? "" : " disabled"}>${L("清空", "Clear")}</button></div></div>`;
     }
     function lookupBox() {
-        return `<div class="ad-look"><div class="ad-h"><b>${L("查詢錢包", "Look up a wallet")}</b></div><div class="ad-fields"><label class="ad-f wide"><span>${L("錢包地址", "Wallet")}</span><input id="adLookAddr" placeholder="0x…" autocomplete="off" spellcheck="false"></label></div>
-<div class="ad-btns"><button type="button" id="adLookBtn">${L("查詢", "Look up")}</button></div><div class="ad-state" id="adLookOut"></div></div>`;
+        return `<div class="adm-look"><div class="adm-h"><b>${L("查詢錢包", "Look up a wallet")}</b></div><div class="adm-fields"><label class="adm-f wide"><span>${L("錢包地址", "Wallet")}</span><input id="adLookAddr" placeholder="0x…" autocomplete="off" spellcheck="false"></label></div>
+<div class="adm-btns"><button type="button" id="adLookBtn">${L("查詢", "Look up")}</button></div><div class="adm-state" id="adLookOut"></div></div>`;
     }
 
     let open = { vault: true };
@@ -257,7 +257,7 @@ ${batch.length ? `<ol>${list}</ol>` : `<p class="muted small">${L("還沒有加�
         }
         const sections = KINDS.map(([k, zh, en]) => {
             const cards = A.map((x, i) => (x.c === k ? actionCard(x, i) : "")).join("");
-            return `<details class="ad-sec" data-k="${k}"${open[k] ? " open" : ""}><summary><b>${esc(L(zh, en))}</b> <span class="muted small">${addrLink(C[k])}</span></summary>${stateGrid(k)}${cards ? `<div class="ad-acts">${cards}</div>` : `<p class="muted small">${L("你在這份合約沒有可以做的操作", "No actions available for you here")}</p>`}</details>`;
+            return `<details class="adm-sec" data-k="${k}"${open[k] ? " open" : ""}><summary><b>${esc(L(zh, en))}</b> <span class="muted small">${addrLink(C[k])}</span></summary>${stateGrid(k)}${cards ? `<div class="adm-acts">${cards}</div>` : `<p class="muted small">${L("你在這份合約沒有可以做的操作", "No actions available for you here")}</p>`}</details>`;
         }).join("");
         box.innerHTML = `<span class="eyebrow">ADMIN</span><h2>${L("管理員面板", "Admin panel")}</h2>
 <p class="muted small">${L("只有 owner／admin／operator（或 owner Safe 的簽署人）看得到。★ owner 的操作：owner 是 Safe 時請加入批次，用 Safe 多簽執行。", "Only owners, admins, operators (or signers of the owner Safe) see this. ★ owner actions: when the owner is a Safe, add them to the batch and execute in the Safe.")}</p>
@@ -274,8 +274,8 @@ ${roleTable()}${batchBar()}${lookupBox()}${sections}`;
     const msgs = {}; // 重畫面板時保留每張卡片的結果訊息
     function say(card, text, kind, hash) {
         msgs[card.dataset.i] = [text, kind, hash];
-        const m = card.querySelector(".ad-msg");
-        m.className = "msg ad-msg" + (kind ? " " + kind : "");
+        const m = card.querySelector(".adm-msg");
+        m.className = "msg adm-msg" + (kind ? " " + kind : "");
         m.textContent = text;
         if (hash) { const a = document.createElement("a"); a.href = CH.link("tx", hash); a.target = "_blank"; a.rel = "noopener"; a.textContent = L("看交易", "View tx"); m.appendChild(a); }
     }
@@ -293,11 +293,11 @@ ${roleTable()}${batchBar()}${lookupBox()}${sections}`;
         return window.confirm(`${L(x.zh, x.en)}（${x.fn}）\n${L("合約", "Contract")}: ${C[x.c]}\n${lines}${x.danger ? "\n\n" + L("⚠️ 這個操作影響很大，確定要繼續？", "⚠️ High impact. Continue?") : ""}`);
     }
     function bind(box) {
-        box.querySelectorAll("details.ad-sec").forEach((d) => d.addEventListener("toggle", () => (open[d.dataset.k] = d.open)));
-        box.querySelectorAll(".ad-act").forEach((card) => {
+        box.querySelectorAll("details.adm-sec").forEach((d) => d.addEventListener("toggle", () => (open[d.dataset.k] = d.open)));
+        box.querySelectorAll(".adm-act").forEach((card) => {
             const x = A[Number(card.dataset.i)];
             if (msgs[card.dataset.i]) say(card, ...msgs[card.dataset.i]);
-            card.querySelector(".ad-send")?.addEventListener("click", async (ev) => {
+            card.querySelector(".adm-send")?.addEventListener("click", async (ev) => {
                 const btn = ev.currentTarget;
                 let args;
                 try { args = collect(x, card); } catch (e) { say(card, e.message, "bad"); return; }
@@ -315,7 +315,7 @@ ${roleTable()}${batchBar()}${lookupBox()}${sections}`;
                 } catch (e) { console.warn(e); say(card, errText(e), "bad"); }
                 finally { btn.disabled = false; }
             });
-            card.querySelector(".ad-add")?.addEventListener("click", () => {
+            card.querySelector(".adm-add")?.addEventListener("click", () => {
                 let args;
                 try { args = collect(x, card); } catch (e) { say(card, e.message, "bad"); return; }
                 if (!confirmIt(x, args)) return;
@@ -326,7 +326,7 @@ ${roleTable()}${batchBar()}${lookupBox()}${sections}`;
                 render();
             });
         });
-        box.querySelectorAll(".ad-del").forEach((b) => b.addEventListener("click", () => { batch.splice(Number(b.dataset.i), 1); saveBatch(); render(); }));
+        box.querySelectorAll(".adm-del").forEach((b) => b.addEventListener("click", () => { batch.splice(Number(b.dataset.i), 1); saveBatch(); render(); }));
         $("adClr")?.addEventListener("click", () => { batch = []; saveBatch(); render(); });
         $("adDl")?.addEventListener("click", () => {
             const safes = [...new Set(batch.map((b) => (b.safe || "").toLowerCase()))];
