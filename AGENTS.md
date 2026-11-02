@@ -43,5 +43,5 @@
 - `app/style.css`：`--pagebg`＝內嵌 SVG（`<pattern>` 200×76 一格、`rotate(-22)`，灰藍＋紅「ASC鏢局」）＋深藍漸層，全部 `background-attachment:fixed`，不用圖片。`body::before` 與頂部 `.top` 都用 `--pagebg`，所以導覽列和頁面背景接得起來、沒有色差，內容捲到底下也不會透出來。調密度改 pattern 的 width/height 與 font-size。
 - 頂部導覽列縮小：logo、連結錢包、狀態 chip、語言切換、三分頁、子分頁的高度與字級都變小；按鈕底色改半透明。
 - 網站 logo 換成「鏢」字刀劍漫畫圖：`assets/logo.png`（192×192，裁中間）取代左上角的「ASC」文字方塊（首頁、綁定頁、shared/core.js）；`favicon.png`、`apple-touch-icon.png`、`icon-512.png` 也換成同一張；移除 `favicon.svg`（舊的 ASC 文字圖示，移到 `_to_delete/`）。
-- 導覽列（`app/style.css` 最後一段）：上排 品牌｜三分頁 `#sw3`（在 `.toprow .mid`）｜錢包（`.status` 狀態 chip 移進 `.wallet`，小字排在按鈕下方）｜語言切換（最右上）；子選單改成貼齊的底線分頁（NFT 紅線、Token 藍線），首頁沒有子選單時整列隱藏。手機只在金庫未驗證／已標記時顯示 chip。桌機約 116px（原 195）。`index.html`、`privacy`、`terms` 的 `app/*.css|js` 加 `?v=20261102` 避免瀏覽器快取舊檔，之後改 CSS/JS 記得換版本號。
+- 導覽列（`app/style.css` 最後一段）：一行，`.toprow` 三欄 `1fr auto 1fr` 讓三分頁 `#sw3` 永遠置中；左 品牌、中 `.mid`（`#sw3`＋`.subnav`）、右 `.right`（錢包＋下方小字狀態 chip、語言切換在最右）。桌機 NFT／Token 的子選單是下拉（滑鼠移上去，或點分頁時打開 `.mid[data-open]`，點外面／Esc／選完關閉），左緣對齊該按鈕；首頁沒有下拉。手機（≤860px）子選單仍是分頁下方的底線列，chip 只在金庫未驗證／已標記時出現。桌機高度約 79px（原 195）。`app/*.css|js` 帶 `?v=`（目前 20261102h）避免快取，改檔記得換。
 - 網站圖示改成跟左上角 logo 一樣：直接用 `logo.png` 那張圖、20% 圓角、無框、四角透明，`favicon-32.png`、`favicon.png`（64）、`icon-512.png`（都是 logo.png 整張縮放，不裁切）；`apple-touch-icon.png` 同一張但維持方形（iOS 自己裁圓角）。圖示連結加 `?v=20261102f`。首頁 `<title>`／`og:title` 改為「ASC鏢局」。

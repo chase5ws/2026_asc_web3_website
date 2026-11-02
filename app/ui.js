@@ -243,6 +243,16 @@
     }
     $$("[data-go]").forEach((b) => (b.onclick = () => go(b.dataset.go)));
     $$("[data-subs] .sub").forEach((b) => (b.onclick = () => go(b.parentElement.dataset.subs, b.dataset.sub)));
+    // 桌機：NFT／Token 的子選單是下拉（滑鼠移上去或點分頁打開，點外面或選完關閉）
+    const mid = document.querySelector(".toprow .mid");
+    $$("#sw3 [data-go]").forEach((b) => (b.onclick = () => {
+        const k = b.dataset.go, open = mid.dataset.open === k;
+        go(k);
+        mid.dataset.open = !narrow() && k !== "home" && !open ? k : "";
+    }));
+    $$(".toprow .mid .sub").forEach((b) => b.addEventListener("click", () => (mid.dataset.open = "")));
+    document.addEventListener("click", (e) => { if (!e.target.closest(".toprow .mid")) mid.dataset.open = ""; });
+    document.addEventListener("keydown", (e) => { if (e.key === "Escape") mid.dataset.open = ""; });
     $$("[data-jump]").forEach((b) => (b.onclick = () => { const [p, s] = b.dataset.jump.split(":"); go(p, s); window.scrollTo(0, 0); }));
     $$("[data-lang]").forEach((b) => (b.onclick = () => { S.lang = b.dataset.lang; store.set("asc-lang", S.lang); draw(); }));
     $$("[data-mt]").forEach((b) => (b.onclick = () => { S.mt = b.dataset.mt; draw(); }));
