@@ -5,8 +5,9 @@ a{color:#41d3ff;text-decoration:none}a:hover{text-decoration:underline}
 button,input,select{font-family:inherit}button{cursor:pointer}
 .hidden{display:none!important}
 .app{max-width:1440px;margin:0 auto;min-height:100vh;background:transparent;position:relative;z-index:1}
-/* 整頁背景：深藍漸層＋「ASC鏢局」浮水印（assets/site-bg.jpg），固定不隨捲動 */
-body::before{content:"";position:fixed;inset:0;z-index:0;pointer-events:none;background:url("../assets/site-bg.jpg") center top/cover no-repeat,var(--bg)}
+/* 整頁背景：深藍漸層＋密集「ASC鏢局」斜向浮水印（純 CSS／SVG 生成，不用圖片），固定不隨捲動 */
+body::before{content:"";position:fixed;inset:0;z-index:0;pointer-events:none;background:radial-gradient(ellipse at 50% 0%,#0d1838 0%,transparent 60%),linear-gradient(180deg,#0a1230,#060b1d 55%,#04081a)}
+body::after{content:"";position:fixed;inset:-50%;z-index:0;pointer-events:none;background:url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='200'%20height='76'%3E%3Cg%20font-family='Noto%20Serif%20TC,Songti%20TC,PMingLiU,serif'%20font-weight='900'%20font-size='20'%20letter-spacing='3'%3E%3Ctext%20x='4'%20y='28'%20fill='rgba(160,178,220,0.10)'%3EASC%E9%8F%A2%E5%B1%80%3C/text%3E%3Ctext%20x='104'%20y='66'%20fill='rgba(200,32,46,0.16)'%3EASC%E9%8F%A2%E5%B1%80%3C/text%3E%3C/g%3E%3C/svg%3E");transform:rotate(-22deg)}
 html{background:#04081a}
 
 /* 最上方 */

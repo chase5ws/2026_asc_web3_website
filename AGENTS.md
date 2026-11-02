@@ -39,5 +39,5 @@
 - 2026-10-25：**改成多頁網站**（每頁一個資料夾：行情首頁、wallet、story、rules、nft、bind），Apple 式一整個畫面一段＋往下捲提示＋淡入＋下一頁；共用程式搬到 `shared/`；舊的 `app.js`、`lang.js` 不再使用；機器人綁定連結改為 `/bind/#bind=`。
 - 2026-10-26：**改成一頁式並串接 V2**（`index.html`＋`app/`）：鑄造／解盲、VIP、換裝（疊圖試穿、脫下）、轉蛋（結果動畫）、背包、配件市場（上架／購買／下架）、行情走勢、買入、兌換、我的點數、轉出 ASC。外觀與走勢讀 `2026_asc_web3_ipfs` 的 `v2/state.json`／`v2/price.json` 再補最新鏈上事件。舊多頁版移到 `_to_delete/website-old/`；`bind/`、`shared/` 保留給綁定頁。測試：雲端 hardhat 本機鏈＋假 MetaMask（Playwright），每個功能都送過真交易；外觀與 sync_v2.py 結果逐顆比對一致；手機 390 寬沒有橫向捲動。
 
-## 2026-11-02 整頁背景圖
-- 新增 `assets/site-bg.jpg`（深藍漸層＋「ASC鏢局」浮水印，890×1026）；`app/style.css` 用 `body::before` 固定鋪滿（cover），`.app` 改透明，首頁、服務條款、隱私權頁都套用。換圖用同檔名覆蓋。
+## 2026-11-02 整頁背景
+- `app/style.css`：`body::before` 深藍漸層、`body::after` 用內嵌 SVG 重複排列「ASC鏢局」（200×76 一格，灰藍＋紅交錯，旋轉 -22°，固定不捲動），不用圖片；`.app` 改透明。首頁、服務條款、隱私權頁都套用。調密度改 SVG 的 width/height 與 font-size。
