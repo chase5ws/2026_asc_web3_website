@@ -44,4 +44,4 @@
 - 頂部導覽列縮小：logo、連結錢包、狀態 chip、語言切換、三分頁、子分頁的高度與字級都變小；按鈕底色改半透明。
 - 網站 logo 換成「鏢」字刀劍漫畫圖：`assets/logo.png`（192×192，裁中間）取代左上角的「ASC」文字方塊（首頁、綁定頁、shared/core.js）；`favicon.png`、`apple-touch-icon.png`、`icon-512.png` 也換成同一張；移除 `favicon.svg`（舊的 ASC 文字圖示，移到 `_to_delete/`）。
 - 導覽列（`app/style.css` 最後一段）：上排 品牌｜三分頁 `#sw3`（在 `.toprow .mid`）｜錢包（`.status` 狀態 chip 移進 `.wallet`，小字排在按鈕下方）｜語言切換（最右上）；子選單改成貼齊的底線分頁（NFT 紅線、Token 藍線），首頁沒有子選單時整列隱藏。手機只在金庫未驗證／已標記時顯示 chip。桌機約 116px（原 195）。`index.html`、`privacy`、`terms` 的 `app/*.css|js` 加 `?v=20261102` 避免瀏覽器快取舊檔，之後改 CSS/JS 記得換版本號。
-- 網站圖示改圓角：`favicon.png`（64）、`icon-512.png` 由原圖加 22% 圓角、四角透明（RGBA）；`apple-touch-icon.png` 維持方形（iOS 會自己裁圓角，透明角在 iOS 會變黑）。favicon 連結加 `?v=20261102b`。首頁 `<title>`／`og:title` 改為「Asc鏢局」。
+- 網站圖示改成跟左上角 logo 一樣：從原圖裁中間（「鏢」字放大）、25% 圓角、深紫藍細框、四角透明，`favicon.png`（64）、`icon-512.png`；`apple-touch-icon.png` 同樣裁切但維持方形無框（iOS 自己裁圓角）。圖示連結加 `?v=20261102c`。首頁 `<title>`／`og:title` 改為「Asc鏢局」。
