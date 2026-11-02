@@ -1,7 +1,7 @@
 # AGENTS.md — 給 AI 協作者與開發者
 
 ## 專案
-江湖鏢局金庫的公開網頁（純靜態，沒有建置步驟）。讀 Polygon 鏈上的點數金庫 **AscPoint**（`2026_asc_web3_token`，點數＝ERC-20 代幣 ASC，0 位小數），玩家用 MetaMask 兌換、轉 ASC；顯示信物 NFT。**Discord 機器人（`2026_asc_discord_bot`）只負責綁定錢包**，兩個專案只透過綁定 API 溝通。使用者用中文溝通。
+江湖鏢局金庫的公開網頁（純靜態，沒有建置步驟）。讀 Polygon 鏈上的點數金庫 **AscPoint**（`2022_web3_solidity_asc_smart_contract`，點數＝ERC-20 代幣 ASC，0 位小數），玩家用 MetaMask 兌換、轉 ASC；顯示信物 NFT。**Discord 機器人（`2026_asc_discord_bot`）只負責綁定錢包**，兩個專案只透過綁定 API 溝通。使用者用中文溝通。
 
 ## 鏈上地址（Polygon 137）
 - 金庫 AscPoint／ASC：`0x9a431fED8Bc5fa595E5c9fdB1abb0a3119fBD5Ad`（部署區塊 96045773，owner＝Safe `0x7c532A61349814633CdE4f81652Cb0E35BEB75f6`）
@@ -33,7 +33,7 @@
 曾用 Chromium＋假 RPC＋假 MetaMask 測過（桌面 1366、手機 390，每一頁）：即時幣值、走勢重播、兌換預估與按鈕、最少／本期最多、轉 ASC 防呆、交易完成、綁定錢包簽名送回。手機寬度沒有橫向捲動。
 
 ## 變更紀錄
-- 2026-10-20：從 `2026_asc_web3_token/site/` 搬出成為獨立專案（舊版金庫的 claim 介面）。
+- 2026-10-20：從 `2022_web3_solidity_asc_smart_contract/site/` 搬出成為獨立專案（舊版金庫的 claim 介面）。
 - 2026-10-24：**改接已上線的 AscPoint**（ASC、`query`、`exchange`、`transfer`）；新增即時幣值（左右兩邊池子、中間價格與走勢圖）、我的 ASC 與持有比例階梯、兌換預估、轉 ASC、規則與門檻；**綁定錢包頁從機器人搬到網站**（`#bind=`）；改成科技江湖風格（深藍＋紅）、三種裝置版面；圖片欄位 `assets/`；信物 NFT 改為 `0x39c7…7488`；移除機器人的 `/api/exchange/stats`（匯率分母改用鏈上 totalSupply）。
 - 2026-10-25：中英文版（`lang.js`、右上角切換）；整頁「ASC鏢局」斜向浮水印；新增「鏢局故事」區塊（目標、名稱由來、師徒文化＋四章故事與漫畫裁圖 `assets/story-*.jpg`，點圖放大）；網站圖示 `assets/favicon.svg` 等。
 - 2026-10-25：**改成多頁網站**（每頁一個資料夾：行情首頁、wallet、story、rules、nft、bind），Apple 式一整個畫面一段＋往下捲提示＋淡入＋下一頁；共用程式搬到 `shared/`；舊的 `app.js`、`lang.js` 不再使用；機器人綁定連結改為 `/bind/#bind=`。
@@ -45,3 +45,5 @@
 - 網站 logo 換成「鏢」字刀劍漫畫圖：`assets/logo.png`（192×192，裁中間）取代左上角的「ASC」文字方塊（首頁、綁定頁、shared/core.js）；`favicon.png`、`apple-touch-icon.png`、`icon-512.png` 也換成同一張；移除 `favicon.svg`（舊的 ASC 文字圖示，移到 `_to_delete/`）。
 - 導覽列（`app/style.css` 最後一段）：一行，`.toprow` 三欄 `1fr auto 1fr` 讓三分頁 `#sw3` 永遠置中；左 品牌、中 `.mid`（`#sw3`＋`.subnav`）、右 `.right`（錢包＋下方小字狀態 chip、語言切換在最右）。桌機 NFT／Token 的子選單在該按鈕正下方、左緣對齊按鈕往右排（底線樣式），進到該分頁就出現；首頁沒有。手機（≤860px）子選單仍是分頁下方的底線列，chip 只在金庫未驗證／已標記時出現。桌機高度約 79px（NFT／Token 頁約 115px，原 195）。`app/*.css|js` 帶 `?v=`（目前 20261102j）避免快取，改檔記得換。
 - 網站圖示改成跟左上角 logo 一樣：直接用 `logo.png` 那張圖、20% 圓角、無框、四角透明，`favicon-32.png`、`favicon.png`（64）、`icon-512.png`（都是 logo.png 整張縮放，不裁切）；`apple-touch-icon.png` 同一張但維持方形（iOS 自己裁圓角）。圖示連結加 `?v=20261102f`。首頁 `<title>`／`og:title` 改為「ASC鏢局」。
+- 管理員面板 `app/admin.js`（＋`app/style.css` 的 `.ad-*`、`index.html` 的 `#adminPanel`）：連結錢包後讀 4 份合約的 `owner/pendingOwner/admin/operator`，owner 是合約時讀 Safe `getOwners/getThreshold`；只有 owner／admin／operator／Safe 簽署人／新主人才顯示。每個管理函式一張卡（清單 `A`，權限 operator／admin／★owner／pending，對照合約 repo `AGENTS.md` 第 6 節）：有權限就直接送交易；owner 是 Safe 就「加入 Safe 批次」→ 下載 Transaction Builder JSON（批次存在 localStorage `asc-admin-batch`）。另有狀態讀數與「查詢錢包」。合約改介面要同步改 `A`。測試：雲端 Playwright＋假 RPC／假 MetaMask：admin 直接送 setOpen、Safe 批次 withdrawReserve＋setAdmin 解碼正確、參數檢查、沒權限的錢包看不到面板。
+- `contracts-asc/`：目前主網 4 份 V2 合約（AscPointV2／AscCatSamuraiV2／AscCatParts／AscMarket）的原始碼、ABI、部署紀錄快照，給只拿到網站資料夾的人／AI 參考。pages.yml 不複製它，所以不會上網站。合約專案已去 ASC 化（Token／NFT／Part／Market），這份是已上鏈那一版。

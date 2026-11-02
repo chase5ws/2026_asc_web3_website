@@ -1,0 +1,41 @@
+{
+  "network": "Polygon 主網",
+  "chainId": 137,
+  "deployer": "0xa2BCD5dD5d748FA6314D438a2C55b139dB62b8ff",
+  "owner": "0x7c532A61349814633CdE4f81652Cb0E35BEB75f6",
+  "pendingSafeAccept": true,
+  "operator": "0xa2BCD5dD5d748FA6314D438a2C55b139dB62b8ff",
+  "usdt": "0xc2132D05D31c914a87C6611C10748AEb04B58e8F",
+  "vault": "0xB0B0026dBb092adf290df75729619343d51cA4bD",
+  "parts": "0x624197e0E623a2684548c6713aaf8104dBEcA2F9",
+  "nft": "0xc70E923942B9404268C4842E6A42CFE5be6152E0",
+  "market": "0xb71aD1e721dE0c5E50223cf4a3C3b3f3E37320c4",
+  "blocks": {
+    "vault": 96182573,
+    "parts": 96182578,
+    "nft": 96182586,
+    "market": 96182591
+  },
+  "txs": {
+    "deploy:vault": "0xdd16ca7e02cfbd1f22a3d0ffcce2547f883d1eeef5ed5adb0234b0fa3e3f2ef4",
+    "deploy:parts": "0x51c6e7be346563b46bae4449f841794575817be7ee2027082424e9bf40a4771c",
+    "deploy:nft": "0xe03c83499c1349552ce4db2efcff7715a436bd02c5f87306cdfd5eb63ef670f6",
+    "deploy:market": "0xcb051aae2f3f5a546710e7eb5fdb48d9c0556a8c08f04288bc49f0c2246c5292",
+    "parts:minter": "0xd21635b605f55047682989c294f5c17e2fa74cd145bc6d7dd3cd13cdfc38929a",
+    "vault:exempt": "0xd4ead83a1d0c6476026fbe862ac65b81a7a7b99e844b80f7b1eecd1d88cf8325",
+    "vault:operator": "0xadc133ad2bdc9826f45a3cca8aee73ebf2aa71b687b3539cf96030385e804755",
+    "nft:operator": "0x0a754adbfd10c196b3109d46ac8d321aa782ff30fdb46af4de7e51bad5c205ee",
+    "parts:operator": "0x5a53497aaafe7bff4530e95738b5ed97d8364d5f47dc5c367eab1e82556628b9",
+    "vault:policy": "0x3f85afac9860df136abe9bad9513ccd6f3dcf906a22a3930dea62388a1b4c100",
+    "nft:gacha": "0x38527358b94c91fb3ccdfbb18d6c5305b5173d312e8199a091fe88621227daa4",
+    "nft:prices": "0x3bfade7d4fff4c5bf397b1586d1feb1f8b9d8ddad628110b5a287d734c8ee523",
+    "market:policy": "0x5587b7084408d62f96370c1db8dc0fa706cd5cc5376b1f7fdea2dbe1d9275a53",
+    "vault:open": "0x099b41d4b40b6f1d50f9602caea8e18458bc611f2907057cb99213788158dff1",
+    "vault:transfer": "0xaa09d5c52ae86c45abc99703340f17afee6e6a7bdf8b8ef6aa92d5210fcc7706",
+    "parts:transfer": "0xebdeb6aa5e6a7bd105ea4e5417bafcc9ce665a7cd19b2d239d0499ccc8df1703",
+    "nft:transfer": "0xddcd18209d79fde0ea858532d6c30401261c3b284632217bdf14347784bc4d05",
+    "market:transfer": "0x72b2064f9708e8c4d9e8c3197bc6692159d16d4b39ea928ebf070f2913eb50bc",
+    "nft:airdrop": "0xc18e90a4e134a9d10ba08bb3b801382ccfe8e56329805bfe0ec849ed839d5ca7"
+  },
+  "deployedAt": "2026-10-26T01:50:11.183Z"
+}

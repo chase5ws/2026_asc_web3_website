@@ -1,6 +1,6 @@
 /* 江湖鏢局金庫：每一頁共用的程式（讀鏈、語言、導覽列、錢包、交易、捲動效果）。
  * 每頁的 <body data-page="home|wallet|story|rules|nft|bind" data-root="./ 或 ../">，頁面自己的程式在各資料夾的 page.js，
- * 用 ASC.onUpdate(fn) 收到最新鏈上資料、ASC.L("鍵") 取文字。合約介面見 2026_asc_web3_token 的 AGENTS.md。 */
+ * 用 ASC.onUpdate(fn) 收到最新鏈上資料、ASC.L("鍵") 取文字。合約介面見 2022_web3_solidity_asc_smart_contract 的 AGENTS.md。 */
 (function () {
     const C = window.ASC_CONFIG;
     const E = window.ethers;
