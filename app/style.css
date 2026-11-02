@@ -248,30 +248,29 @@ button:disabled,.btn:disabled{opacity:.45;cursor:not-allowed}
 }
 img.avatar{object-fit:cover;padding:0;background:var(--card2)}
 
-/* ═════ 2026-11-02 導覽列方案 C：上排 品牌｜三分頁｜錢包（含 VIP·ASC）｜語言；下排 底線子選單 ═════ */
+/* ═════ 2026-11-02 導覽列：上排 品牌｜三分頁｜錢包（下方小字狀態）｜語言（最右上）；下排 底線子選單 ═════ */
 .top{gap:0;padding:0}
-.toprow{grid-template-columns:auto minmax(0,1fr) auto auto;gap:14px;padding:8px 20px}
+.toprow{grid-template-columns:auto minmax(0,1fr) auto auto;gap:14px;padding:8px 20px;align-items:center}
 .toprow .mid{display:flex;justify-content:center;min-width:0}
 .toprow .mid .sw3{margin:0;width:min(360px,100%)}
 .sw3 button{min-height:32px;font-size:13.5px}
-.wpill{margin-left:6px;padding:1px 8px;border-radius:999px;background:rgba(255,255,255,.08);font-size:11px;font-weight:500;color:var(--soft)}
-.status{padding:0 20px 6px}.status .chip{display:none}.status .chip#chVer.warn,.status .chip#chVer.bad{display:inline-block}
-.status:not(:has(#chVer.warn,#chVer.bad)){display:none}
+.toprow .wallet{display:flex;flex-direction:column;align-items:center;gap:4px}
+.toprow .right-col{justify-self:end;align-self:start}
+.wallet .status{display:flex;flex-wrap:nowrap;gap:4px;justify-content:center;padding:0}
+.wallet .status .chip{font-size:10.5px;padding:0 7px;line-height:18px;background:rgba(15,27,58,.45);border-color:rgba(34,53,95,.7)}
 .subnav{border-top:1px solid rgba(46,70,120,.35);background:rgba(4,8,26,.35)}
 .subnav:has(.subs:not(.hidden)){padding-top:0}
 .subnav:not(:has(.subs:not(.hidden))){display:none}
 .top .subs{margin:0;gap:4px}
 .top .subs .sub{border:0;background:transparent;min-height:36px;border-radius:0;font-size:13.5px;color:var(--muted);padding:0 14px}
 .top .subs .sub:hover{color:var(--ink)}
-.top .subs .sub.on,.subs[data-subs="tok"] .sub.on{background:transparent;color:#fff;font-weight:700;box-shadow:inset 0 -2px 0 var(--red)}
-.subs[data-subs="tok"] .sub.on{box-shadow:inset 0 -2px 0 #3d8bff}
-html{scroll-padding-top:110px}
+.top .subs .sub.on{background:transparent;color:#fff;font-weight:700;box-shadow:inset 0 -2px 0 var(--red)}
+.top .subs[data-subs="tok"] .sub.on{background:transparent;box-shadow:inset 0 -2px 0 #3d8bff}
+html{scroll-padding-top:120px}
 @media (max-width:860px){
-  .top{padding:0}
   .toprow{grid-template-columns:minmax(0,1fr) auto auto;gap:8px;padding:8px 14px}
   .toprow .mid{grid-column:1/-1;order:5}.toprow .mid .sw3{width:100%}
-  .wpill{display:none}
-  .status{padding:0 14px 6px}
+  .wallet .status:not(:has(#chVer.warn,#chVer.bad)){display:none}
   .top .subs .sub{padding:0 6px}
   html{scroll-padding-top:150px}
 }

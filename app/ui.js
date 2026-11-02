@@ -164,7 +164,6 @@
         const ct = $("connectText");
         ct.textContent = a ? (narrow() ? CH.short(a).replace("…", "…") : `${CH.short(a)}`) : t("connect");
         $("connect").classList.toggle("on", !!a);
-        if (!a) $("wPill").classList.add("hidden");
         if (!a || !D.status) return;
         const v = $("chVer");
         v.className = "chip " + (D.status.flagged ? "bad" : D.status.verified ? "" : "warn");
@@ -175,10 +174,6 @@
         $("chVip").innerHTML = `<b>${esc(vip ? t("c.vipOn", { d: date(until) }) : t("c.vipOff"))}</b>`;
         $("chAllow").textContent = int(D.nftMe?.[0] || 0);
         $("chAsc").textContent = int(D.asc);
-        const wp = $("wPill");
-        wp.textContent = `${vip ? "VIP" : t("c.vipOff")} · ASC ${int(D.asc)}`;
-        wp.classList.remove("hidden");
-        $("connect").title = `${t("c.allow")} ${int(D.nftMe?.[0] || 0)}`;
     }
     function layout() {
         $("sw3").className = "sw3 p-" + S.page;
