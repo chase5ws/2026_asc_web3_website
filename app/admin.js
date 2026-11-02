@@ -238,29 +238,33 @@ ${batch.length ? `<ol>${list}</ol>` : `<p class="muted small">${L("還沒有加�
 <div class="ad-btns"><button type="button" id="adLookBtn">${L("查詢", "Look up")}</button></div><div class="ad-state" id="adLookOut"></div></div>`;
     }
 
-    let open = {};
-    /* 頁首「管理」按鈕：面板在頁面很下面，有權限時在連結錢包旁邊顯示一顆跳轉鈕 */
+    let open = { vault: true };
+    /* 頁首「管理」按鈕：有權限的錢包連線後出現在錢包按鈕左邊，點了進入獨立的管理頁（#admin） */
+    const onAdminPage = () => location.hash.slice(1).split("/")[0] === "admin";
     function jumpBtn(show) {
         let b = $("adminJump");
         if (!b && show) {
             const host = $("connect")?.parentElement;
             if (!host) return;
             b = document.createElement("button");
-            b.id = "adminJump"; b.type = "button"; b.className = "connect on";
-            b.addEventListener("click", () => { const p = $("adminPanel"); p.classList.remove("hidden"); p.scrollIntoView({ behavior: "smooth", block: "start" }); });
+            b.id = "adminJump"; b.type = "button"; b.className = "connect on ad-jump";
+            b.addEventListener("click", () => { location.hash = "admin"; window.scrollTo(0, 0); });
             host.insertBefore(b, $("connect"));
         }
         if (!b) return;
         b.textContent = L("⚙ 管理", "⚙ Admin");
         b.classList.toggle("hidden", !show);
+        b.setAttribute("aria-pressed", String(onAdminPage()));
     }
     function render() {
         const box = $("adminPanel");
         if (!box) return;
         const show = st.ok && visible();
-        box.classList.toggle("hidden", !show);
         jumpBtn(show);
-        if (!show) return;
+        if (!show) {
+            box.innerHTML = `<span class="eyebrow">ADMIN</span><h2>${L("管理員", "Admin")}</h2><p class="muted">${CH.account && !st.ok ? L("讀取權限中…", "Checking roles…") : L("請用 owner／admin／operator 錢包連線才能看到管理功能。", "Connect an owner / admin / operator wallet to see admin tools.")}</p>`;
+            return;
+        }
         const sections = KINDS.map(([k, zh, en]) => {
             const cards = A.map((x, i) => (x.c === k ? actionCard(x, i) : "")).join("");
             return `<details class="ad-sec" data-k="${k}"${open[k] ? " open" : ""}><summary><b>${esc(L(zh, en))}</b> <span class="muted small">${addrLink(C[k])}</span></summary>${stateGrid(k)}${cards ? `<div class="ad-acts">${cards}</div>` : `<p class="muted small">${L("你在這份合約沒有可以做的操作", "No actions available for you here")}</p>`}</details>`;
@@ -376,7 +380,10 @@ ${roleTable()}${batchBar()}${lookupBox()}${sections}`;
         return loading;
     }
     CH.onAccount(() => load());
+    addEventListener("hashchange", () => jumpBtn(st.ok && visible()));
     new MutationObserver(() => render()).observe(document.documentElement, { attributes: true, attributeFilter: ["lang"] });
     if (CH.account) load();
+    /* RPC 偶爾失敗（限流）時自動重試，避免面板一直不出現 */
+    setInterval(() => { if (CH.account && !st.ok && !loading) load(); }, 8000);
     window.ASCAdmin = { load, state: st, actions: A };
 })();

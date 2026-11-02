@@ -233,7 +233,7 @@
     function go(page, sub, push = true) {
         S.page = page;
         if (sub && page !== "home") S[page] = sub;
-        if (push) history.replaceState(null, "", page === "home" ? location.pathname + location.search : `#${page}/${S[page]}`);
+        if (push) history.replaceState(null, "", page === "home" ? location.pathname + location.search : page === "admin" ? "#admin" : `#${page}/${S[page]}`);
         draw();
     }
     function fromHash() {
@@ -242,6 +242,7 @@
         const [p, s] = h.split("/");
         if (p === "nft" || p === "tok") go(p, s, false);
         else if (p === "home") go("home", null, false);
+        else if (p === "admin") { go("admin", null, false); window.scrollTo(0, 0); }
     }
     $$("[data-go]").forEach((b) => (b.onclick = () => go(b.dataset.go)));
     $$("[data-subs] .sub").forEach((b) => (b.onclick = () => go(b.parentElement.dataset.subs, b.dataset.sub)));

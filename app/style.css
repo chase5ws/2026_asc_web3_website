@@ -306,3 +306,6 @@ html{scroll-padding-top:90px}
 .ad-del{margin-left:8px;border:0;background:transparent;color:var(--muted);font-size:16px;line-height:1}
 .ad-msg:empty{display:none}
 @media (max-width:640px){.ad-acts{grid-template-columns:minmax(0,1fr)}}
+
+.sw3.p-admin .thumb{opacity:0}
+.ad-jump[aria-pressed="true"]{background:var(--red);border-color:var(--red)}
