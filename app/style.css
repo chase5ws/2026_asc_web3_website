@@ -4,7 +4,9 @@ body{margin:0;background:#04081a;color:var(--ink);font:15px/1.65 "Noto Sans TC",
 a{color:#41d3ff;text-decoration:none}a:hover{text-decoration:underline}
 button,input,select{font-family:inherit}button{cursor:pointer}
 .hidden{display:none!important}
-.app{max-width:1440px;margin:0 auto;min-height:100vh;background:var(--bg)}
+.app{max-width:1440px;margin:0 auto;min-height:100vh;background:transparent;position:relative;z-index:1}
+/* 整頁背景：深藍漸層＋「ASC鏢局」浮水印（assets/site-bg.jpg），固定不隨捲動 */
+body::before{content:"";position:fixed;inset:0;z-index:0;pointer-events:none;background:url("../assets/site-bg.jpg") center top/cover no-repeat,var(--bg)}
 html{background:#04081a}
 
 /* 最上方 */
