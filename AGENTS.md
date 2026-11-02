@@ -1,28 +1,31 @@
 # AGENTS.md — 給 AI 協作者與開發者
 
 ## 專案
-江湖鏢局金庫的公開網頁（純靜態，沒有建置步驟）。讀 Polygon 鏈上的點數金庫 **AscPoint**（`2022_web3_solidity_asc_smart_contract`，點數＝ERC-20 代幣 ASC，0 位小數），玩家用 MetaMask 兌換、轉 ASC；顯示信物 NFT。**Discord 機器人（`2026_asc_discord_bot`）只負責綁定錢包**，兩個專案只透過綁定 API 溝通。使用者用中文溝通。
+ASC 鏢局的公開網頁（純靜態，沒有建置步驟，GitHub Pages）。**一頁式**（`index.html`＋`app/`）串接 Polygon 上的 V2 四份合約：金庫 AscPointV2（ASC）、喵武士 AscCatSamuraiV2、配件 AscCatParts、市場 AscMarket（合約專案 `2022_web3_solidity_asc_smart_contract`；已上鏈那版的原始碼與 ABI 在本資料夾 `contracts-asc/`）。**Discord 機器人（`2026_asc_discord_bot`）只負責綁定錢包**，兩邊只透過綁定 API 溝通。使用者用中文溝通。
 
 ## 鏈上地址（Polygon 137）
-- 金庫 AscPoint／ASC：`0x9a431fED8Bc5fa595E5c9fdB1abb0a3119fBD5Ad`（部署區塊 96045773，owner＝Safe `0x7c532A61349814633CdE4f81652Cb0E35BEB75f6`）
-- USDT0：`0xc2132D05D31c914a87C6611C10748AEb04B58e8F`（6 位小數，目前池子的代幣）
-- 信物 NFT：`0x39c774673A25B0f1F600Bf39edF639c0f44a7488`（介面不確定，`nft/page.js` 每個欄位讀不到就隱藏）
+- 見 `config.js`（`vault`、`nft`、`parts`、`market`、`usdt`、部署區塊、Safe）。owner＝Safe `0x7c532A61349814633CdE4f81652Cb0E35BEB75f6`。
+- 舊系統：V1 金庫 `0x9a431fED8Bc5fa595E5c9fdB1abb0a3119fBD5Ad`、喵武士 V1 `0x39c774673A25B0f1F600Bf39edF639c0f44a7488`（`config.js` 的 `nftV1`）。
 
-## 檔案（多頁，每頁一個資料夾）
-- 每頁 `<body data-page="home|wallet|story|rules|nft|bind" data-root="./ 或 ../">`，依序載入 ethers（cdnjs）→ `{root}config.js` → `{root}shared/lang.js` → `{root}shared/core.js` → 該頁程式（首頁 `home.js`，其他 `資料夾/page.js`）。CSS 一律 `{root}shared/style.css`。
-- `shared/core.js` → `window.ASC`：
-  - 工具：`C E $ L esc say short link num tenth pct date unitOf TIERS ROOT PAGE`；`lang`／`state`／`account` 是 getter。
-  - 鏈：`provider vault iface refresh() connect() walletSigner() sendTx(msgEl, label, fn, contract=vault) explain(e) loadHistory()`（回傳 Map 代幣小寫地址 → `[{t,p}]`）。
-  - 事件：`onUpdate(fn)` 每次讀到鏈上資料（有就立刻呼叫一次）、`onLang(fn)` 切換語言後。
-  - 自動：畫導覽列（`PAGES` 陣列，加新頁改這裡＋lang 的 `nav.*`／`page.*`）、頁尾 `#foot`、`.reveal` 淡入、底部「往下捲」提示、`eth_accounts` 靜默帶入已授權錢包（換頁不用再連）、每 `refreshSeconds` 更新（story、bind 不讀鏈）、`#bind=` 轉到 `bind/`。
-  - `readPool`：`query("pool 0x帳號")` 的數字陣列 `[點數, 門檻OK, 期末, 持有天數, 比例bps]＋每種代幣 8 個 [餘額, 保底, 鎖住, 可兌換, 100點份額, 每人上限, 本期剩餘, 全部可得]`；代幣地址從文字 `|| 符號 0x地址:` 解析。`readAll` 另讀 `status`、`rule`、`totalSupply`。
-  - 走勢：`loadHistory()` 從 `deployBlock` 分段 `getLogs`，快取 localStorage `asc-history:金庫`，`replay()` 依合約規則重算每筆交易後的「每 1 ASC 價值」。
-- `shared/style.css`：深藍＋紅（`:root` 變數），斷點 960／640px；Apple 式：`.screen`（一整個畫面）、`.display` 大標、`.eyebrow`、`.lead`、`.hero-price`、`.cue`（往下捲提示）、`.reveal`＋`.d1~.d3`（淡入延遲）、`.tiles/.tile`（前往其他頁）、`.next`（下一頁）、`.chap`（故事章節，`.flip` 左右交換）、`.story-hero`。整頁浮水印 `body::before`（`--wm` SVG）。
-- `shared/lang.js`：`ASC_TEXT`（`zh`／`en`）與 `ASC_STORY`。HTML 用 `data-i18n`／`data-i18n-html`／`data-i18n-ph`；**新增文字要兩種語言都加**。
-- `home.js`：大字幣值、兩邊池子、走勢圖（階梯線）、數據。`wallet/page.js`：`previewFor()` 與合約相同算法、`fill()` 二分搜尋、兌換與轉 ASC 防呆。`story/page.js`：章節依語言重畫。`rules/page.js`、`nft/page.js`（NFT 每個欄位讀不到就隱藏）、`bind/page.js`（`GET`／`POST {botApi}/api/bind/<金鑰>`，`personal_sign`）。
-- `config.js`：`window.ASC_CONFIG`（鏈、RPC、`vault`、`deployBlock`、`safe`、`nft`、`botApi`、`refreshSeconds`）。
-- `serve.js`：零依賴靜態伺服器：只給 html/js/css/圖片，資料夾給 `index.html`（`/wallet` 301 到 `/wallet/`），擋隱藏檔、`..`、`serve.js`、`package.json`。
-- `.github/workflows/pages.yml`：部署到 GitHub Pages（要複製所有頁面資料夾，見 README）。
+## 檔案
+| 檔案 | 說明 |
+|---|---|
+| `index.html` | 整頁版面；載入 ethers（cdnjs）→ `config.js` → `app/i18n.js`、`chain.js`、`look.js`、`price.js`、`ui.js`、`nft.js`、`market.js`、`token.js`、`admin.js`（都帶 `?v=` 版本號，改檔要換） |
+| `app/i18n.js` | `ASC_T`（`zh`／`en`，HTML 用 `data-t`；**新增文字兩種語言都要加**）、`ASC_STORY`（四章故事）、`ASC_NAMES`（部位／稀有度／配件中文名） |
+| `app/chain.js` | `window.ASCChain`：ABI、唯讀 RPC、連錢包（自動切到 Polygon）、錯誤解析、ERC-20 授權、分段 getLogs |
+| `app/look.js` | traits.json、配件清單、每顆外觀（`v2/state.json`＋最新事件，算法同 sync_v2.py）、疊圖 |
+| `app/price.js` | 走勢：`v2/price.json`＋最新事件 |
+| `app/ui.js` | 狀態、分頁（網址 hash）、語言（localStorage `asc-lang`＝`zh`／`en`）、錢包狀態列、讀鏈、送交易訊息；`#bind=` 轉到 `bind/` |
+| `app/nft.js`、`app/market.js`、`app/token.js` | 各區塊 |
+| `app/admin.js` | 管理員面板（見下方紀錄） |
+| `app/style.css` | 全站樣式（首頁、服務條款、隱私權、綁定頁共用） |
+| `bind/` | 綁定錢包頁（獨立小頁：`index.html`＋`page.js`，自己帶中英文字，只用 `config.js` 的 `botApi` 和 `app/style.css`；`GET`／`POST {botApi}/api/bind/<金鑰>`、`personal_sign`，不載入 ethers） |
+| `terms/`、`privacy/` | 服務條款、隱私權政策 |
+| `assets/` | 圖片（見 `assets/README.md`） |
+| `contracts-asc/` | 主網合約原始碼／ABI 快照（**不上網站**） |
+| `config.js` | `window.ASC_CONFIG`：鏈、RPC、合約地址、部署區塊、`assets`（外觀資料 GitHub Pages）、`botApi`、`refreshSeconds` |
+| `serve.js` | 零依賴本機伺服器（只給 html/js/css/圖片） |
+| `.github/workflows/pages.yml` | GitHub Pages：只複製 `index.html config.js app assets bind terms privacy` |
 
 ## 原則
 - 不放任何機密、不依賴後端；機器人離線時只有綁定錢包不能用。
@@ -42,8 +45,9 @@
 ## 2026-11-02 整頁背景＋導覽列縮小
 - `app/style.css`：`--pagebg`＝內嵌 SVG（`<pattern>` 200×76 一格、`rotate(-22)`，灰藍＋紅「ASC鏢局」）＋深藍漸層，全部 `background-attachment:fixed`，不用圖片。`body::before` 與頂部 `.top` 都用 `--pagebg`，所以導覽列和頁面背景接得起來、沒有色差，內容捲到底下也不會透出來。調密度改 pattern 的 width/height 與 font-size。
 - 頂部導覽列縮小：logo、連結錢包、狀態 chip、語言切換、三分頁、子分頁的高度與字級都變小；按鈕底色改半透明。
-- 網站 logo 換成「鏢」字刀劍漫畫圖：`assets/logo.png`（192×192，裁中間）取代左上角的「ASC」文字方塊（首頁、綁定頁、shared/core.js）；`favicon.png`、`apple-touch-icon.png`、`icon-512.png` 也換成同一張；移除 `favicon.svg`（舊的 ASC 文字圖示，移到 `_to_delete/`）。
+- 網站 logo 換成「鏢」字刀劍漫畫圖：`assets/logo.png`（192×192，裁中間）取代左上角的「ASC」文字方塊（首頁、綁定頁）；`favicon.png`、`apple-touch-icon.png`、`icon-512.png` 也換成同一張；移除 `favicon.svg`（舊的 ASC 文字圖示，移到 `_to_delete/`）。
 - 導覽列（`app/style.css` 最後一段）：一行，`.toprow` 三欄 `1fr auto 1fr` 讓三分頁 `#sw3` 永遠置中；左 品牌、中 `.mid`（`#sw3`＋`.subnav`）、右 `.right`（錢包＋下方小字狀態 chip、語言切換在最右）。桌機 NFT／Token 的子選單在該按鈕正下方、左緣對齊按鈕往右排（底線樣式），進到該分頁就出現；首頁沒有。手機（≤860px）子選單仍是分頁下方的底線列，chip 只在金庫未驗證／已標記時出現。桌機高度約 79px（NFT／Token 頁約 115px，原 195）。`app/*.css|js` 帶 `?v=`（目前 20261102j）避免快取，改檔記得換。
 - 網站圖示改成跟左上角 logo 一樣：直接用 `logo.png` 那張圖、20% 圓角、無框、四角透明，`favicon-32.png`、`favicon.png`（64）、`icon-512.png`（都是 logo.png 整張縮放，不裁切）；`apple-touch-icon.png` 同一張但維持方形（iOS 自己裁圓角）。圖示連結加 `?v=20261102f`。首頁 `<title>`／`og:title` 改為「ASC鏢局」。
 - 管理員面板 `app/admin.js`（＋`app/style.css` 的 `.ad-*`、`index.html` 的 `#adminPanel`）：連結錢包後讀 4 份合約的 `owner/pendingOwner/admin/operator`，owner 是合約時讀 Safe `getOwners/getThreshold`；只有 owner／admin／operator／Safe 簽署人／新主人才顯示。每個管理函式一張卡（清單 `A`，權限 operator／admin／★owner／pending，對照合約 repo `AGENTS.md` 第 6 節）：有權限就直接送交易；owner 是 Safe 就「加入 Safe 批次」→ 下載 Transaction Builder JSON（批次存在 localStorage `asc-admin-batch`）。另有狀態讀數與「查詢錢包」。合約改介面要同步改 `A`。測試：雲端 Playwright＋假 RPC／假 MetaMask：admin 直接送 setOpen、Safe 批次 withdrawReserve＋setAdmin 解碼正確、參數檢查、沒權限的錢包看不到面板。
 - `contracts-asc/`：目前主網 4 份 V2 合約（AscPointV2／AscCatSamuraiV2／AscCatParts／AscMarket）的原始碼、ABI、部署紀錄快照，給只拿到網站資料夾的人／AI 參考。pages.yml 不複製它，所以不會上網站。合約專案已去 ASC 化（Token／NFT／Part／Market），這份是已上鏈那一版。
+- 2026-11-02 瘦身：刪除沒用到的圖片 `story-spread.jpg`、`icon-512.png`（約 640KB）；`app/i18n.js` 刪掉 73 組沒用到的中英文字（舊版頁面留下的）；`app/style.css` 刪掉沒用到的樣式（`.eco .lib .shop .minicats .pill .bar .box .extra .grid3 .side-sw .eq-right .tile.zero`）；綁定頁改成獨立小頁、刪除整個 `shared/`（舊多頁版框架，約 78KB）並不再載入 ethers（約 500KB），網址 `/bind/#bind=` 不變；清掉指向不存在圖片（hero-bg、bind-bg、og.jpg）的引用。驗證：首頁、NFT、Token 每個子頁面改前改後截圖逐像素相同；綁定頁用假機器人 API＋假 MetaMask 測過讀取、簽名（訊息 hex 與 ethers 相同）、送回、中英切換、無效連結。

@@ -1,24 +1,18 @@
-# 圖片欄位（把圖片用下面的檔名放進這個資料夾就會自動顯示）
+# 圖片（網站實際用到的全部圖片都在這裡）
 
-沒有放圖片時，網頁會用深藍＋紅的漸層代替，不會破版。
+換圖時用**同樣的檔名**覆蓋即可；改完記得在用到它的頁面把 `?v=` 版本號換掉，避免瀏覽器快取舊圖。
 
-左上角與綁定頁中間的圖示是文字「ASC」，綁定頁背景另有「ASC鏢局」斜向重複的浮水印（`index.html` 的 `--wm`），不需要圖片。
+| 檔名 | 用在哪裡 | 尺寸 |
+|---|---|---|
+| `logo.png` | 左上角 logo、綁定頁中間的圖示 | 192×192 |
+| `favicon-32.png`、`favicon.png` | 瀏覽器分頁圖示（logo 同一張圖，20% 圓角） | 32×32、64×64 |
+| `apple-touch-icon.png` | iPhone 加到主畫面的圖示 | 180×180 |
+| `author.png` | 首頁「開發者」頭像（顯示 88px 圓形） | 256×256 |
+| `box.png` | NFT 盲盒（鑄造區、還沒解盲的喵武士） | 384×384 |
+| `story-*.jpg` | 首頁「喵喵武士的喵太」四章故事（章節對應在 `app/i18n.js` 的 `ASC_STORY`）；`story-samurai.jpg` 另外當故事區塊的背景 | 寬 646～1600 |
 
-瀏覽器分頁圖示已經做好（`favicon.svg`、`favicon.png` 64×64、`apple-touch-icon.png` 180×180、`icon-512.png` 512×512，都是紅藍漸層的「ASC」），想換成自己的圖時，用同樣的檔名與尺寸覆蓋即可。
+故事圖從漫畫第一話裁切：`story-sky.jpg`（第一章）、`story-samurai.jpg`（第二章）、`story-street.jpg`（第三章）、`story-attack.jpg`、`story-qi.jpg`、`story-slash.jpg`、`story-return.jpg`（第四章）。
 
-| 檔名 | 用在哪裡 | 建議尺寸 | 說明 |
-|---|---|---|---|
-| `hero-bg.jpg` | 首頁主視覺（電腦、平板） | 2560×1200 | 文字在左側，畫面重點放中間偏右；上方會疊一層深色漸層 |
-| `hero-bg-mobile.jpg` | 首頁主視覺（手機，寬度 640px 以下） | 1080×1350 | 直式 4:5 |
-| `bind-bg.jpg` | 綁定錢包頁背景（電腦） | 1920×1080 | 正中間會蓋一張卡片，重點放四周 |
-| `bind-bg-mobile.jpg` | 綁定錢包頁背景（手機） | 1080×1920 | 直式 9:16 |
-| `asc.png` | 即時幣值裡的 ASC 代幣圖示 | 256×256 | 會裁成圓形 |
-| `og.jpg` | 分享到 Discord／社群時的預覽圖 | 1200×630 | |
-
-## 鏢局故事的漫畫（已放好）
-
-從漫畫第一話裁切：`story-samurai.jpg`（橫幅、第二章）、`story-sky.jpg`（第一章）、`story-street.jpg`（第三章）、`story-attack.jpg`、`story-qi.jpg`、`story-slash.jpg`、`story-return.jpg`（第四章）、`story-spread.jpg`（整頁跨頁）。換圖時用同樣的檔名覆蓋；章節對應的圖片在 `shared/lang.js` 的 `ASC_STORY`；故事頁封面用 `story-samurai.jpg`，首頁圖卡用 `story-samurai.jpg`、`story-qi.jpg`。
-
-- 風格：江湖＋區塊鏈的「科技江湖」，深藍底、紅色點綴（例如：夜色中的鏢局、帶電路紋的山水、發光的鏢旗與令牌）。
-- 背景圖用 JPG，盡量壓在 500 KB 以內；圖示用 PNG。
-
+- 風格：深藍底、紅色點綴；背景浮水印「ASC鏢局」是 CSS 產生的（`app/style.css` 的 `--pagebg`），不需要圖片。
+- 照片用 JPG、圖示用 PNG，單張盡量 300 KB 以內。
+- NFT 圖層、配件縮圖、metadata 不在這裡，在 `2026_asc_web3_ipfs`（`config.js` 的 `assets`）。

@@ -3,37 +3,46 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>江湖鏢局金庫</title>
-<meta name="description" content="江湖鏢局的鏈上金庫：即時幣值、用 ASC 兌換代幣、綁定錢包、信物 NFT、鏢局故事。">
+<title>綁定錢包｜ASC 鏢局</title>
+<meta name="description" content="ASC 鏢局：用錢包簽名，把 Discord 帳號綁定到你的錢包。">
 <meta name="theme-color" content="#070d1f">
-<meta property="og:title" content="江湖鏢局金庫">
-<meta property="og:description" content="科技江湖・鏈上鏢局：持有越久，換得越多。">
-<meta property="og:image" content="../assets/og.jpg">
+<meta name="robots" content="noindex">
 <link rel="icon" type="image/png" sizes="32x32" href="../assets/favicon-32.png?v=20261102f">
 <link rel="icon" type="image/png" sizes="64x64" href="../assets/favicon.png?v=20261102f">
 <link rel="apple-touch-icon" href="../assets/apple-touch-icon.png?v=20261102f">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@600;900&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="../shared/style.css">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@600;900&family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../app/style.css?v=20261102l">
+<style>
+.bindview{position:relative;z-index:1;min-height:100vh;display:grid;place-items:center;padding:20px}
+.bindcard{width:min(440px,100%);text-align:center;display:grid;gap:14px;padding:30px 24px;border-radius:22px;background:rgba(15,27,58,.86);border:1px solid var(--line2);box-shadow:0 30px 80px rgba(0,0,0,.55),0 0 0 1px rgba(200,32,46,.2);backdrop-filter:blur(8px)}
+.bindcard .logo{width:84px;height:84px;margin:0 auto;border-radius:22px}
+.bindcard h1{margin:0;font:900 26px var(--serif);letter-spacing:.06em}
+.bindcard p{margin:0}
+.bindcard .go{width:100%;min-height:54px;border:0;border-radius:12px;background:var(--red);color:#fff;font-size:17px;font-weight:700}
+.bindcard .go:disabled{opacity:.45;cursor:not-allowed}
+.bindcard details{text-align:left;font-size:12.5px;color:var(--muted)}
+.bindcard pre{white-space:pre-wrap;word-break:break-word;background:var(--bg2);border:1px solid var(--line);border-radius:10px;padding:10px;margin:8px 0 0;color:var(--soft)}
+.bindcard .msg{white-space:pre-line}.bindcard .msg.err{color:#ff8a8a}.bindcard .msg.warn{color:var(--gold)}
+.bindcard .lang{justify-self:center;padding:8px 14px;border-radius:10px;background:transparent;border:1px solid var(--line2);color:var(--ink);font-size:13px;font-weight:700}
+.small{font-size:13px}.muted{color:var(--muted)}
+</style>
 </head>
-<body data-page="bind" data-root="../">
-<div id="bindView" class="bindview">
+<body>
+<main class="bindview">
   <div class="bindcard">
-    <div class="logo"><img src="../assets/logo.png" alt="ASC 鏢局"></div>
-    <h1 data-i18n="bind.title"></h1>
+    <div class="logo"><img src="../assets/logo.png" alt="ASC 鏢局" width="84" height="84"></div>
+    <h1 data-i18n="title"></h1>
     <p class="muted" id="bindWho"></p>
-    <button id="bindGo" disabled data-i18n="bind.go"></button>
+    <button class="go" id="bindGo" type="button" disabled data-i18n="go"></button>
     <p id="bindMsg" class="msg"></p>
-    <details><summary data-i18n="bind.text"></summary><pre id="bindText">…</pre></details>
-    <p class="faint small" data-i18n="safety"></p>
-    <button class="lang" data-lang-toggle></button>
+    <details><summary data-i18n="text"></summary><pre id="bindText">…</pre></details>
+    <p class="muted small" data-i18n="safety"></p>
+    <button class="lang" id="langBtn" type="button"></button>
   </div>
-</div>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.13.4/ethers.umd.min.js"></script>
+</main>
 <script src="../config.js"></script>
-<script src="../shared/lang.js"></script>
-<script src="../shared/core.js"></script>
-<script src="page.js"></script>
+<script src="page.js?v=20261102l"></script>
 </body>
 </html>
