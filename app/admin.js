@@ -188,7 +188,7 @@
         const rows = KINDS.map(([k, zh, en]) => {
             const r = st.roles[k], m = me(k), s = safeOf(r.owner);
             const mine = [m.owner && "owner", m.signer && L("Safe 簽署人", "Safe signer"), m.admin && "admin", m.op && "operator", m.pending && L("新主人", "pending")].filter(Boolean).join(L("、", ", ")) || "–";
-            return `<tr><td>${esc(L(zh, en))}</td><td>${addrLink(r.owner)}${s ? ` <span class="ad-tag">Safe ${s.th}/${s.owners.length}</span>` : ""}${r.pending && r.pending !== ZERO ? `<br><small class="muted">${L("等待接受", "pending")}：${addrLink(r.pending)}</small>` : ""}</td><td>${addrLink(r.admin)}</td><td>${k === "market" ? "—" : addrLink(r.operator)}</td><td><b>${esc(mine)}</b></td></tr>`;
+            return `<tr><td>${esc(L(zh, en))}</td><td>${addrLink(r.owner)}${s && s.th ? ` <span class="ad-tag">Safe ${s.th}/${s.owners.length}</span>` : ""}${r.pending && r.pending !== ZERO ? `<br><small class="muted">${L("等待接受", "pending")}：${addrLink(r.pending)}</small>` : ""}</td><td>${addrLink(r.admin)}</td><td>${k === "market" ? "—" : addrLink(r.operator)}</td><td><b>${esc(mine)}</b></td></tr>`;
         }).join("");
         return `<div class="ad-scroll"><table class="ad-table"><thead><tr><th>${L("合約", "Contract")}</th><th>owner</th><th>admin</th><th>operator</th><th>${L("你的權限", "Your role")}</th></tr></thead><tbody>${rows}</tbody></table></div>`;
     }
@@ -238,12 +238,28 @@ ${batch.length ? `<ol>${list}</ol>` : `<p class="muted small">${L("還沒有加�
 <div class="ad-btns"><button type="button" id="adLookBtn">${L("查詢", "Look up")}</button></div><div class="ad-state" id="adLookOut"></div></div>`;
     }
 
-    let open = { vault: true };
+    let open = {};
+    /* 頁首「管理」按鈕：面板在頁面很下面，有權限時在連結錢包旁邊顯示一顆跳轉鈕 */
+    function jumpBtn(show) {
+        let b = $("adminJump");
+        if (!b && show) {
+            const host = $("connect")?.parentElement;
+            if (!host) return;
+            b = document.createElement("button");
+            b.id = "adminJump"; b.type = "button"; b.className = "connect on";
+            b.addEventListener("click", () => { const p = $("adminPanel"); p.classList.remove("hidden"); p.scrollIntoView({ behavior: "smooth", block: "start" }); });
+            host.insertBefore(b, $("connect"));
+        }
+        if (!b) return;
+        b.textContent = L("⚙ 管理", "⚙ Admin");
+        b.classList.toggle("hidden", !show);
+    }
     function render() {
         const box = $("adminPanel");
         if (!box) return;
         const show = st.ok && visible();
         box.classList.toggle("hidden", !show);
+        jumpBtn(show);
         if (!show) return;
         const sections = KINDS.map(([k, zh, en]) => {
             const cards = A.map((x, i) => (x.c === k ? actionCard(x, i) : "")).join("");
