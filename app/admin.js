@@ -239,22 +239,12 @@ ${batch.length ? `<ol>${list}</ol>` : `<p class="muted small">${L("還沒有加�
     }
 
     let open = { vault: true };
-    /* 頁首「管理」按鈕：有權限的錢包連線後出現在錢包按鈕左邊，點了進入獨立的管理頁（#admin） */
-    const onAdminPage = () => location.hash.slice(1).split("/")[0] === "admin";
+    /* 導覽列「⚙ 管理」按鈕（index.html 的 #adminJump，data-go="admin" 由 ui.js 切頁）：有權限的錢包連線後才出現 */
     function jumpBtn(show) {
-        let b = $("adminJump");
-        if (!b && show) {
-            const host = $("connect")?.parentElement;
-            if (!host) return;
-            b = document.createElement("button");
-            b.id = "adminJump"; b.type = "button"; b.className = "connect on ad-jump";
-            b.addEventListener("click", () => { location.hash = "admin"; window.scrollTo(0, 0); });
-            host.insertBefore(b, $("connect"));
-        }
+        const b = $("adminJump");
         if (!b) return;
         b.textContent = L("⚙ 管理", "⚙ Admin");
         b.classList.toggle("hidden", !show);
-        b.setAttribute("aria-pressed", String(onAdminPage()));
     }
     function render() {
         const box = $("adminPanel");
@@ -380,7 +370,6 @@ ${roleTable()}${batchBar()}${lookupBox()}${sections}`;
         return loading;
     }
     CH.onAccount(() => load());
-    addEventListener("hashchange", () => jumpBtn(st.ok && visible()));
     new MutationObserver(() => render()).observe(document.documentElement, { attributes: true, attributeFilter: ["lang"] });
     if (CH.account) load();
     /* RPC 偶爾失敗（限流）時自動重試，避免面板一直不出現 */

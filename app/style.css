@@ -308,4 +308,8 @@ html{scroll-padding-top:90px}
 @media (max-width:640px){.ad-acts{grid-template-columns:minmax(0,1fr)}}
 
 .sw3.p-admin .thumb{opacity:0}
-.ad-jump[aria-pressed="true"]{background:var(--red);border-color:var(--red)}
+.navrow{display:flex;align-items:center;justify-content:center;gap:8px;width:100%}
+.navrow .sw3{margin:0}
+.adnav{min-height:42px;padding:0 16px;border-radius:999px;border:1px solid #6b5a33;background:rgba(11,21,48,.55);color:var(--gold);font-size:14px;font-weight:700;white-space:nowrap}
+.adnav[aria-pressed="true"]{background:var(--gold);color:#111;border-color:var(--gold)}
+@media (max-width:760px){.navrow .sw3{flex:1;width:auto}.adnav{min-height:38px;padding:0 12px;font-size:13px}}

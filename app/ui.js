@@ -244,7 +244,7 @@
         else if (p === "home") go("home", null, false);
         else if (p === "admin") { go("admin", null, false); window.scrollTo(0, 0); }
     }
-    $$("[data-go]").forEach((b) => (b.onclick = () => go(b.dataset.go)));
+    $$("[data-go]").forEach((b) => (b.onclick = () => { go(b.dataset.go); if (b.dataset.go === "admin") { window.ASCAdmin?.load(); window.scrollTo(0, 0); } }));
     $$("[data-subs] .sub").forEach((b) => (b.onclick = () => go(b.parentElement.dataset.subs, b.dataset.sub)));
     $$("[data-jump]").forEach((b) => (b.onclick = () => { const [p, s] = b.dataset.jump.split(":"); go(p, s); window.scrollTo(0, 0); }));
     $$("[data-lang]").forEach((b) => (b.onclick = () => { S.lang = b.dataset.lang; store.set("asc-lang", S.lang); draw(); }));
