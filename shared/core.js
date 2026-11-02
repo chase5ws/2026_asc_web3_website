@@ -280,7 +280,7 @@
     function renderHeader() {
         const h = document.createElement("header");
         h.innerHTML = `<div class="bar">
-  <a class="brand" href="${ROOT}"><span class="logo">ASC</span><span><b data-i18n="brand.title"></b><small data-i18n="brand.sub"></small></span></a>
+  <a class="brand" href="${ROOT}"><span class="logo"><img src="${ROOT}assets/logo.png" alt=""></span><span><b data-i18n="brand.title"></b><small data-i18n="brand.sub"></small></span></a>
   <nav>${PAGES.map(([k, href]) => `<a href="${ROOT}${href}" class="${k === PAGE ? "on" : ""}" data-i18n="nav.${k}"></a>`).join("")}</nav>
   <div class="row"><button class="lang" data-lang-toggle></button><button id="connect"></button></div>
 </div>`;
