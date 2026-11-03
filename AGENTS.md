@@ -51,3 +51,11 @@ ASC 鏢局的公開網頁（純靜態，沒有建置步驟，GitHub Pages）。*
 - 管理員面板 `app/admin.js`（＋`app/style.css` 的 `.ad-*`、`index.html` 的 `#adminPanel`）：連結錢包後讀 4 份合約的 `owner/pendingOwner/admin/operator`，owner 是合約時讀 Safe `getOwners/getThreshold`；只有 owner／admin／operator／Safe 簽署人／新主人才顯示。每個管理函式一張卡（清單 `A`，權限 operator／admin／★owner／pending，對照合約 repo `AGENTS.md` 第 6 節）：有權限就直接送交易；owner 是 Safe 就「加入 Safe 批次」→ 下載 Transaction Builder JSON（批次存在 localStorage `asc-admin-batch`）。另有狀態讀數與「查詢錢包」。合約改介面要同步改 `A`。測試：雲端 Playwright＋假 RPC／假 MetaMask：admin 直接送 setOpen、Safe 批次 withdrawReserve＋setAdmin 解碼正確、參數檢查、沒權限的錢包看不到面板。
 - `contracts-asc/`：目前主網 4 份 V2 合約（AscPointV2／AscCatSamuraiV2／AscCatParts／AscMarket）的原始碼、ABI、部署紀錄快照，給只拿到網站資料夾的人／AI 參考。pages.yml 不複製它，所以不會上網站。合約專案已去 ASC 化（Token／NFT／Part／Market），這份是已上鏈那一版。
 - 2026-11-02 瘦身：刪除沒用到的圖片 `story-spread.jpg`、`icon-512.png`（約 640KB）；`app/i18n.js` 刪掉 73 組沒用到的中英文字（舊版頁面留下的）；`app/style.css` 刪掉沒用到的樣式（`.eco .lib .shop .minicats .pill .bar .box .extra .grid3 .side-sw .eq-right .tile.zero`）；綁定頁改成獨立小頁、刪除整個 `shared/`（舊多頁版框架，約 78KB）並不再載入 ethers（約 500KB），網址 `/bind/#bind=` 不變；清掉指向不存在圖片（hero-bg、bind-bg、og.jpg）的引用。驗證：首頁、NFT、Token 每個子頁面改前改後截圖逐像素相同；綁定頁用假機器人 API＋假 MetaMask 測過讀取、簽名（訊息 hex 與 ethers 相同）、送回、中英切換、無效連結。
+
+## 2026-11-03 管理員面板 UI 改版（`app/admin.js`、`app/style.css` 的 `.adm-*`）
+- 右上 **模式切換**：⚡ 直接送出（連線錢包送交易）／🛡 Safe 模式（所有按鈕只「加入批次」，像購物車）；記在 localStorage `asc-admin-mode`。owner 不是 Safe 時沒有 Safe 模式；只是 Safe 簽署人時固定 Safe 模式。
+- **快速開關**（清單 `Q`）：兌換與互轉、買 ASC、只限驗證（setPolicy 其他參數沿用現值）、白名單鑄造、NFT 運作（pause/unpause）、轉蛋只限 VIP、市場交易。直接模式＝確認框後送交易；Safe 模式＝加入批次，再撥一次取消。
+- 合約分頁（金庫／喵武士／配件／市場／🔧 工具＝超稀有退還＋查詢錢包，記在 `asc-admin-tab`）＋搜尋；每個函式一列可展開，依 operator／admin／★owner 分組；bool 參數改成開關。
+- 右下角 🛒 批次按鈕＋側邊抽屜：依 Safe 分組、顯示解碼後參數、↑↓ 調順序、✕ 刪除、下載 Transaction Builder JSON（格式同前）。批次項目多存 `c`、`sig`（顯示用即時解碼）、`q`（快速開關）、`tag`。
+- `window.confirm／alert` 換成自訂確認框與提示（toast）。`window.ASCAdmin` 多了 `render`、`batch`。
+- 測試：雲端 Playwright＋假狀態（桌機 1366、手機 390 無橫向捲動）：直接模式確認框、Safe 模式開關加入／取消、加入 owner 與 admin 操作、搜尋、調順序、下載 JSON 解碼正確、中英切換、Safe 簽署人鎖定 Safe 模式。

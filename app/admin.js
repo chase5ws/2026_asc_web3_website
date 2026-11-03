@@ -179,76 +179,212 @@
     }
     const visible = () => !!CH.account && KINDS.some(([k]) => { const m = me(k); return m.owner || m.signer || m.admin || m.op || m.pending; });
 
-    /* ── 畫面 ── */
-    const LV = { operator: ["operator", "operator"], admin: ["admin", "admin"], owner: ["★ owner", "★ owner"], pending: ["新主人", "pending owner"] };
+    /* ── 畫面 ──
+     *   兩種模式（右上切換）：⚡ 直接送出（用連線錢包送交易）／🛡 Safe 模式（所有按鈕只加入批次＝購物車，最後下載 Transaction Builder JSON）。
+     *   owner 不是 Safe 時沒有 Safe 模式；只是 Safe 簽署人（沒有直接權限）時固定 Safe 模式。
+     *   版面：權限摘要 → 快速開關 → 分頁（金庫／喵武士／配件／市場／工具）＋搜尋 → 右下角批次按鈕＋側邊抽屜。 */
     const short = (a) => (a ? CH.short(a) : "–");
     const addrLink = (a) => (a ? `<a href="${CH.link("address", a)}" target="_blank" rel="noopener">${short(a)}</a>` : "–");
+    const KN = (k) => { const r = KINDS.find(([x]) => x === k); return r ? L(r[1], r[2]).split(" ")[0] : k || ""; };
+    const ls = { get: (k, d) => { try { return localStorage.getItem(k) ?? d; } catch (_) { return d; } }, set: (k, v) => { try { localStorage.setItem(k, v); } catch (_) {} } };
+    const GROUPS = [["operator", "日常操作（operator）", "Daily (operator)"], ["admin", "參數設定（admin）", "Settings (admin)"], ["owner", "★ owner（Safe 多簽）", "★ Owner (Safe multisig)"], ["pending", "接受主人", "Accept ownership"]];
 
+    let mode = ls.get("asc-admin-mode", "direct"); // direct | safe
+    let tab = ls.get("asc-admin-tab", "vault");
+    let query = "", cartOpen = false;
+    const openRows = new Set();
+    const anySafe = () => KINDS.some(([k]) => safeOf(st.roles[k]?.owner));
+    const anyDirect = () => A.some((x) => canSend(x));
+    const effMode = () => (!anySafe() ? "direct" : !anyDirect() ? "safe" : mode);
+    /* 這個操作要走批次還是直接送：Safe 模式能批次就批次；直接模式能送就送，不能送才批次 */
+    const viaSafe = (x) => (effMode() === "safe" ? canBatch(x) : !canSend(x));
+
+    /* 合約值 → 顯示文字（確認框、批次清單共用） */
+    function fmtArg(type, v) {
+        const arr = (a) => Array.from(a || []);
+        switch (type) {
+            case "addr": return String(v);
+            case "addrs": { const a = arr(v); return a.length > 3 ? `${a.slice(0, 3).map(short).join(", ")} …（${a.length}）` : a.join(", "); }
+            case "uints": case "int8": return arr(v).map(String).join(", ");
+            case "pct8": return arr(v).map((b) => `${Number(b) / 100}%`).join(", ");
+            case "usdt": return usd(v);
+            case "pct": return pct(v);
+            case "bool": return yes(v);
+            default: return String(v);
+        }
+    }
+    const showArgs = (x, args) => x.a.map(([, type, zh, en], i) => [L(zh, en), fmtArg(type, args[i])]);
+
+    /* ── 小工具：確認框、提示 ── */
+    function ask({ title, sub = "", rows = [], danger = false, ok, cancel }) {
+        return new Promise((res) => {
+            const d = document.createElement("div");
+            d.className = "adm-modal";
+            d.innerHTML = `<div class="adm-dlg${danger ? " danger" : ""}" role="dialog" aria-modal="true"><h3>${esc(title)}</h3>${sub ? `<p class="muted small">${sub}</p>` : ""}
+${rows.length ? `<dl class="adm-dl2">${rows.map(([a, b]) => `<div><dt>${esc(a)}</dt><dd>${esc(b)}</dd></div>`).join("")}</dl>` : ""}
+${danger ? `<p class="adm-warn">⚠️ ${L("這個操作影響很大，請再確認一次。", "High impact — please double-check.")}</p>` : ""}
+<div class="adm-btns"><button type="button" class="alt" data-a="0">${esc(cancel || L("取消", "Cancel"))}</button><button type="button" data-a="1">${esc(ok || L("確定", "OK"))}</button></div></div>`;
+            const key = (e) => { if (e.key === "Escape") done(false); };
+            const done = (v) => { d.remove(); document.removeEventListener("keydown", key); res(v); };
+            d.addEventListener("click", (e) => { if (e.target === d) return done(false); const a = e.target.closest("[data-a]"); if (a) done(a.dataset.a === "1"); });
+            document.addEventListener("keydown", key);
+            document.body.appendChild(d);
+            d.querySelector('[data-a="1"]').focus();
+        });
+    }
+    function toast(text, kind = "", hash) {
+        let t = $("admToasts");
+        if (!t) { t = document.createElement("div"); t.id = "admToasts"; t.className = "adm-toasts"; document.body.appendChild(t); }
+        const e = document.createElement("div");
+        e.className = "adm-toast " + kind;
+        e.textContent = text;
+        if (hash) { const a = document.createElement("a"); a.href = CH.link("tx", hash); a.target = "_blank"; a.rel = "noopener"; a.textContent = L("看交易", "View tx"); e.appendChild(a); }
+        t.appendChild(e);
+        while (t.children.length > 3) t.firstChild.remove();
+        setTimeout(() => e.classList.add("out"), hash ? 5000 : 2600);
+        setTimeout(() => e.remove(), hash ? 5400 : 3000);
+    }
+    function confirmIt(x, args, force) {
+        if (!x.warn && !force) return Promise.resolve(true);
+        return ask({ title: L(x.zh, x.en), sub: `${esc(KN(x.c))} · <code>${esc(x.fn)}</code> · ${esc(short(C[x.c]))}`, rows: showArgs(x, args), danger: x.danger, ok: L("送出交易", "Send transaction") });
+    }
+
+    /* ── 送交易／加入批次 ── */
+    async function sendTx(x, args, say) {
+        say(L("請在錢包確認…", "Confirm in your wallet…"));
+        const c = new E.Contract(C[x.c], [x.frag], await CH.signer());
+        const tx = await c[x.fn](...args);
+        say(L("等待上鏈…", "Waiting for confirmation…"), "", tx.hash);
+        const r = await tx.wait();
+        if (!r || r.status !== 1) throw new Error("reverted");
+        say(L("完成", "Done"), "ok", tx.hash);
+        return tx.hash;
+    }
+    function addBatch(x, args, extra = {}) {
+        const r = st.roles[x.c];
+        batch.push({ to: C[x.c], data: new E.Interface([x.frag]).encodeFunctionData(x.fn, args), safe: x.lv === "pending" ? r.pending : r.owner, c: x.c, sig: x.sig, ...extra });
+        saveBatch();
+        afterCart(true);
+        toast(`🛒 ${L("已加入 Safe 批次", "Added to Safe batch")}：${extra.tag ? L(...extra.tag) : L(x.zh, x.en)}（${batch.length}）`, "ok");
+    }
+    function itemView(b) {
+        const x = b.sig && A.find((y) => y.c === b.c && y.sig === b.sig);
+        if (!x) return { title: b.label || short(b.to), fn: "", args: [] };
+        let args = [];
+        try { args = showArgs(x, new E.Interface([x.frag]).decodeFunctionData(x.fn, b.data)); } catch (_) {}
+        return { title: b.tag ? L(...b.tag) : L(x.zh, x.en), fn: x.fn, args, danger: x.danger };
+    }
+
+    /* ── 權限摘要 ── */
     function roleTable() {
         const rows = KINDS.map(([k, zh, en]) => {
-            const r = st.roles[k], m = me(k), s = safeOf(r.owner);
-            const mine = [m.owner && "owner", m.signer && L("Safe 簽署人", "Safe signer"), m.admin && "admin", m.op && "operator", m.pending && L("新主人", "pending")].filter(Boolean).join(L("、", ", ")) || "–";
-            return `<tr><td>${esc(L(zh, en))}</td><td>${addrLink(r.owner)}${s && s.th ? ` <span class="adm-tag">Safe ${s.th}/${s.owners.length}</span>` : ""}${r.pending && r.pending !== ZERO ? `<br><small class="muted">${L("等待接受", "pending")}：${addrLink(r.pending)}</small>` : ""}</td><td>${addrLink(r.admin)}</td><td>${k === "market" ? "—" : addrLink(r.operator)}</td><td><b>${esc(mine)}</b></td></tr>`;
+            const r = st.roles[k], s = safeOf(r.owner);
+            return `<tr><td>${esc(L(zh, en))}</td><td>${addrLink(r.owner)}${s && s.th ? ` <span class="adm-tag">Safe ${s.th}/${s.owners.length}</span>` : ""}${r.pending && r.pending !== ZERO ? `<br><small class="muted">${L("等待接受", "pending")}：${addrLink(r.pending)}</small>` : ""}</td><td>${addrLink(r.admin)}</td><td>${k === "market" ? "—" : addrLink(r.operator)}</td></tr>`;
         }).join("");
-        return `<div class="adm-scroll"><table class="adm-table"><thead><tr><th>${L("合約", "Contract")}</th><th>owner</th><th>admin</th><th>operator</th><th>${L("你的權限", "Your role")}</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+        return `<div class="adm-scroll"><table class="adm-table"><thead><tr><th>${L("合約", "Contract")}</th><th>owner</th><th>admin</th><th>operator</th></tr></thead><tbody>${rows}</tbody></table></div>`;
     }
+    function myRoles(k) {
+        const m = me(k);
+        return [m.owner && "owner", m.signer && L("Safe 簽署人", "Safe signer"), m.admin && "admin", m.op && "operator", m.pending && L("新主人", "pending")].filter(Boolean).join(" · ");
+    }
+    function rolesHtml() {
+        const chips = KINDS.map(([k]) => { const r = myRoles(k); return `<span class="adm-chip${r ? "" : " none"}"><i>${esc(KN(k))}</i>${esc(r || "–")}</span>`; }).join("");
+        return `<details class="adm-roles"><summary><span class="muted small">${L("你的權限", "Your roles")}</span>${chips}<span class="adm-more">${L("地址詳情", "Details")}</span></summary>${roleTable()}</details>`;
+    }
+
+    /* ── 合約狀態 ── */
     function stateGrid(k) {
         const v = st.vault, n = st.nft, m = st.market;
+        const B = (on) => ({ t: yes(on), on });
         const items = {
-            vault: v && [[L("兌換／互轉", "Redeem/transfer"), yes(v.open)], [L("買 ASC", "Buy ASC"), yes(v.depositOpen)], [L("結束模式", "Shutdown"), v.shutdown ? L("是", "Yes") : L("否", "No")], [L("只限驗證", "Verified only"), yes(v.verifiedOnly)],
+            vault: v && [[L("兌換／互轉", "Redeem/transfer"), B(v.open)], [L("買 ASC", "Buy ASC"), B(v.depositOpen)], [L("結束模式", "Shutdown"), v.shutdown ? L("是", "Yes") : L("否", "No")], [L("只限驗證", "Verified only"), B(v.verifiedOnly)],
                 [L("互轉稅", "Transfer tax"), pct(v.transferTaxBps)], [L("被標記扣除", "Flag penalty"), pct(v.flagPenaltyBps)], [L("每期存款上限", "Deposit cap"), Number(v.maxDepositPerPeriod) ? usd(v.maxDepositPerPeriod) : L("不限", "None")], [L("每人每期兌換上限", "Redeem cap"), pct(v.capBps)],
                 [L("起始價", "Start price"), usd(v.startPrice)], [L("手續費分配", "Fee split"), `${pct(v.feeToReserveBps)} / ${pct(v.feeToNextBps)}`], [L("這一期開始", "Period start"), when(v.periodStart)], [L("池子 USDT", "Pool USDT"), usd(v.usdtBal)], [L("保底（可提領）", "Reserve"), usd(v.reserve)], [L("流通 ASC", "ASC supply"), int(v.supply)]],
-            nft: n && [[L("白名單鑄造", "Mint sale"), yes(n.saleOpen)], [L("暫停", "Paused"), n.paused ? L("是", "Yes") : L("否", "No")], [L("已用編號／上限", "Minted / max"), `${int(n.nextId)} / ${int(n.maxSupply)}`], [L("鑄造／換裝／轉蛋", "Mint / equip / gacha"), `${n.randomFee} / ${n.changeFee} / ${n.gachaFee} ASC`],
-                ["VIP", Number(n.vipPrice) ? `${n.vipPrice} ASC / ${n.vipDays} ${L("天", "days")}` : L("不販售", "Not for sale")], [L("轉蛋只限 VIP", "Gacha VIP only"), yes(n.gachaVipOnly)], [L("獎池配件數", "Pool prizes"), `${n.pool.ids.length}（miss ${n.pool.miss}）`]],
+            nft: n && [[L("白名單鑄造", "Mint sale"), B(n.saleOpen)], [L("運作", "Running"), B(!n.paused)], [L("已用編號／上限", "Minted / max"), `${int(n.nextId)} / ${int(n.maxSupply)}`], [L("鑄造／換裝／轉蛋", "Mint / equip / gacha"), `${n.randomFee} / ${n.changeFee} / ${n.gachaFee} ASC`],
+                ["VIP", Number(n.vipPrice) ? `${n.vipPrice} ASC / ${n.vipDays} ${L("天", "days")}` : L("不販售", "Not for sale")], [L("轉蛋只限 VIP", "Gacha VIP only"), B(n.gachaVipOnly)], [L("獎池配件數", "Pool prizes"), `${n.pool.ids.length}（miss ${n.pool.miss}）`]],
             parts: st.parts && [["minter", same(st.parts.minter, C.nft) ? L("喵武士 NFT ✓", "Cat Samurai NFT ✓") : short(st.parts.minter)]],
-            market: m && [[L("手續費", "Fee"), pct(m.feeBps)], [L("被標記賣家", "Flagged seller"), pct(m.flagFeeBps)], [L("單筆上限", "Max trade"), Number(m.maxTradeValue) ? `${int(m.maxTradeValue)} ASC` : L("不限", "None")], [L("暫停", "Paused"), m.paused ? L("是", "Yes") : L("否", "No")], [L("掛單數", "Listings"), int(m.count)]]
+            market: m && [[L("手續費", "Fee"), pct(m.feeBps)], [L("被標記賣家", "Flagged seller"), pct(m.flagFeeBps)], [L("單筆上限", "Max trade"), Number(m.maxTradeValue) ? `${int(m.maxTradeValue)} ASC` : L("不限", "None")], [L("運作", "Running"), B(!m.paused)], [L("掛單數", "Listings"), int(m.count)]]
         }[k];
         if (!items) return "";
-        return `<div class="adm-state">${items.map(([a, b]) => `<div><span>${esc(a)}</span><b>${esc(b)}</b></div>`).join("")}</div>`;
+        return `<div class="adm-state">${items.map(([a, b]) => `<div><span>${esc(a)}</span><b${typeof b === "object" ? ` class="${b.on ? "on" : "off"}"` : ""}>${esc(typeof b === "object" ? b.t : b)}</b></div>`).join("")}</div>`;
     }
+
+    /* ── 快速開關：一鍵切換。直接模式＝確認後送交易；Safe 模式＝加入批次（再按一次取消） ── */
+    const Q = [
+        { k: "v-open", c: "vault", fn: "setOpen", zh: "兌換與互轉", en: "Redeem & transfer", get: (s) => s.vault.open, args: (on) => [on] },
+        { k: "v-dep", c: "vault", fn: "setDepositOpen", zh: "買 ASC", en: "Buy ASC", get: (s) => s.vault.depositOpen, args: (on) => [on] },
+        { k: "v-ver", c: "vault", fn: "setPolicy", zh: "只限驗證錢包", en: "Verified wallets only", get: (s) => s.vault.verifiedOnly, args: (on, s) => [on, s.vault.transferTaxBps, s.vault.flagPenaltyBps, s.vault.maxDepositPerPeriod] },
+        { k: "n-sale", c: "nft", fn: "setSale", zh: "白名單鑄造", en: "Whitelist mint", get: (s) => s.nft.saleOpen, args: (on) => [on] },
+        { k: "n-run", c: "nft", fn: (on) => (on ? "unpause" : "pause"), zh: "NFT 運作", en: "NFT running", sub: ["關＝暫停鑄造、解盲、換裝、轉蛋", "Off = pause mint, reveal, equip, gacha"], get: (s) => !s.nft.paused, args: () => [] },
+        { k: "n-vip", c: "nft", fn: "setGachaVipOnly", zh: "轉蛋只限 VIP", en: "Gacha VIP only", get: (s) => s.nft.gachaVipOnly, args: (on) => [on] },
+        { k: "m-run", c: "market", fn: (on) => (on ? "unpause" : "pause"), zh: "市場交易", en: "Market trading", sub: ["關＝暫停市場（賣家仍可下架）", "Off = pause (sellers can still cancel)"], get: (s) => !s.market.paused, args: () => [] }
+    ];
+    const qAct = (q, on) => A.find((x) => x.c === q.c && x.fn === (typeof q.fn === "function" ? q.fn(on) : q.fn));
+    function quickHtml() {
+        const items = Q.map((q) => {
+            let cur;
+            try { cur = !!q.get(st); } catch (_) { return ""; }
+            const x = qAct(q, !cur);
+            if (!x || !(canSend(x) || canBatch(x))) return "";
+            const pend = batch.some((b) => b.q === q.k);
+            const shown = pend ? !cur : cur;
+            const tip = pend ? `<span class="adm-pend">🛒 ${L("批次中", "In batch")}：${yes(cur)} → ${yes(!cur)}</span>` : `<span class="adm-now ${cur ? "on" : "off"}">● ${L("目前", "Now")} ${yes(cur)}</span>`;
+            return `<div class="adm-q${pend ? " pend" : ""}" data-q="${q.k}"><div><b>${esc(L(q.zh, q.en))}</b><small>${esc(KN(q.c))} · <code>${esc(x.fn)}</code>${q.sub ? ` · ${esc(L(...q.sub))}` : ""}</small>${tip}<span class="adm-qmsg"></span></div><label class="adm-sw" title="${esc(L(q.zh, q.en))}"><input type="checkbox" aria-label="${esc(L(q.zh, q.en))}"${shown ? " checked" : ""}><i></i></label></div>`;
+        }).join("");
+        return items ? `<h3 class="adm-sect-h">${L("快速開關", "QUICK SWITCHES")}</h3><div class="adm-quick">${items}</div>` : "";
+    }
+    function bindQuick(root) {
+        root.querySelectorAll(".adm-q").forEach((row) => {
+            const q = Q.find((y) => y.k === row.dataset.q), inp = row.querySelector("input"), msg = row.querySelector(".adm-qmsg");
+            inp.addEventListener("change", async () => {
+                const cur = !!q.get(st), pi = batch.findIndex((b) => b.q === q.k);
+                if (pi >= 0) { batch.splice(pi, 1); saveBatch(); afterCart(); toast(L("已從批次移除", "Removed from batch")); return; }
+                const want = !cur, x = qAct(q, want), args = q.args(want, st);
+                if (viaSafe(x)) { addBatch(x, args, { q: q.k, tag: [`${q.zh} → ${want ? "開" : "關"}`, `${q.en} → ${want ? "On" : "Off"}`] }); return; }
+                inp.checked = cur; // 交易完成前維持原狀
+                if (!(await confirmIt(x, args, true))) return;
+                inp.disabled = true;
+                try {
+                    const h = await sendTx(x, args, (t, kind) => { msg.textContent = t; msg.className = "adm-qmsg " + (kind || ""); });
+                    toast(`${L("完成", "Done")}：${L(q.zh, q.en)} → ${yes(want)}`, "ok", h);
+                    await load();
+                } catch (e) { console.warn(e); msg.textContent = errText(e); msg.className = "adm-qmsg bad"; inp.disabled = false; }
+            });
+        });
+    }
+
+    /* ── 每個管理函式：可展開的一列 ── */
     function field(x, i, [name, type, zh, en], pre) {
         const id = `adf-${x.c}-${x.fn}-${i}`;
         const val = pre?.[i] ?? "";
         const lab = `<span>${esc(L(zh, en))}</span>`;
-        if (type === "bool") return `<label class="adm-f">${lab}<select id="${id}"><option value="true"${String(val) === "true" ? " selected" : ""}>true</option><option value="false"${String(val) === "false" ? " selected" : ""}>false</option></select></label>`;
+        if (type === "bool") return `<label class="adm-f">${lab}<span class="adm-swrow"><span class="adm-sw"><input type="checkbox" id="${id}"${String(val) !== "false" ? " checked" : ""}><i></i></span><em data-on="${esc(L("是 true", "true"))}" data-off="${esc(L("否 false", "false"))}"></em></span></label>`;
         if (type === "addrs" || type === "uints") return `<label class="adm-f wide">${lab}<textarea id="${id}" rows="2" placeholder="${esc(HINT()[type])}">${esc(val)}</textarea></label>`;
         return `<label class="adm-f${type === "str" || type.endsWith("8") ? " wide" : ""}">${lab}<input id="${id}" value="${esc(val)}" placeholder="${esc(HINT()[type] || "")}" autocomplete="off" spellcheck="false"></label>`;
     }
-    function actionCard(x, idx) {
+    function actionRow(x, idx) {
         let pre = null;
         try { pre = x.pre ? x.pre(st) : null; } catch (_) {}
         const send = canSend(x), bat = canBatch(x);
         if (!send && !bat) return "";
-        return `<div class="adm-act${x.danger ? " danger" : ""}" data-i="${idx}">
-<div class="adm-h"><b>${esc(L(x.zh, x.en))}</b><code>${esc(x.fn)}</code><span class="adm-lv ${x.lv}">${esc(L(...LV[x.lv]))}</span></div>
-${x.d[0] ? `<p class="muted small">${esc(L(x.d[0], x.d[1]))}</p>` : ""}
-${x.a.length ? `<div class="adm-fields">${x.a.map((a, i) => field(x, i, a, pre)).join("")}</div>` : ""}
-<div class="adm-btns">${send ? `<button type="button" class="adm-send">${L("送出交易", "Send")}</button>` : ""}${bat ? `<button type="button" class="adm-add">${L("加入 Safe 批次", "Add to Safe batch")}</button>` : ""}</div>
-<div class="msg adm-msg"></div></div>`;
+        const key = `${x.c}:${x.sig}`;
+        return `<details class="adm-act${x.danger ? " danger" : ""}${send && bat ? " both" : ""}" data-i="${idx}" data-key="${esc(key)}" data-s="${esc(`${x.zh} ${x.en} ${x.fn}`.toLowerCase())}"${openRows.has(key) ? " open" : ""}>
+<summary><b>${esc(L(x.zh, x.en))}</b><code>${esc(x.fn)}</code>${!send ? `<span class="adm-only">🛡 ${L("只能走 Safe", "Safe only")}</span>` : ""}</summary>
+<div class="adm-in">${x.d[0] ? `<p class="muted small">${esc(L(x.d[0], x.d[1]))}</p>` : ""}
+${x.a.length ? `<div class="adm-fields">${x.a.map((a, i) => field(x, i, a, pre)).join("")}</div>` : `<p class="muted small">${L("不需要參數", "No parameters")}</p>`}
+<div class="adm-btns">${send ? `<button type="button" class="adm-send">⚡ ${L("送出交易", "Send")}</button>` : ""}${bat ? `<button type="button" class="adm-add">🛒 ${L("加入批次", "Add to batch")}</button>` : ""}</div>
+<div class="msg adm-msg"></div></div></details>`;
     }
-    function batchBar() {
-        if (!batch.length && !KINDS.some(([k]) => safeOf(st.roles[k]?.owner))) return "";
-        const list = batch.map((b, i) => `<li><span>${esc(b.label)}</span><code>${esc(short(b.to))}</code><button type="button" class="adm-del" data-i="${i}" aria-label="remove">×</button></li>`).join("");
-        return `<div class="adm-batch"><div class="adm-h"><b>${L("Safe 批次", "Safe batch")}（${batch.length}）</b><span class="muted small">${L("owner 是 Safe：把要做的操作加進來，下載 JSON 後到 Safe → Apps → Transaction Builder 拖進去，簽名執行", "Owner is a Safe: add actions, download the JSON, then drop it into Safe → Apps → Transaction Builder")}</span></div>
-${batch.length ? `<ol>${list}</ol>` : `<p class="muted small">${L("還沒有加入任何操作", "Nothing added yet")}</p>`}
-<div class="adm-btns"><button type="button" id="adDl"${batch.length ? "" : " disabled"}>${L("下載 Safe JSON", "Download Safe JSON")}</button><button type="button" id="adClr" class="alt"${batch.length ? "" : " disabled"}>${L("清空", "Clear")}</button></div></div>`;
+    function paneHtml(k, zh, en) {
+        const groups = GROUPS.map(([lv, gz, ge]) => {
+            const rows = A.map((x, i) => (x.c === k && x.lv === lv ? actionRow(x, i) : "")).join("");
+            return rows ? `<div class="adm-grp" data-lv="${lv}"><h4>${esc(L(gz, ge))}</h4><div class="adm-list">${rows}</div></div>` : "";
+        }).join("");
+        return `<div class="adm-pane" data-pane="${k}"><h3 class="adm-pane-h">${esc(L(zh, en))}</h3><div class="adm-addr muted small">${L("合約", "Contract")} ${addrLink(C[k])}</div>${stateGrid(k)}${groups || `<p class="muted small">${L("你在這份合約沒有可以做的操作", "No actions available for you here")}</p>`}</div>`;
     }
-    function lookupBox() {
-        return `<div class="adm-look"><div class="adm-h"><b>${L("查詢錢包", "Look up a wallet")}</b></div><div class="adm-fields"><label class="adm-f wide"><span>${L("錢包地址", "Wallet")}</span><input id="adLookAddr" placeholder="0x…" autocomplete="off" spellcheck="false"></label></div>
-<div class="adm-btns"><button type="button" id="adLookBtn">${L("查詢", "Look up")}</button></div><div class="adm-state" id="adLookOut"></div></div>`;
-    }
+    const count = (k) => A.filter((x) => x.c === k && (canSend(x) || canBatch(x))).length;
 
-    let open = { vault: true };
-    /* 導覽列「⚙ 管理」按鈕（index.html 的 #adminJump，data-go="admin" 由 ui.js 切頁）：有權限的錢包連線後才出現 */
-    function jumpBtn(show) {
-        const b = $("adminJump");
-        if (!b) return;
-        b.textContent = L("⚙ 管理", "⚙ Admin");
-        b.classList.toggle("hidden", !show);
-    }
-    /* ── 超稀有退還：換裝時被換掉／脫掉的超稀有配件，由 admin 用 giveParts 退回原持有者 ──
-     *   應退：從 NFT 部署區塊重播 Minted／PresetMinted／RandomSeed／Equipped，算出每次換裝前穿什麼
-     *   已退：配件合約由 NFT 合約鑄出、且同一筆交易沒有 GachaPull 的超稀有（＝giveParts；活動送的也會算進去） */
+    /* ── 超稀有退還 ── */
     const rf = { busy: false, rows: null, err: "", at: 0 };
     const ZPAD = (a) => E.zeroPadValue(a, 32);
     async function scanRefunds() {
@@ -302,46 +438,158 @@ ${batch.length ? `<ol>${list}</ol>` : `<p class="muted small">${L("還沒有加�
         }).sort((a, b) => (b.owed - b.paid) - (a.owed - a.paid));
     }
     const GIVE = () => A.find((x) => x.c === "nft" && x.fn === "giveParts");
-    function refundBox() {
+    function refundHtml() {
         const g = GIVE();
         if (!g || !(canSend(g) || canBatch(g))) return "";
         const due = (rf.rows || []).filter((r) => r.owed > r.paid);
+        const safe = viaSafe(g);
         const body = rf.busy ? `<p class="muted small">${L("掃描鏈上換裝紀錄中…（第一次會比較久）", "Scanning equip history…")}</p>`
             : rf.err ? `<p class="msg bad">${esc(rf.err)}</p>`
             : !rf.rows ? `<p class="muted small">${L("按「掃描」找出被換掉或脫掉、還沒退還的超稀有配件。", "Press Scan to find super-rare parts that were replaced and not yet returned.")}</p>`
             : !due.length ? `<p class="muted small">${L("目前沒有需要退還的超稀有配件 ✓", "Nothing to return ✓")}</p>`
-            : `<div class="adm-scroll"><table class="adm-table"><thead><tr><th>${L("錢包", "Wallet")}</th><th>${L("配件", "Part")}</th><th>${L("應退／已退", "Owed / paid")}</th><th></th></tr></thead><tbody>${due.map((r, i) => `<tr><td>${addrLink(r.who)}</td><td>${esc(r.name)} <small class="muted">#${r.pid}</small></td><td>${r.owed} / ${r.paid}</td><td><button type="button" class="adm-rf" data-r="${i}">${canSend(g) ? L(`退還 ${r.owed - r.paid} 個`, `Return ${r.owed - r.paid}`) : L("加入 Safe 批次", "Add to Safe batch")}</button></td></tr>`).join("")}</tbody></table></div>`;
-        return `<div class="adm-look" id="admRefund"><div class="adm-h"><b>${L("超稀有退還", "Super-rare returns")}</b><span class="muted small">${L("VIP 換裝時被換掉或脫掉的超稀有配件，用 giveParts 退回原持有者", "Super-rare parts replaced during VIP equip are returned with giveParts")}</span></div>${body}<div class="adm-btns"><button type="button" id="adRfScan"${rf.busy ? " disabled" : ""}>${rf.rows ? L("重新掃描", "Rescan") : L("掃描", "Scan")}</button></div><div class="msg adm-msg ${rf.cls || ""}" id="adRfMsg">${esc(rf.msg || "")}</div></div>`;
+            : `<div class="adm-scroll"><table class="adm-table"><thead><tr><th>${L("錢包", "Wallet")}</th><th>${L("配件", "Part")}</th><th>${L("應退／已退", "Owed / paid")}</th><th></th></tr></thead><tbody>${due.map((r, i) => `<tr><td>${addrLink(r.who)}</td><td>${esc(r.name)} <small class="muted">#${r.pid}</small></td><td>${r.owed} / ${r.paid}</td><td><button type="button" class="adm-rf${safe ? " cart" : ""}" data-r="${i}">${safe ? `🛒 ${L("加入批次", "Add to batch")}` : `⚡ ${L(`退還 ${r.owed - r.paid} 個`, `Return ${r.owed - r.paid}`)}`}</button></td></tr>`).join("")}</tbody></table></div>`;
+        return `<div class="adm-look"><div class="adm-h"><b>${L("超稀有退還", "Super-rare returns")}</b><span class="muted small">${L("VIP 換裝時被換掉或脫掉的超稀有配件，用 giveParts 退回原持有者", "Super-rare parts replaced during VIP equip are returned with giveParts")}</span></div>${body}<div class="adm-btns"><button type="button" class="alt" id="adRfScan"${rf.busy ? " disabled" : ""}>${rf.rows ? L("重新掃描", "Rescan") : L("掃描", "Scan")}</button></div><div class="msg adm-msg ${rf.cls || ""}" id="adRfMsg">${esc(rf.msg || "")}</div></div>`;
+    }
+    function renderRefund() {
+        const el = $("admRefundBox");
+        if (!el) return;
+        el.innerHTML = refundHtml();
+        bindRefund(el);
     }
     async function runScan() {
-        rf.busy = true; rf.err = ""; rf.msg = ""; render();
+        rf.busy = true; rf.err = ""; rf.msg = ""; renderRefund();
         try { rf.rows = await scanRefunds(); rf.at = Date.now(); }
         catch (e) { console.warn(e); rf.err = errText(e); }
-        rf.busy = false; render();
+        rf.busy = false; renderRefund();
     }
-    function bindRefund(box) {
+    function bindRefund(el) {
         $("adRfScan")?.addEventListener("click", runScan);
         const due = (rf.rows || []).filter((r) => r.owed > r.paid);
-        box.querySelectorAll(".adm-rf").forEach((b) => b.addEventListener("click", async () => {
-            const r = due[Number(b.dataset.r)], g = GIVE(), n = BigInt(r.owed - r.paid), m = $("adRfMsg");
+        el.querySelectorAll(".adm-rf").forEach((b) => b.addEventListener("click", async () => {
+            const r = due[Number(b.dataset.r)], g = GIVE(), m = $("adRfMsg");
             if (!r || !g) return;
-            if (!canSend(g)) {
-                batch.push({ to: C.nft, data: new E.Interface([g.frag]).encodeFunctionData("giveParts", [r.who, BigInt(r.pid), n]), safe: st.roles.nft.owner, label: `${L("退還超稀有", "Return super-rare")} ${r.name} ×${n} → ${short(r.who)}` });
-                saveBatch(); render(); return;
-            }
+            const n = BigInt(r.owed - r.paid), args = [r.who, BigInt(r.pid), n];
+            if (viaSafe(g)) { addBatch(g, args, { tag: [`退還超稀有 ${r.name} ×${n}`, `Return super-rare ${r.name} ×${n}`] }); return; }
             b.disabled = true;
             try {
-                m.className = "msg adm-msg"; m.textContent = L("請在錢包確認…", "Confirm in your wallet…");
-                const c = new E.Contract(C.nft, [g.frag], await CH.signer());
-                const tx = await c.giveParts(r.who, r.pid, n);
-                m.textContent = L("等待上鏈…", "Waiting for confirmation…");
-                const rc = await tx.wait();
-                if (!rc || rc.status !== 1) throw new Error("reverted");
+                await sendTx(g, args, (t, kind) => { m.className = "msg adm-msg " + (kind || ""); m.textContent = t; });
                 r.paid += Number(n);
                 rf.msg = L(`已退還 ${r.name} ×${n} 給 ${short(r.who)}`, `Returned ${r.name} ×${n} to ${short(r.who)}`); rf.cls = "ok";
-                render();
+                renderRefund();
             } catch (e) { console.warn(e); m.className = "msg adm-msg bad"; m.textContent = errText(e); b.disabled = false; }
         }));
+    }
+    function lookupHtml() {
+        return `<div class="adm-look"><div class="adm-h"><b>${L("查詢錢包", "Look up a wallet")}</b><span class="muted small">${L("驗證、標記、凍結、VIP、鑄造額度、轉蛋次數", "Verified, flagged, frozen, VIP, mint allowance, pulls")}</span></div><div class="adm-lookrow"><input id="adLookAddr" placeholder="0x…" autocomplete="off" spellcheck="false" aria-label="${L("錢包地址", "Wallet")}"><button type="button" id="adLookBtn">${L("查詢", "Look up")}</button></div><div class="adm-state" id="adLookOut"></div></div>`;
+    }
+
+    /* ── 批次（購物車）：右下角按鈕＋側邊抽屜 ── */
+    function cartHtml() {
+        const groups = {};
+        batch.forEach((b, i) => (groups[(b.safe || "").toLowerCase()] ||= []).push(i));
+        const keys = Object.keys(groups);
+        const body = !batch.length
+            ? `<div class="adm-empty"><div>🛒</div><p>${L("批次是空的", "The batch is empty")}</p><p class="muted small">${L("切到 🛡 Safe 模式後，按「加入批次」或撥動快速開關，操作會先放在這裡。", "Switch to 🛡 Safe mode, then press “Add to batch” or flip a quick switch — actions collect here.")}</p></div>`
+            : keys.map((sk) => {
+                const s = safeOf(sk), idx = groups[sk];
+                let full = sk; try { full = E.getAddress(sk); } catch (_) {}
+                return `<div class="adm-cg"><div class="adm-cgh"><span>Safe ${addrLink(full)}</span>${s && s.th ? `<span class="adm-tag">${s.th}/${s.owners.length} ${L("簽", "sigs")}</span>` : ""}<span class="muted small">${idx.length} ${L("筆", "tx")}</span></div>
+<ol class="adm-items">${idx.map((i, n) => {
+                    const b = batch[i], v = itemView(b);
+                    return `<li class="${v.danger ? "danger" : ""}"><span class="no">${n + 1}</span><div class="bd"><b>${esc(v.title)}</b><small>${esc(KN(b.c))}${v.fn ? ` · <code>${esc(v.fn)}</code>` : ""}</small>${v.args.length ? `<dl class="adm-dl2">${v.args.map(([a, c]) => `<div><dt>${esc(a)}</dt><dd>${esc(c)}</dd></div>`).join("")}</dl>` : ""}</div><div class="ops"><button type="button" data-mv="${i}:-1"${n === 0 ? " disabled" : ""} aria-label="up">↑</button><button type="button" data-mv="${i}:1"${n === idx.length - 1 ? " disabled" : ""} aria-label="down">↓</button><button type="button" class="rm" data-rm="${i}" aria-label="remove">✕</button></div></li>`;
+                }).join("")}</ol>
+<button type="button" class="adm-dlbtn" data-dl="${esc(sk)}">⬇ ${L("下載 Safe JSON", "Download Safe JSON")}${keys.length > 1 ? `（${short(full)}）` : ""}</button></div>`;
+            }).join("");
+        const fab = effMode() === "safe" || batch.length;
+        return `${fab ? `<button type="button" class="adm-fab" id="admFab" aria-label="Safe batch">🛒 <span>${L("Safe 批次", "Safe batch")}</span><b>${batch.length}</b></button>` : ""}
+<div class="adm-cart-bg" id="admCartBg"></div>
+<aside class="adm-cart" aria-label="Safe batch" aria-hidden="${!cartOpen}"><header><b>🛒 ${L("Safe 批次", "Safe batch")}</b><span class="adm-tag">${batch.length}</span><button type="button" class="x" id="admCartX" aria-label="close">✕</button></header>
+<ol class="adm-steps"><li>${L("在面板加入要做的操作（可調順序、刪除）", "Add actions from the panel (reorder or remove here)")}</li><li>${L("按「下載 Safe JSON」", "Press “Download Safe JSON”")}</li><li>${L("Safe → Apps → Transaction Builder，把 JSON 拖進去 → Create batch → 簽名執行", "Safe → Apps → Transaction Builder, drop the JSON in → Create batch → sign")}</li></ol>
+<div class="adm-cart-body">${body}</div>
+<footer><button type="button" class="alt" id="admClr"${batch.length ? "" : " disabled"}>${L("清空批次", "Clear batch")}</button><button type="button" class="alt" id="admCartX2">${L("繼續加入", "Keep adding")}</button></footer></aside>`;
+    }
+    function renderCart(bump) {
+        const root = $("admCartRoot"), box = $("adminPanel");
+        if (!root) return;
+        const scroll = root.querySelector(".adm-cart-body")?.scrollTop || 0;
+        root.innerHTML = cartHtml();
+        root.classList.toggle("open", cartOpen);
+        box?.classList.toggle("hasfab", !!$("admFab"));
+        const body = root.querySelector(".adm-cart-body");
+        if (body) body.scrollTop = scroll;
+        if (bump) { const f = $("admFab"); f?.classList.add("bump"); setTimeout(() => f?.classList.remove("bump"), 500); }
+        const setOpen = (v) => { cartOpen = v; root.classList.toggle("open", v); root.querySelector(".adm-cart")?.setAttribute("aria-hidden", String(!v)); };
+        $("admFab")?.addEventListener("click", () => setOpen(true));
+        ["admCartBg", "admCartX", "admCartX2"].forEach((id) => $(id)?.addEventListener("click", () => setOpen(false)));
+        root.querySelectorAll("[data-rm]").forEach((b) => b.addEventListener("click", () => { batch.splice(Number(b.dataset.rm), 1); saveBatch(); afterCart(); }));
+        root.querySelectorAll("[data-mv]").forEach((b) => b.addEventListener("click", () => {
+            const [i, d] = b.dataset.mv.split(":").map(Number), sk = (batch[i].safe || "").toLowerCase();
+            const idx = batch.map((x, j) => ((x.safe || "").toLowerCase() === sk ? j : -1)).filter((j) => j >= 0);
+            const p = idx.indexOf(i), j = idx[p + d];
+            if (j == null) return;
+            [batch[i], batch[j]] = [batch[j], batch[i]];
+            saveBatch(); afterCart();
+        }));
+        $("admClr")?.addEventListener("click", async () => {
+            if (!(await ask({ title: L("清空批次？", "Clear the batch?"), sub: L(`會移除全部 ${batch.length} 筆操作`, `Removes all ${batch.length} actions`), ok: L("清空", "Clear") }))) return;
+            batch = []; saveBatch(); afterCart();
+        });
+        root.querySelectorAll("[data-dl]").forEach((b) => b.addEventListener("click", () => download(b.dataset.dl)));
+    }
+    function download(sk) {
+        const items = batch.filter((b) => (b.safe || "").toLowerCase() === sk);
+        if (!items.length) return;
+        const json = { version: "1.0", chainId: String(C.chainId), createdAt: Date.now(),
+            meta: { name: "ASC admin batch", description: items.map((b) => itemView(b).title).join(" / ").slice(0, 900), txBuilderVersion: "1.16.5", createdFromSafeAddress: items[0].safe },
+            transactions: items.map((b) => ({ to: b.to, value: "0", data: b.data, contractMethod: null, contractInputsValues: null })) };
+        const a = document.createElement("a");
+        a.href = URL.createObjectURL(new Blob([JSON.stringify(json, null, 2)], { type: "application/json" }));
+        a.download = `asc-safe-batch-${new Date().toISOString().slice(0, 10)}.json`;
+        document.body.appendChild(a); a.click(); a.remove();
+        setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+        toast(L(`已下載 ${items.length} 筆，拖進 Safe Transaction Builder`, `Downloaded ${items.length} tx — drop it into Safe Transaction Builder`), "ok");
+    }
+    function afterCart(bump) {
+        renderCart(bump);
+        const qb = $("admQuickBox");
+        if (qb) { qb.innerHTML = quickHtml(); bindQuick(qb); }
+    }
+
+    /* ── 模式、分頁、搜尋 ── */
+    function hintHtml() {
+        if (!anySafe()) return "";
+        if (effMode() === "safe") return `🛡 <b>${L("Safe 模式", "Safe mode")}</b>：${L("所有按鈕只會「加入批次」（像購物車），不會送出交易；最後到右下角下載 JSON，用 Safe 多簽執行。", "every button only adds to the batch (like a cart) — nothing is sent. Download the JSON from the bottom-right and execute it in the Safe.")}${!anyDirect() ? ` <span class="muted">${L("（你只是 Safe 簽署人，所以固定這個模式）", "(you're a Safe signer only, so this mode is fixed)")}</span>` : ""}`;
+        return `⚡ <b>${L("直接送出", "Direct")}</b>：${L("有權限的操作用你連線的錢包直接送交易；標「🛡 只能走 Safe」的 ★ owner 操作會加入批次。", "actions you're allowed to do are sent from your connected wallet; “🛡 Safe only” ★ owner actions go to the batch.")}`;
+    }
+    function setMode(m) {
+        mode = m; ls.set("asc-admin-mode", m);
+        const box = $("adminPanel");
+        box.classList.toggle("safe", effMode() === "safe");
+        box.querySelectorAll(".adm-mode button").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.m === effMode())));
+        const h = $("admHint"); if (h) h.innerHTML = hintHtml();
+        afterCart();
+        renderRefund();
+    }
+    function applyView() {
+        const box = $("adminPanel"), q = query.trim().toLowerCase();
+        box.classList.toggle("searching", !!q);
+        box.querySelectorAll(".adm-act").forEach((r) => r.classList.toggle("hidden", !!q && !r.dataset.s.includes(q) && !r.textContent.toLowerCase().includes(q)));
+        box.querySelectorAll(".adm-grp").forEach((g) => g.classList.toggle("hidden", !g.querySelector(".adm-act:not(.hidden)")));
+        let hits = 0;
+        box.querySelectorAll(".adm-pane").forEach((p) => {
+            const n = p.querySelectorAll(".adm-act:not(.hidden)").length;
+            hits += n;
+            p.classList.toggle("hidden", q ? !n : p.dataset.pane !== tab);
+        });
+        box.querySelectorAll(".adm-tabs button").forEach((b) => b.setAttribute("aria-selected", String(!q && b.dataset.tab === tab)));
+        const none = $("admNone"); if (none) none.classList.toggle("hidden", !q || hits > 0);
+    }
+
+    function jumpBtn(show) {
+        const b = $("adminJump");
+        if (!b) return;
+        b.textContent = L("⚙ 管理", "⚙ Admin");
+        b.classList.toggle("hidden", !show);
     }
     function render() {
         const box = $("adminPanel");
@@ -349,22 +597,33 @@ ${batch.length ? `<ol>${list}</ol>` : `<p class="muted small">${L("還沒有加�
         const show = st.ok && visible();
         jumpBtn(show);
         if (!show) {
+            box.classList.remove("safe", "hasfab", "searching");
             box.innerHTML = `<span class="eyebrow">ADMIN</span><h2>${L("管理員", "Admin")}</h2><p class="muted">${CH.account && !st.ok ? L("讀取權限中…", "Checking roles…") : L("請用 owner／admin／operator 錢包連線才能看到管理功能。", "Connect an owner / admin / operator wallet to see admin tools.")}</p>`;
             return;
         }
-        const sections = KINDS.map(([k, zh, en]) => {
-            const cards = A.map((x, i) => (x.c === k ? actionCard(x, i) : "")).join("");
-            return `<details class="adm-sec" data-k="${k}"${open[k] ? " open" : ""}><summary><b>${esc(L(zh, en))}</b> <span class="muted small">${addrLink(C[k])}</span></summary>${stateGrid(k)}${cards ? `<div class="adm-acts">${cards}</div>` : `<p class="muted small">${L("你在這份合約沒有可以做的操作", "No actions available for you here")}</p>`}</details>`;
-        }).join("");
-        box.innerHTML = `<span class="eyebrow">ADMIN</span><h2>${L("管理員面板", "Admin panel")}</h2>
-<p class="muted small">${L("只有 owner／admin／operator（或 owner Safe 的簽署人）看得到。★ owner 的操作：owner 是 Safe 時請加入批次，用 Safe 多簽執行。", "Only owners, admins, operators (or signers of the owner Safe) see this. ★ owner actions: when the owner is a Safe, add them to the batch and execute in the Safe.")}</p>
-${roleTable()}${batchBar()}${refundBox()}${lookupBox()}${sections}`;
+        const m = effMode(), lock = anySafe() && !anyDirect();
+        if (![...KINDS.map(([k]) => k), "tools"].includes(tab)) tab = "vault";
+        const tabs = [...KINDS.map(([k, zh, en]) => [k, L(zh, en).split(" ")[0], count(k)]), ["tools", L("🔧 工具", "🔧 Tools"), 0]];
+        box.classList.toggle("safe", m === "safe");
+        box.innerHTML = `<div class="adm-head"><div><span class="eyebrow">ADMIN</span><h2>${L("管理員面板", "Admin panel")}</h2></div>
+${anySafe() ? `<div class="adm-mode${lock ? " lock" : ""}" role="group" aria-label="mode"><button type="button" data-m="direct" aria-pressed="${m === "direct"}"${lock ? " disabled" : ""}>⚡ ${L("直接送出", "Direct")}</button><button type="button" data-m="safe" aria-pressed="${m === "safe"}">🛡 ${L("Safe 模式", "Safe mode")}</button></div>` : ""}
+<button type="button" class="adm-ref" id="admRefresh" title="${L("重新讀取鏈上狀態", "Reload on-chain state")}" aria-label="refresh">↻</button></div>
+${anySafe() ? `<p class="adm-hint" id="admHint">${hintHtml()}</p>` : ""}
+${rolesHtml()}
+<div id="admQuickBox">${quickHtml()}</div>
+<div class="adm-bar"><div class="adm-tabs" role="tablist">${tabs.map(([k, label, n]) => `<button type="button" role="tab" data-tab="${k}">${esc(label)}${n ? `<small>${n}</small>` : ""}</button>`).join("")}</div><input type="search" class="adm-search" id="admSearch" placeholder="🔍 ${L("搜尋功能，例如 VIP、凍結、airdrop", "Search, e.g. VIP, freeze, airdrop")}" value="${esc(query)}" autocomplete="off"></div>
+${KINDS.map(([k, zh, en]) => paneHtml(k, zh, en)).join("")}
+<div class="adm-pane" data-pane="tools"><div id="admRefundBox">${refundHtml()}</div>${lookupHtml()}</div>
+<p class="muted small hidden" id="admNone">${L("找不到符合的功能", "No matching actions")}</p>
+<div id="admCartRoot"></div>`;
         bind(box);
+        applyView();
+        renderCart();
     }
     function collect(x, card) {
         return x.a.map(([name, type, zh, en], i) => {
             const el = card.querySelector(`#adf-${x.c}-${x.fn}-${i}`);
-            try { return T[type](el.value); }
+            try { return type === "bool" ? el.checked : T[type](el.value); }
             catch (e) { throw new Error(`${L(zh, en)}：${e.shortMessage || e.message}`); }
         });
     }
@@ -384,13 +643,17 @@ ${roleTable()}${batchBar()}${refundBox()}${lookupBox()}${sections}`;
         if (x.code === "GAS") return L("POL 不夠付手續費", "Not enough POL for gas");
         return x.name || x.msg || String(e?.message || e);
     }
-    function confirmIt(x, args) {
-        if (!x.warn) return true;
-        const lines = x.a.map(([, , zh, en], i) => `${L(zh, en)}: ${Array.isArray(args[i]) ? args[i].join(", ") : String(args[i])}`).join("\n");
-        return window.confirm(`${L(x.zh, x.en)}（${x.fn}）\n${L("合約", "Contract")}: ${C[x.c]}\n${lines}${x.danger ? "\n\n" + L("⚠️ 這個操作影響很大，確定要繼續？", "⚠️ High impact. Continue?") : ""}`);
-    }
     function bind(box) {
-        box.querySelectorAll("details.adm-sec").forEach((d) => d.addEventListener("toggle", () => (open[d.dataset.k] = d.open)));
+        box.querySelectorAll(".adm-mode button").forEach((b) => b.addEventListener("click", () => { if (!b.disabled) setMode(b.dataset.m); }));
+        $("admRefresh")?.addEventListener("click", (ev) => { ev.currentTarget.classList.add("spin"); load(); });
+        box.querySelectorAll(".adm-tabs button").forEach((b) => b.addEventListener("click", () => {
+            tab = b.dataset.tab; ls.set("asc-admin-tab", tab);
+            query = ""; const s = $("admSearch"); if (s) s.value = "";
+            applyView();
+        }));
+        $("admSearch")?.addEventListener("input", (e) => { query = e.target.value; applyView(); });
+        const qb = $("admQuickBox"); if (qb) bindQuick(qb);
+        box.querySelectorAll("details.adm-act").forEach((d) => d.addEventListener("toggle", () => (d.open ? openRows.add(d.dataset.key) : openRows.delete(d.dataset.key))));
         box.querySelectorAll(".adm-act").forEach((card) => {
             const x = A[Number(card.dataset.i)];
             if (msgs[card.dataset.i]) say(card, ...msgs[card.dataset.i]);
@@ -398,16 +661,11 @@ ${roleTable()}${batchBar()}${refundBox()}${lookupBox()}${sections}`;
                 const btn = ev.currentTarget;
                 let args;
                 try { args = collect(x, card); } catch (e) { say(card, e.message, "bad"); return; }
-                if (!confirmIt(x, args)) return;
+                if (!(await confirmIt(x, args))) return;
                 btn.disabled = true;
                 try {
-                    say(card, L("請在錢包確認…", "Confirm in your wallet…"));
-                    const c = new E.Contract(C[x.c], [x.frag], await CH.signer());
-                    const tx = await c[x.fn](...args);
-                    say(card, L("等待上鏈…", "Waiting for confirmation…"), "", tx.hash);
-                    const r = await tx.wait();
-                    if (!r || r.status !== 1) throw new Error("reverted");
-                    say(card, L("完成", "Done"), "ok", tx.hash);
+                    const h = await sendTx(x, args, (t, kind, hash) => say(card, t, kind, hash));
+                    toast(`${L("完成", "Done")}：${L(x.zh, x.en)}`, "ok", h);
                     await load();
                 } catch (e) { console.warn(e); say(card, errText(e), "bad"); }
                 finally { btn.disabled = false; }
@@ -415,30 +673,12 @@ ${roleTable()}${batchBar()}${refundBox()}${lookupBox()}${sections}`;
             card.querySelector(".adm-add")?.addEventListener("click", () => {
                 let args;
                 try { args = collect(x, card); } catch (e) { say(card, e.message, "bad"); return; }
-                if (!confirmIt(x, args)) return;
-                const iface = new E.Interface([x.frag]);
-                const r = st.roles[x.c];
-                batch.push({ to: C[x.c], data: iface.encodeFunctionData(x.fn, args), safe: x.lv === "pending" ? r.pending : r.owner, label: `${L(x.zh, x.en)} · ${(([, zh, en]) => L(zh, en).split(" ")[0])(KINDS.find(([k]) => k === x.c))}` });
-                saveBatch();
-                render();
+                addBatch(x, args);
+                say(card, `🛒 ${L("已加入批次", "Added to batch")}（${L("共", "total")} ${batch.length}）`, "ok");
             });
         });
-        box.querySelectorAll(".adm-del").forEach((b) => b.addEventListener("click", () => { batch.splice(Number(b.dataset.i), 1); saveBatch(); render(); }));
-        $("adClr")?.addEventListener("click", () => { batch = []; saveBatch(); render(); });
-        $("adDl")?.addEventListener("click", () => {
-            const safes = [...new Set(batch.map((b) => (b.safe || "").toLowerCase()))];
-            if (safes.length > 1) { window.alert(L("批次裡有不同 Safe 的操作，請分開下載", "The batch mixes different Safes; download them separately")); return; }
-            const json = { version: "1.0", chainId: String(C.chainId), createdAt: Date.now(),
-                meta: { name: "ASC admin batch", description: batch.map((b) => b.label).join(" / ").slice(0, 900), txBuilderVersion: "1.16.5", createdFromSafeAddress: batch[0].safe },
-                transactions: batch.map((b) => ({ to: b.to, value: "0", data: b.data, contractMethod: null, contractInputsValues: null })) };
-            const a = document.createElement("a");
-            a.href = URL.createObjectURL(new Blob([JSON.stringify(json, null, 2)], { type: "application/json" }));
-            a.download = `asc-safe-batch-${new Date().toISOString().slice(0, 10)}.json`;
-            a.click();
-            setTimeout(() => URL.revokeObjectURL(a.href), 2000);
-        });
         bindRefund(box);
-        $("adLookBtn")?.addEventListener("click", async () => {
+        const look = async () => {
             const out = $("adLookOut");
             let a;
             try { a = E.getAddress($("adLookAddr").value.trim()); } catch (_) { out.innerHTML = `<div><span>${L("地址格式不對", "Invalid address")}</span></div>`; return; }
@@ -451,8 +691,14 @@ ${roleTable()}${batchBar()}${refundBox()}${lookupBox()}${sections}`;
                     [L("NFT 凍結", "NFT frozen"), yes(nf)], [L("配件凍結", "Parts frozen"), yes(pf)], [L("鑄造額度", "Mint allowance"), int(ni.me[0])], [L("VIP 到期", "VIP until"), Number(ni.me[1]) * 1000 > Date.now() ? when(ni.me[1]) : L("沒有", "None")], [L("轉蛋次數", "Pulls"), int(ni.me[2])], [L("持有 NFT", "NFTs held"), int(ni.me[3])]];
                 out.innerHTML = rows.map(([x, y]) => `<div><span>${esc(x)}</span><b>${esc(y)}</b></div>`).join("");
             } catch (e) { out.innerHTML = `<div><span>${esc(errText(e))}</span></div>`; }
-        });
+        };
+        $("adLookBtn")?.addEventListener("click", look);
+        $("adLookAddr")?.addEventListener("keydown", (e) => { if (e.key === "Enter") look(); });
     }
+    document.addEventListener("keydown", (e) => {
+        if (e.key !== "Escape" || !cartOpen || document.querySelector(".adm-modal")) return;
+        cartOpen = false; $("admCartRoot")?.classList.remove("open");
+    });
 
     let loading = null;
     async function load() {
@@ -472,5 +718,5 @@ ${roleTable()}${batchBar()}${refundBox()}${lookupBox()}${sections}`;
     if (CH.account) load();
     /* RPC 偶爾失敗（限流）時自動重試，避免面板一直不出現 */
     setInterval(() => { if (CH.account && !st.ok && !loading) load(); }, 8000);
-    window.ASCAdmin = { load, state: st, actions: A };
+    window.ASCAdmin = { load, render, state: st, actions: A, get batch() { return batch; } };
 })();
