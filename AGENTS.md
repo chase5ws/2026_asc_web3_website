@@ -57,5 +57,6 @@ ASC 鏢局的公開網頁（純靜態，沒有建置步驟，GitHub Pages）。*
 - **快速開關**（清單 `Q`）：兌換與互轉、買 ASC、只限驗證（setPolicy 其他參數沿用現值）、白名單鑄造、NFT 運作（pause/unpause）、轉蛋只限 VIP、市場交易。直接模式＝確認框後送交易；Safe 模式＝加入批次，再撥一次取消。
 - 合約分頁（金庫／喵武士／配件／市場／🔧 工具＝超稀有退還＋查詢錢包，記在 `asc-admin-tab`）＋搜尋；每個函式一列可展開，依 operator／admin／★owner 分組；bool 參數改成開關。
 - 右下角 🛒 批次按鈕＋側邊抽屜：依 Safe 分組、顯示解碼後參數、↑↓ 調順序、✕ 刪除、下載 Transaction Builder JSON（格式同前）。批次項目多存 `c`、`sig`（顯示用即時解碼）、`q`（快速開關）、`tag`。
+- **權限篩選列**（分頁下方，localStorage `asc-admin-lv`）：全部／operator／admin／★ owner（有接受主人時多「新主人」），每顆按鈕顯示可用功能數與擔任該權限的錢包（是你就標「（你）」、Safe 標 Safe、各合約不同就寫「各合約不同」）；篩選同時套用到函式列、快速開關、分頁數字（0 個變淡），分組標題也顯示該合約的權限錢包。
 - `window.confirm／alert` 換成自訂確認框與提示（toast）。`window.ASCAdmin` 多了 `render`、`batch`。
 - 測試：雲端 Playwright＋假狀態（桌機 1366、手機 390 無橫向捲動）：直接模式確認框、Safe 模式開關加入／取消、加入 owner 與 admin 操作、搜尋、調順序、下載 JSON 解碼正確、中英切換、Safe 簽署人鎖定 Safe 模式。

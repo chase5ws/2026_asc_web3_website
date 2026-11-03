@@ -192,6 +192,22 @@
     let mode = ls.get("asc-admin-mode", "direct"); // direct | safe
     let tab = ls.get("asc-admin-tab", "vault");
     let query = "", cartOpen = false;
+    let lvf = ls.get("asc-admin-lv", "all"); // 權限篩選：all／operator／admin／owner／pending
+    const LVS = [["operator", "operator", "operator"], ["admin", "admin", "admin"], ["owner", "★ owner", "★ owner"], ["pending", "新主人", "pending owner"]];
+    /* 某個權限在各合約由哪個錢包擔任（全部一樣就顯示一個，不同就顯示「各合約不同」） */
+    function holder(lv, k) {
+        const r = st.roles[k];
+        if (!r) return "";
+        return lv === "owner" ? r.owner : lv === "pending" ? (r.pending && r.pending !== ZERO ? r.pending : "") : lv === "admin" ? r.admin : r.operator;
+    }
+    function holderText(lv) {
+        const ks = KINDS.map(([k]) => k).filter((k) => A.some((x) => x.c === k && x.lv === lv && (canSend(x) || canBatch(x))));
+        const hs = [...new Set(ks.map((k) => (holder(lv, k) || "").toLowerCase()).filter(Boolean))];
+        if (!hs.length) return "";
+        if (hs.length > 1) return L("各合約不同", "varies");
+        const a = hs[0], you = same(a, CH.account) ? L("（你）", " (you)") : "", s = safeOf(a);
+        return `${short(a)}${you}${s ? " · Safe" : ""}`;
+    }
     const openRows = new Set();
     const anySafe = () => KINDS.some(([k]) => safeOf(st.roles[k]?.owner));
     const anyDirect = () => A.some((x) => canSend(x));
@@ -329,7 +345,7 @@ ${danger ? `<p class="adm-warn">⚠️ ${L("這個操作影響很大，請再確
             const pend = batch.some((b) => b.q === q.k);
             const shown = pend ? !cur : cur;
             const tip = pend ? `<span class="adm-pend">🛒 ${L("批次中", "In batch")}：${yes(cur)} → ${yes(!cur)}</span>` : `<span class="adm-now ${cur ? "on" : "off"}">● ${L("目前", "Now")} ${yes(cur)}</span>`;
-            return `<div class="adm-q${pend ? " pend" : ""}" data-q="${q.k}"><div><b>${esc(L(q.zh, q.en))}</b><small>${esc(KN(q.c))} · <code>${esc(x.fn)}</code>${q.sub ? ` · ${esc(L(...q.sub))}` : ""}</small>${tip}<span class="adm-qmsg"></span></div><label class="adm-sw" title="${esc(L(q.zh, q.en))}"><input type="checkbox" aria-label="${esc(L(q.zh, q.en))}"${shown ? " checked" : ""}><i></i></label></div>`;
+            return `<div class="adm-q${pend ? " pend" : ""}" data-q="${q.k}" data-lv="${x.lv}"><div><b>${esc(L(q.zh, q.en))}</b><small>${esc(KN(q.c))} · <code>${esc(x.fn)}</code>${q.sub ? ` · ${esc(L(...q.sub))}` : ""}</small>${tip}<span class="adm-qmsg"></span></div><label class="adm-sw" title="${esc(L(q.zh, q.en))}"><input type="checkbox" aria-label="${esc(L(q.zh, q.en))}"${shown ? " checked" : ""}><i></i></label></div>`;
         }).join("");
         return items ? `<h3 class="adm-sect-h">${L("快速開關", "QUICK SWITCHES")}</h3><div class="adm-quick">${items}</div>` : "";
     }
@@ -368,7 +384,7 @@ ${danger ? `<p class="adm-warn">⚠️ ${L("這個操作影響很大，請再確
         const send = canSend(x), bat = canBatch(x);
         if (!send && !bat) return "";
         const key = `${x.c}:${x.sig}`;
-        return `<details class="adm-act${x.danger ? " danger" : ""}${send && bat ? " both" : ""}" data-i="${idx}" data-key="${esc(key)}" data-s="${esc(`${x.zh} ${x.en} ${x.fn}`.toLowerCase())}"${openRows.has(key) ? " open" : ""}>
+        return `<details class="adm-act${x.danger ? " danger" : ""}${send && bat ? " both" : ""}" data-i="${idx}" data-lv="${x.lv}" data-key="${esc(key)}" data-s="${esc(`${x.zh} ${x.en} ${x.fn}`.toLowerCase())}"${openRows.has(key) ? " open" : ""}>
 <summary><b>${esc(L(x.zh, x.en))}</b><code>${esc(x.fn)}</code>${!send ? `<span class="adm-only">🛡 ${L("只能走 Safe", "Safe only")}</span>` : ""}</summary>
 <div class="adm-in">${x.d[0] ? `<p class="muted small">${esc(L(x.d[0], x.d[1]))}</p>` : ""}
 ${x.a.length ? `<div class="adm-fields">${x.a.map((a, i) => field(x, i, a, pre)).join("")}</div>` : `<p class="muted small">${L("不需要參數", "No parameters")}</p>`}
@@ -378,9 +394,9 @@ ${x.a.length ? `<div class="adm-fields">${x.a.map((a, i) => field(x, i, a, pre))
     function paneHtml(k, zh, en) {
         const groups = GROUPS.map(([lv, gz, ge]) => {
             const rows = A.map((x, i) => (x.c === k && x.lv === lv ? actionRow(x, i) : "")).join("");
-            return rows ? `<div class="adm-grp" data-lv="${lv}"><h4>${esc(L(gz, ge))}</h4><div class="adm-list">${rows}</div></div>` : "";
+            return rows ? `<div class="adm-grp" data-lv="${lv}"><h4>${esc(L(gz, ge))}${holder(lv, k) ? ` <span class="adm-who">${addrLink(holder(lv, k))}${same(holder(lv, k), CH.account) ? L("（你）", " (you)") : ""}</span>` : ""}</h4><div class="adm-list">${rows}</div></div>` : "";
         }).join("");
-        return `<div class="adm-pane" data-pane="${k}"><h3 class="adm-pane-h">${esc(L(zh, en))}</h3><div class="adm-addr muted small">${L("合約", "Contract")} ${addrLink(C[k])}</div>${stateGrid(k)}${groups || `<p class="muted small">${L("你在這份合約沒有可以做的操作", "No actions available for you here")}</p>`}</div>`;
+        return `<div class="adm-pane" data-pane="${k}"><h3 class="adm-pane-h">${esc(L(zh, en))}</h3><div class="adm-addr muted small">${L("合約", "Contract")} ${addrLink(C[k])}</div>${stateGrid(k)}${groups || `<p class="muted small">${L("你在這份合約沒有可以做的操作", "No actions available for you here")}</p>`}<p class="muted small adm-lvnone hidden">${L("這份合約沒有這個權限的功能，換個權限或分頁看看", "No actions for this role here — try another role or tab")}</p></div>`;
     }
     const count = (k) => A.filter((x) => x.c === k && (canSend(x) || canBatch(x))).length;
 
@@ -552,7 +568,7 @@ ${x.a.length ? `<div class="adm-fields">${x.a.map((a, i) => field(x, i, a, pre))
     function afterCart(bump) {
         renderCart(bump);
         const qb = $("admQuickBox");
-        if (qb) { qb.innerHTML = quickHtml(); bindQuick(qb); }
+        if (qb) { qb.innerHTML = quickHtml(); bindQuick(qb); applyView(); }
     }
 
     /* ── 模式、分頁、搜尋 ── */
@@ -570,16 +586,30 @@ ${x.a.length ? `<div class="adm-fields">${x.a.map((a, i) => field(x, i, a, pre))
         afterCart();
         renderRefund();
     }
+    function lvBar() {
+        const avail = LVS.filter(([lv]) => A.some((x) => x.lv === lv && (canSend(x) || canBatch(x))));
+        if (avail.length < 2) return "";
+        if (lvf !== "all" && !avail.some(([lv]) => lv === lvf)) lvf = "all";
+        const n = (lv) => A.filter((x) => (lv === "all" || x.lv === lv) && (canSend(x) || canBatch(x))).length;
+        const btn = (lv, label, sub) => `<button type="button" data-lv="${lv}" aria-pressed="${lvf === lv}"><b>${esc(label)}<small>${n(lv)}</small></b>${sub ? `<span>${esc(sub)}</span>` : ""}</button>`;
+        return `<div class="adm-lvf" role="group" aria-label="role filter"><span class="adm-lvl">${L("權限篩選", "Filter by role")}</span>${btn("all", L("全部", "All"), L("所有錢包", "all wallets"))}${avail.map(([lv, zh, en]) => btn(lv, L(zh, en), holderText(lv))).join("")}</div>`;
+    }
     function applyView() {
         const box = $("adminPanel"), q = query.trim().toLowerCase();
         box.classList.toggle("searching", !!q);
-        box.querySelectorAll(".adm-act").forEach((r) => r.classList.toggle("hidden", !!q && !r.dataset.s.includes(q) && !r.textContent.toLowerCase().includes(q)));
+        const lvOk = (el) => lvf === "all" || el.dataset.lv === lvf;
+        box.querySelectorAll(".adm-act").forEach((r) => r.classList.toggle("hidden", !lvOk(r) || (!!q && !r.dataset.s.includes(q) && !r.textContent.toLowerCase().includes(q))));
+        box.querySelectorAll(".adm-q").forEach((r) => r.classList.toggle("hidden", !lvOk(r)));
+        const qb = $("admQuickBox"); if (qb) qb.classList.toggle("hidden", !qb.querySelector(".adm-q:not(.hidden)"));
+        box.querySelectorAll(".adm-lvf button").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.lv === lvf)));
+        box.querySelectorAll(".adm-tabs button").forEach((b) => { const sm = b.querySelector("small"), p = box.querySelector(`.adm-pane[data-pane="${b.dataset.tab}"]`); if (!sm || !p) return; const c = [...p.querySelectorAll(".adm-act")].filter(lvOk).length; sm.textContent = c; b.classList.toggle("dim", !c); });
         box.querySelectorAll(".adm-grp").forEach((g) => g.classList.toggle("hidden", !g.querySelector(".adm-act:not(.hidden)")));
         let hits = 0;
         box.querySelectorAll(".adm-pane").forEach((p) => {
             const n = p.querySelectorAll(".adm-act:not(.hidden)").length;
             hits += n;
             p.classList.toggle("hidden", q ? !n : p.dataset.pane !== tab);
+            p.querySelector(".adm-lvnone")?.classList.toggle("hidden", !!q || lvf === "all" || n > 0 || !p.querySelector(".adm-act"));
         });
         box.querySelectorAll(".adm-tabs button").forEach((b) => b.setAttribute("aria-selected", String(!q && b.dataset.tab === tab)));
         const none = $("admNone"); if (none) none.classList.toggle("hidden", !q || hits > 0);
@@ -612,6 +642,7 @@ ${anySafe() ? `<p class="adm-hint" id="admHint">${hintHtml()}</p>` : ""}
 ${rolesHtml()}
 <div id="admQuickBox">${quickHtml()}</div>
 <div class="adm-bar"><div class="adm-tabs" role="tablist">${tabs.map(([k, label, n]) => `<button type="button" role="tab" data-tab="${k}">${esc(label)}${n ? `<small>${n}</small>` : ""}</button>`).join("")}</div><input type="search" class="adm-search" id="admSearch" placeholder="🔍 ${L("搜尋功能，例如 VIP、凍結、airdrop", "Search, e.g. VIP, freeze, airdrop")}" value="${esc(query)}" autocomplete="off"></div>
+${lvBar()}
 ${KINDS.map(([k, zh, en]) => paneHtml(k, zh, en)).join("")}
 <div class="adm-pane" data-pane="tools"><div id="admRefundBox">${refundHtml()}</div>${lookupHtml()}</div>
 <p class="muted small hidden" id="admNone">${L("找不到符合的功能", "No matching actions")}</p>
@@ -652,6 +683,7 @@ ${KINDS.map(([k, zh, en]) => paneHtml(k, zh, en)).join("")}
             applyView();
         }));
         $("admSearch")?.addEventListener("input", (e) => { query = e.target.value; applyView(); });
+        box.querySelectorAll(".adm-lvf button").forEach((b) => b.addEventListener("click", () => { lvf = b.dataset.lv; ls.set("asc-admin-lv", lvf); applyView(); }));
         const qb = $("admQuickBox"); if (qb) bindQuick(qb);
         box.querySelectorAll("details.adm-act").forEach((d) => d.addEventListener("toggle", () => (d.open ? openRows.add(d.dataset.key) : openRows.delete(d.dataset.key))));
         box.querySelectorAll(".adm-act").forEach((card) => {

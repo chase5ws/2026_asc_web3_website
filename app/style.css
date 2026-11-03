@@ -331,6 +331,21 @@ html{scroll-padding-top:90px}
 .adm-tabs small{margin-left:6px;padding:0 6px;border-radius:999px;background:var(--line);font-size:11px;color:var(--soft);font-weight:500}
 .adm-search{flex:1 1 220px;min-width:0;min-height:44px;padding:0 14px;border-radius:12px;border:1px solid var(--line2);background:var(--bg2);color:var(--ink);font-size:14px}
 .adm-search:focus{outline:none;border-color:var(--gold)}
+/* 權限篩選 */
+.adm-lvf{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:-4px}
+.adm-lvl{font-size:12px;color:var(--muted);margin-right:2px}
+.adm-lvf button{display:flex;flex-direction:column;align-items:flex-start;gap:0;min-height:44px;padding:5px 14px;border-radius:12px;border:1px solid var(--line2);background:var(--bg2);color:var(--soft);text-align:left;transition:border-color .2s,background .2s}
+.adm-lvf button b{display:flex;align-items:center;gap:6px;font-size:13.5px}
+.adm-lvf button b small{padding:0 6px;border-radius:999px;background:var(--line);font-size:11px;font-weight:500;color:var(--soft)}
+.adm-lvf button span{font-size:11px;color:var(--muted);font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+.adm-lvf button:hover{border-color:var(--soft)}
+.adm-lvf button[aria-pressed="true"]{border-color:var(--ink);background:var(--card2);color:#fff}
+.adm-lvf button[data-lv="operator"][aria-pressed="true"]{border-color:#7fc0ff;background:rgba(61,139,255,.14)}
+.adm-lvf button[data-lv="admin"][aria-pressed="true"]{border-color:var(--red);background:rgba(200,32,46,.14)}
+.adm-lvf button[data-lv="owner"][aria-pressed="true"],.adm-lvf button[data-lv="pending"][aria-pressed="true"]{border-color:var(--gold);background:rgba(212,175,106,.12)}
+.adm-lvf button[aria-pressed="true"] span{color:var(--soft)}
+.adm-tabs button.dim{opacity:.45}
+.adm-who{margin-left:6px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px;letter-spacing:0;color:var(--muted)}
 .adm-pane{display:flex;flex-direction:column;gap:14px}
 .adm-pane-h{display:none;margin:4px 0 0;font-size:15px}
 .adm-addr{margin-bottom:-6px}
@@ -423,6 +438,7 @@ html{scroll-padding-top:90px}
   .adm-quick{grid-template-columns:minmax(0,1fr)}
   .adm-state{grid-template-columns:repeat(2,minmax(0,1fr))}
   .adm-tabs{flex-basis:100%}
+  .adm-lvl{flex-basis:100%}.adm-lvf button{flex:1 1 calc(50% - 4px)}
   .adm-fab{right:14px;bottom:calc(14px + env(safe-area-inset-bottom));min-height:50px;padding:0 16px}
   .adm-toasts{bottom:84px}
   .adm-in{padding:2px 12px 12px}
