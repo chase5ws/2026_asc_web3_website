@@ -357,11 +357,11 @@ ${danger ? `<p class="adm-warn">⚠️ ${L("這個操作影響很大，請再確
             try { cur = !!q.get(st); } catch (_) { return ""; }
             const x = qAct(q, !cur);
             if (!x || !(canSend(x) || canBatch(x))) return "";
-            if (q.ok && !q.ok(!cur, st)) return "";
+            const lock = q.ok && !q.ok(!cur, st);
             const pend = batch.some((b) => b.q === q.k);
             const shown = pend ? !cur : cur;
             const tip = pend ? `<span class="adm-pend">🛒 ${L("批次中", "In batch")}：${yes(cur)} → ${yes(!cur)}</span>` : `<span class="adm-now ${cur ? "on" : "off"}">● ${L("目前", "Now")} ${yes(cur)}</span>`;
-            return `<div class="adm-q${pend ? " pend" : ""}" data-q="${q.k}" data-lv="${x.lv}" data-i="${A.indexOf(x)}"><div><b>${esc(L(q.zh, q.en))}</b><small>${esc(KN(q.c))} · <code>${esc(x.fn)}</code>${q.sub ? ` · ${esc(L(...q.sub))}` : ""}</small>${tip}<span class="adm-qmsg"></span></div><label class="adm-sw" title="${esc(L(q.zh, q.en))}"><input type="checkbox" aria-label="${esc(L(q.zh, q.en))}"${shown ? " checked" : ""}><i></i></label></div>`;
+            return `<div class="adm-q${pend ? " pend" : ""}" data-q="${q.k}" data-lv="${x.lv}" data-i="${A.indexOf(x)}"><div><b>${esc(L(q.zh, q.en))}</b><small>${esc(KN(q.c))} · <code>${esc(x.fn)}</code>${q.sub ? ` · ${esc(L(...q.sub))}` : ""}</small>${tip}${lock ? `<small class="muted">${esc(L("要恢復收費請用下方「價格」卡片 setPrices 填換裝費", "To charge again, set the equip fee in the Prices (setPrices) card below"))}</small>` : ""}<span class="adm-qmsg"></span></div><label class="adm-sw" title="${esc(L(q.zh, q.en))}"><input type="checkbox" aria-label="${esc(L(q.zh, q.en))}"${shown ? " checked" : ""}${lock ? " disabled" : ""}><i></i></label></div>`;
         }).join("");
         return items ? `<h3 class="adm-sect-h">${L("快速開關", "QUICK SWITCHES")}</h3><div class="adm-quick">${items}</div>` : "";
     }
@@ -681,8 +681,10 @@ ${x.danger ? `<p class="adm-warn">⚠️ ${L("這個操作影響很大，請再�
         box.querySelectorAll(".adm-tabs button").forEach((b) => { const sm = b.querySelector("small"), p = box.querySelector(`.adm-pane[data-pane="${b.dataset.tab}"]`); if (!sm || !p) return; const c = [...p.querySelectorAll(".adm-act")].filter(lvOk).length; sm.textContent = c; b.classList.toggle("dim", !c); });
         box.querySelectorAll(".adm-grp").forEach((g) => g.classList.toggle("hidden", !g.querySelector(".adm-act:not(.hidden)")));
         let hits = 0;
+        // 🔧 工具分頁（換裝退還、查詢錢包）也能被搜尋到
+        box.querySelectorAll('.adm-pane[data-pane="tools"] .adm-look').forEach((t) => t.classList.toggle("hidden", !!q && !t.textContent.toLowerCase().includes(q)));
         box.querySelectorAll(".adm-pane").forEach((p) => {
-            const n = p.querySelectorAll(".adm-act:not(.hidden)").length;
+            const n = p.querySelectorAll(".adm-act:not(.hidden)").length + (p.dataset.pane === "tools" && q ? p.querySelectorAll(".adm-look:not(.hidden)").length : 0);
             hits += n;
             p.classList.toggle("hidden", q ? !n : p.dataset.pane !== tab);
             p.querySelector(".adm-lvnone")?.classList.toggle("hidden", !!q || n > 0 || !p.querySelector(".adm-act"));
