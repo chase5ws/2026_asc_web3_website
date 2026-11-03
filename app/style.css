@@ -581,3 +581,7 @@ html{scroll-padding-top:90px}
   .gm-info{padding-right:48px}
 }
 @media (prefers-reduced-motion:reduce){.gm-dome i,.tile.gm-t.super img{animation:none}}
+.gm-tips{border-color:#6b5a33;background:rgba(212,175,106,.06)}
+.gm-tips summary{color:#f0d9a6;font-weight:700}
+.gm-tips ul{margin:0;padding:0 0 4px 18px;display:flex;flex-direction:column;gap:8px;color:var(--soft);font-size:13px;line-height:1.65}
+
