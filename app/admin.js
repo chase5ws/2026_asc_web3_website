@@ -325,7 +325,8 @@ ${danger ? `<p class="adm-warn">⚠️ ${L("這個操作影響很大，請再確
     function roleTable() {
         const rows = KINDS.map(([k, zh, en]) => {
             const r = st.roles[k], s = safeOf(r.owner);
-            return `<tr><td>${esc(L(zh, en))}</td><td>${addrLink(r.owner)}${s && s.th ? ` <span class="adm-tag">Safe ${s.th}/${s.owners.length}</span>` : ""}${r.pending && r.pending !== ZERO ? `<br><small class="muted">${L("等待接受", "pending")}：${addrLink(r.pending)}</small>` : ""}</td><td>${addrLink(r.admin)}</td><td>${k === "market" ? "—" : addrLink(r.operator)}</td></tr>`;
+            // 合約名稱連到 Polygonscan
+            return `<tr><td><a href="${CH.link("address", C[k])}" target="_blank" rel="noopener" title="${esc(C[k])}">${esc(L(zh, en))}</a></td><td>${addrLink(r.owner)}${s && s.th ? ` <span class="adm-tag">Safe ${s.th}/${s.owners.length}</span>` : ""}${r.pending && r.pending !== ZERO ? `<br><small class="muted">${L("等待接受", "pending")}：${addrLink(r.pending)}</small>` : ""}</td><td>${addrLink(r.admin)}</td><td>${k === "market" ? "—" : addrLink(r.operator)}</td></tr>`;
         }).join("");
         return `<div class="adm-scroll"><table class="adm-table"><thead><tr><th>${L("合約", "Contract")}</th><th>owner</th><th>admin</th><th>operator</th></tr></thead><tbody>${rows}</tbody></table></div>`;
     }
