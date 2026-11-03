@@ -73,21 +73,41 @@
     }
     let busy = false;
     /** fn(step) 回傳交易（或 null）；step("approve", 代幣名) 顯示授權步驟 */
+    /**
+     * 等交易上鏈：錢包的 tx.wait() 有時永遠不回（公開節點落後、交易被換掉），
+     * 所以同時每 4 秒用唯讀 RPC 查收據，誰先拿到算誰；3 分鐘都沒有就當逾時。
+     * 交易失敗（status 0）也會回傳收據，由呼叫的地方判斷。
+     */
+    function waitTx(tx) {
+        return new Promise((resolve, reject) => {
+            let done = false, iv = 0, to = 0;
+            const fin = (f, v) => { if (done) return; done = true; clearInterval(iv); clearTimeout(to); f(v); };
+            tx.wait().then((r) => fin(resolve, r), (e) => (e?.receipt ? fin(resolve, e.receipt) : fin(reject, e)));
+            iv = setInterval(async () => { try { const r = await CH.ro.getTransactionReceipt(tx.hash); if (r) fin(resolve, r); } catch (_) { /* 下次再查 */ } }, 4000);
+            to = setTimeout(() => fin(reject, { ascCode: "TIMEOUT" }), 180000);
+        });
+    }
     async function send(box, btn, fn) {
+        send.last = null;
         if (busy) return null;
         busy = true;
+        let tx = null;
         const btns = [btn].flat().filter(Boolean);
         btns.forEach((b) => (b.disabled = true));
         try {
             if (!CH.account) await CH.connect();
             say(box, t("tx.wallet"));
             const onStep = (kind, x) => (kind === "approve" ? say(box, t("tx.approve", { t: x })) : say(box, t("tx.pending"), "", x));
-            const tx = await fn(onStep);
+            tx = await fn(onStep);
             let receipt = null;
             if (tx) {
                 say(box, t("tx.pending"), "", tx.hash);
-                receipt = await tx.wait();
-                if (!receipt || receipt.status !== 1) throw new Error("reverted");
+                receipt = await waitTx(tx);
+                if (!receipt || receipt.status !== 1) {
+                    // gas 幾乎用光＝out of gas；其他就是合約擋下
+                    const out = receipt && tx.gasLimit && receipt.gasUsed * 100n >= tx.gasLimit * 98n;
+                    throw { ascCode: out ? "OUTOFGAS" : "REVERTED" };
+                }
                 say(box, t("tx.done"), "ok", tx.hash);
             }
             await refresh();
@@ -96,7 +116,9 @@
             return receipt;
         } catch (e) {
             console.warn(e);
-            say(box, errText(CH.explain(e)), "bad");
+            const msg = errText(CH.explain(e));
+            say(box, msg, "bad", tx?.hash);
+            send.last = { error: msg, hash: tx?.hash || null };
             return null;
         } finally {
             busy = false;

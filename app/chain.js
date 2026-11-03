@@ -103,6 +103,7 @@
 
     /** 錯誤 → { name, args }（合約自訂錯誤）或 { code }（使用者取消、餘額不足） */
     function explain(e) {
+        if (e?.ascCode) return { code: e.ascCode };
         if (e?.code === "ACTION_REJECTED" || e?.code === 4001 || e?.info?.error?.code === 4001) return { code: "REJECTED" };
         if (e?.message === "NO_WALLET") return { code: "NO_WALLET" };
         if (e?.revert?.name) return { name: e.revert.name, args: e.revert.args };

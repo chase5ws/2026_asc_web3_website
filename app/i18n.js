@@ -42,14 +42,14 @@ Object.assign(window.ASC_T.en, {"g.feat": "★ Featured prizes", "g.all": "Commo
 Object.assign(window.ASC_T.zh, {"g.tipT": "⚠ 轉蛋注意事項",
     "g.tip1": "只能用一般錢包抽（MetaMask、OKX 等的一般帳戶）。Safe 多簽和「智慧帳戶」都會被合約擋下，顯示「只能用一般錢包操作」。",
     "g.tip2": "MetaMask 若升級成智慧帳戶：帳戶選單 → 該帳戶的「⋮」→ 帳戶詳情 → 智慧帳戶 → 把 Polygon 的開關關掉，確認一筆小額交易後就變回一般帳戶（地址與資產不變）。",
-    "g.tip3": "每抽約需 50 萬 gas，抽中什麼會讓用量上下浮動。網站會自動把 gas 上限設成估計值的 1.5 倍（抽 1 次約 75～80 萬）；如果錢包確認視窗顯示的上限只有 50 萬左右，請先強制重新整理（Cmd／Ctrl + Shift + R），或在錢包把 Gas limit 手動改成 800000。",
+    "g.tip3": "每抽約需 50 萬 gas，抽中什麼會讓用量上下浮動。網站會自動把 gas 上限設成估計值的 2 倍（抽 1 次約 100 萬；沒用到的不收錢）；如果錢包確認視窗顯示的上限只有 50 萬左右，請先強制重新整理（Cmd／Ctrl + Shift + R），或在錢包把 Gas limit 手動改成 800000。",
     "g.tip4": "網站剛更新後，瀏覽器最多會快取舊版 10 分鐘；遇到怪問題先強制重新整理。",
     "g.tip5": "交易失敗會整筆退回：轉蛋次數和 ASC 都不會被扣，只會花掉一點 POL 手續費。錢包裡記得留一點 POL。",
     "g.tip6": "抽中的配件直接進背包，可以在換裝頁穿上或到市場賣；換裝頁沒看到時按「刷新」。"});
 Object.assign(window.ASC_T.en, {"g.tipT": "⚠ Gacha notes",
     "g.tip1": "Only a normal wallet account can pull (MetaMask, OKX, etc.). Safe multisigs and \"smart accounts\" are blocked by the contract and show \"normal wallets only\".",
     "g.tip2": "If MetaMask upgraded you to a smart account: account menu → \"⋮\" on that account → Account details → Smart account → turn Polygon off and confirm a small transaction. Your address and assets stay the same.",
-    "g.tip3": "Each pull needs about 500k gas, and the amount varies with what you win. The site sets the gas limit to 1.5× the estimate (about 750–800k for one pull). If your wallet shows a limit around 500k, hard-refresh first (Cmd/Ctrl + Shift + R) or set the gas limit to 800000 by hand.",
+    "g.tip3": "Each pull needs about 500k gas, and the amount varies with what you win. The site sets the gas limit to 2× the estimate (about 1M for one pull; unused gas is not charged). If your wallet shows a limit around 500k, hard-refresh first (Cmd/Ctrl + Shift + R) or set the gas limit to 800000 by hand.",
     "g.tip4": "Right after a site update your browser may keep the old version for up to 10 minutes — hard-refresh if anything looks odd.",
     "g.tip5": "A failed transaction is fully reverted: no pulls or ASC are taken, only a little POL for gas. Keep some POL in your wallet.",
     "g.tip6": "Parts you win go straight to your inventory — wear them on the Equip page or sell them on the market. Press \"Refresh\" on the Equip page if they don't show up yet."});
@@ -77,3 +77,7 @@ Object.assign(window.ASC_T.en, {"g.winT": "Agency Vault · Mystery Chest", "g.np
     "g.npcS": "\"Ho there, adventurer! The Agency hauled these chests in from every corner of the land — weapons, robes and rare treasures for Meow Samurai. A little ASC opens one, and if luck is on your side… you might just find a legendary golden treasure!\"",
     "g.logT": "System", "g.log0": "Welcome to the Agency Vault.", "g.log1": "Every chest is opened on-chain in public — nobody can tamper with the result.", "g.logStart": "You turn the chest key… ({n} pulls)",
     "g.logFail": "The chest stayed shut. No pulls were used.", "g.logGot": "You obtained {x}.", "g.logMiss": "The chest is empty…", "g.logAnn": "[Notice] An adventurer has found the super rare treasure \"{x}\"!"});
+Object.assign(window.ASC_T.zh, {"e.OUTOFGAS": "交易失敗：gas 用完了（out of gas）。次數和 ASC 都沒有扣，只花了一點 POL；請強制重新整理後再試，或在錢包把 Gas limit 手動調高。", "e.REVERTED": "交易失敗：被合約擋下。次數和 ASC 都沒有扣，只花了一點 POL。", "e.TIMEOUT": "等了 3 分鐘還沒確認上鏈，請點「查看交易」到 Polygonscan 看結果，稍後重新整理。",
+    "g.fx.fail": "開箱失敗", "g.fx.close": "關閉"});
+Object.assign(window.ASC_T.en, {"e.OUTOFGAS": "Transaction failed: out of gas. No pulls or ASC were taken, only a little POL. Hard-refresh and try again, or raise the gas limit in your wallet.", "e.REVERTED": "Transaction failed: rejected by the contract. No pulls or ASC were taken, only a little POL.", "e.TIMEOUT": "Not confirmed after 3 minutes. Open \"View transaction\" on Polygonscan to check, then refresh later.",
+    "g.fx.fail": "The chest failed to open", "g.fx.close": "Close"});

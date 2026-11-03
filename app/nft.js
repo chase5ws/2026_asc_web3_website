@@ -267,13 +267,13 @@
         send($("mGacha"), $("bBuyPulls"), async (step) => { await payAsc(C.nft, D.nftS[6] * BigInt(n), step); return (await nft()).buyPulls(n); });
     };
     /**
-     * 送轉蛋交易：自己估 gas 再多加 50%。轉蛋依抽中什麼走不同的路，用量會浮動，
+     * 送轉蛋交易：自己估 gas 再乘 2（沒用到的 gas 不收錢）。轉蛋依抽中什麼走不同的路，用量會浮動，
      * 錢包估得剛好時容易 gas 用完失敗（2026-11-03 實際發生過）。
      */
     async function gachaTx(times) {
         const c = await nft();
         let opts = {};
-        try { opts = { gasLimit: ((await c.gacha.estimateGas(times)) * 3n) / 2n }; } catch (_) { /* 估不出來（例如會失敗）就交給錢包，錯誤訊息照常顯示 */ }
+        try { opts = { gasLimit: (await c.gacha.estimateGas(times)) * 2n }; } catch (_) { /* 估不出來（例如會失敗）就交給錢包，錯誤訊息照常顯示 */ }
         const tx = await c.gacha(times, opts);
         FX.open(times);
         return tx;
@@ -284,7 +284,12 @@
         $("gResults").innerHTML = "";
         logAdd({ k: "g.logStart", v: { n: times } });
         const r = await send($("mGacha"), [$("bPull1"), $("bPull10")], async (step) => { await payAsc(C.nft, pay, step); return gachaTx(times); });
-        if (!r) { FX.close(); logAdd({ k: "g.logFail" }); return; }
+        if (!r) {
+            // 失敗：動畫視窗改成失敗畫面（原因＋交易連結），不會一直卡在轉動中
+            const f = send.last;
+            if (f) { FX.fail(f.error, f.hash); logAdd({ k: "g.logFail" }); } else FX.close();
+            return;
+        }
         const iface = CH.read.nft.interface;
         const got = r.logs.filter((l) => l.address.toLowerCase() === C.nft.toLowerCase()).map((l) => { try { return iface.parseLog(l); } catch (_) { return null; } }).filter((e) => e?.name === "GachaPull");
         const box = $("gResults");
@@ -307,7 +312,7 @@
     /* ───── 轉蛋動畫：扭蛋機轉動（等上鏈）→ 一顆顆扭蛋落下、搖晃、打開；依抽到的稀有度變色與特效 ───── */
     FX = (() => {
         const RANK = { miss: 0, normal: 1, rare: 2, super: 3 };
-        let root = null, skip = false, wake = null, timer = null, run = 0;
+        let root = null, skip = false, wake = null, timer = null, run = 0, dismissed = false;
         const reduce = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
         const wait = (ms) => new Promise((r) => { if (skip) return r(); wake = r; timer = setTimeout(r, ms); });
         const label = (tier) => (tier === "miss" ? t("g.miss") : t("g.tier." + tier));
@@ -319,7 +324,9 @@
             root = null;
             document.removeEventListener("keydown", onKey);
         }
-        function onKey(e) { if (e.key === "Escape" && root?.classList.contains("done")) close(); }
+        /** 右上角 ✕／Esc：隨時可以手動關掉（交易照常進行，結果仍會出現在頁面的系統訊息） */
+        function dismiss() { dismissed = true; close(); }
+        function onKey(e) { if (e.key === "Escape" && root) dismiss(); }
         function doSkip() {
             if (!root || skip) return;
             skip = true;
@@ -330,10 +337,11 @@
         /** 交易送出後：顯示轉動中的扭蛋機 */
         function open(times) {
             close();
+            dismissed = false;
             skip = reduce();
             const rays = Array.from({ length: 9 }, (_, i) => `<i style="--r:${-60 + i * 15}deg;animation-delay:${(i * 0.11).toFixed(2)}s"></i>`).join("");
             root = el(`<div class="gfx spin${skip ? " fast" : ""}" role="dialog" aria-modal="true" aria-live="polite"><div class="gfx-in">
-                <div class="gfx-head"><i aria-hidden="true">◆</i><b>${esc(t("g.winT"))}</b><i aria-hidden="true">◆</i></div>
+                <div class="gfx-head"><i aria-hidden="true">◆</i><b>${esc(t("g.winT"))}</b><i aria-hidden="true">◆</i><button type="button" class="gfx-x" aria-label="${esc(t("g.fx.close"))}" title="${esc(t("g.fx.close"))}">✕</button></div>
                 <div class="gfx-mach" aria-hidden="true"><div class="gfx-rays">${rays}</div><div class="lg-chest big"><i class="lid"></i><i class="lock"></i><i class="base"></i></div></div>
                 <p class="gfx-txt">${esc(t("g.fx.spin", { n: times }))}</p>
                 <div class="gfx-res${times === 1 ? " one" : ""}"></div>
@@ -342,6 +350,7 @@
             </div></div>`);
             root.querySelector(".gfx-skip").onclick = doSkip;
             root.querySelector(".gfx-ok").onclick = close;
+            root.querySelector(".gfx-x").onclick = dismiss;
             root.onclick = (e) => { if (e.target === root && root.classList.contains("done")) close(); };
             document.addEventListener("keydown", onKey);
             document.body.appendChild(root);
@@ -354,6 +363,7 @@
         }
         /** 上鏈後：依結果一顆顆打開 */
         async function show(results) {
+            if (dismissed) return; // 使用者已經手動關掉，就不再跳出來
             if (!root) open(results.length);
             const me = ++run;
             const one = results.length === 1;
@@ -399,7 +409,22 @@
             root.querySelector(".gfx-ok").classList.remove("hidden");
             root.querySelector(".gfx-ok").focus();
         }
-        return { open, show, close, label };
+        /** 交易失敗：停止轉動，顯示原因與交易連結 */
+        function fail(msg, hash) {
+            if (!root || dismissed) return;
+            run++;
+            clearTimeout(timer);
+            root.classList.remove("spin");
+            root.classList.add("fail", "done");
+            const txt = root.querySelector(".gfx-txt");
+            txt.innerHTML = `<b>${esc(t("g.fx.fail"))}</b><br>${esc(msg || "")}${hash ? `<br><a href="${CH.link("tx", hash)}" target="_blank" rel="noopener">${esc(t("tx.view"))}</a>` : ""}`;
+            root.querySelector(".gfx-skip").classList.add("hidden");
+            const ok = root.querySelector(".gfx-ok");
+            ok.textContent = t("g.fx.close");
+            ok.classList.remove("hidden");
+            ok.focus();
+        }
+        return { open, show, close, fail, label };
     })();
     window.ASCGachaFX = FX; // 方便在瀏覽器主控台預覽動畫：ASCGachaFX.show([{ p: ASCLook.L.parts[0], tier: "super" }])
     $("bPull1").onclick = () => pull(1);
