@@ -149,13 +149,14 @@
         }
         const changes = Object.entries(Q.try).filter(([slot, pid]) => cur.find((x) => x.slot === Number(slot))?.part?.pid !== pid);
         const takes = [...Q.take].filter((slot) => cur.find((x) => x.slot === slot)?.opt.file);
-        $("qNeed").textContent = Q.id != null ? (isVip() ? t("q.need", { n: changes.length, m: takes.length }) : t("q.notVip")) : "";
+        const off = [...changes.map(([slot]) => Number(slot)), ...takes].map((slot) => cur.find((x) => x.slot === slot)?.part).filter(Boolean);
+        const lose = off.filter((p) => p.tier !== "super").map(partName), back = off.filter((p) => p.tier === "super").map(partName);
+        $("qNeed").textContent = Q.id != null ? (isVip() ? [t("q.need", { n: changes.length, m: takes.length }), lose.length ? t("q.lose", { x: lose.join("、") }) : "", back.length ? t("q.back", { x: back.join("、") }) : ""].filter(Boolean).join("　") : t("q.notVip")) : "";
         $("bEquip").disabled = Q.id == null || !isVip() || !(changes.length + takes.length);
         $("eqReset").disabled = !(Object.keys(Q.try).length + Q.take.size);
         Q._changes = changes.map(([, pid]) => pid);
         Q._takes = takes;
 
-        renderGacha();
     }
     $("eqReset").onclick = () => { Q.try = {}; Q.take.clear(); renderEquip(); };
     $("bVip").onclick = () => {
@@ -170,18 +171,23 @@
 
     /* ───── 轉蛋 ───── */
     function renderGacha() {
+        if (!D.ready) return;
         const s = D.nftS;
         const total = D.prizes.reduce((a, p) => a + p.w, 0) + D.miss;
         const pool = $("eqPool");
-        if (!same(pool, JSON.stringify([D.prizes, D.miss, S.lang, Q.try]))) {
+        if (!same(pool, JSON.stringify([D.prizes, D.miss, S.lang]))) {
             pool.innerHTML = "";
-            D.prizes.forEach((x) => {
-                const p = LK.L.byPid[x.pid];
-                if (!p) return;
-                const pct = total ? ((x.w / total) * 100).toFixed(x.w / total < 0.01 ? 2 : 1) : "0";
-                pool.appendChild(tile(p, `<span class="q">${pct}%</span>`, () => { if (Q.id == null) return; Q.try[p.slot] = p.pid; Q.take.delete(p.slot); renderEquip(); }, Q.try[p.slot] === p.pid));
-            });
-            if (D.miss && total) pool.appendChild(el(`<div class="tile miss" style="justify-content:center"><b style="font:900 28px var(--serif);color:var(--muted)">×</b><span>${esc(t("g.miss"))}</span><span class="q">${((D.miss / total) * 100).toFixed(1)}%</span></div>`));
+            const pc = (w) => { const r = total ? w / total : 0; return (r * 100).toFixed(r < 0.01 ? 2 : 1); };
+            const rows = D.prizes.map((x) => ({ p: LK.L.byPid[x.pid], w: x.w })).filter((x) => x.p);
+            for (const tier of ["super", "rare", "normal"]) {
+                const list = rows.filter((x) => x.p.tier === tier).sort((a, b) => a.w - b.w || a.p.pid - b.p.pid);
+                if (!list.length) continue;
+                const sum = list.reduce((a, x) => a + x.w, 0);
+                const grp = el(`<div style="display:flex;flex-direction:column;gap:8px"><div class="panelhead"><h3>${tierTag(tier)} ${esc(t("g.tier." + tier))}</h3><span class="muted small">${esc(t("g.sum", { n: list.length, p: pc(sum) }))}</span></div><div class="tiles"></div></div>`);
+                list.forEach((x) => grp.querySelector(".tiles").appendChild(tile(x.p, `<span class="q">${pc(x.w)}%</span>`)));
+                pool.appendChild(grp);
+            }
+            if (D.miss && total) pool.appendChild(el(`<div class="tiles"><div class="tile miss" style="justify-content:center"><b style="font:900 28px var(--serif);color:var(--muted)">×</b><span>${esc(t("g.miss"))}</span><span class="q">${pc(D.miss)}%</span></div></div>`));
         }
         const pulls = D.nftMe?.[2] || 0n;
         $("gPulls").textContent = CH.account ? int(pulls) : "–";
@@ -240,5 +246,6 @@
 
     U.renderers.push(() => { if (S.page === "nft" && S.nft === "mint") renderMint(); });
     U.renderers.push(() => { if (S.page === "nft" && S.nft === "equip") renderEquip(); });
+    U.renderers.push(() => { if (S.page === "nft" && S.nft === "gacha") renderGacha(); });
     U.renderers.push(() => { if (S.page === "nft" && S.nft === "bag") renderBag(); });
 })();

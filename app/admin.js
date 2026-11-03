@@ -207,7 +207,7 @@
         return `<div class="adm-state">${items.map(([a, b]) => `<div><span>${esc(a)}</span><b>${esc(b)}</b></div>`).join("")}</div>`;
     }
     function field(x, i, [name, type, zh, en], pre) {
-        const id = `ad-${x.c}-${x.fn}-${i}`;
+        const id = `adf-${x.c}-${x.fn}-${i}`;
         const val = pre?.[i] ?? "";
         const lab = `<span>${esc(L(zh, en))}</span>`;
         if (type === "bool") return `<label class="adm-f">${lab}<select id="${id}"><option value="true"${String(val) === "true" ? " selected" : ""}>true</option><option value="false"${String(val) === "false" ? " selected" : ""}>false</option></select></label>`;
@@ -246,6 +246,103 @@ ${batch.length ? `<ol>${list}</ol>` : `<p class="muted small">${L("還沒有加�
         b.textContent = L("⚙ 管理", "⚙ Admin");
         b.classList.toggle("hidden", !show);
     }
+    /* ── 超稀有退還：換裝時被換掉／脫掉的超稀有配件，由 admin 用 giveParts 退回原持有者 ──
+     *   應退：從 NFT 部署區塊重播 Minted／PresetMinted／RandomSeed／Equipped，算出每次換裝前穿什麼
+     *   已退：配件合約由 NFT 合約鑄出、且同一筆交易沒有 GachaPull 的超稀有（＝giveParts；活動送的也會算進去） */
+    const rf = { busy: false, rows: null, err: "", at: 0 };
+    const ZPAD = (a) => E.zeroPadValue(a, 32);
+    async function scanRefunds() {
+        const LK = window.ASCLook;
+        if (!LK) throw new Error("ASCLook");
+        if (!LK.L.traits) await LK.loadTraits();
+        const cats = LK.L.cats, sup = new Set(LK.L.parts.filter((p) => p.tier === "super").map((p) => p.pid));
+        const head = await CH.ro.getBlockNumber();
+        const I = CH.read.nft.interface;
+        const names = ["Minted", "PresetMinted", "RandomSeed", "Equipped", "GachaPull"];
+        const logs = await CH.getLogs({ address: C.nft, topics: [names.map((n) => I.getEvent(n).topicHash)] }, C.nftBlock, head);
+        const toks = {}, owed = {}, gachaTx = new Set();
+        const add = (m, who, pid, n) => { const k = who.toLowerCase() + ":" + pid; m[k] = (m[k] || 0) + n; };
+        const pidOf = (slot, name) => { const i = cats[slot].options.findIndex((o) => o.name === name && o.file); return i < 0 ? null : slot * 256 + i; };
+        for (const l of logs) {
+            const ev = I.parseLog(l);
+            if (!ev) continue;
+            if (ev.name === "GachaPull") { gachaTx.add(l.transactionHash); continue; }
+            if (ev.name === "RandomSeed") { if (Number(ev.args.purpose) === 1) (toks[String(ev.args.ref)] ||= {}).seed ||= ev.args.seed; continue; }
+            const t = (toks[String(ev.args.tokenId)] ||= {});
+            if (ev.name === "Minted") { t.kind = Number(ev.args.kind); continue; }
+            if (ev.name === "PresetMinted") { t.ref = Number(ev.args.ref); continue; }
+            if (!t.traits) t.traits = t.ref != null ? await LK.v1Traits(t.ref) : t.seed ? LK.rollTraits(t.seed) : {};
+            const who = ev.args.owner;
+            const off = (slot) => { const pid = pidOf(slot, t.traits[cats[slot]?.trait_type]); if (pid != null && sup.has(pid)) add(owed, who, pid, 1); };
+            for (const pid of ev.args.partIds.map(Number)) {
+                const slot = Math.floor(pid / 256), o = cats[slot]?.options[pid % 256];
+                if (!o) continue;
+                off(slot);
+                t.traits[cats[slot].trait_type] = o.name;
+            }
+            for (const slot of ev.args.clearSlots.map(Number)) {
+                if (!cats[slot]) continue;
+                off(slot);
+                const e = LK.empty(cats[slot]);
+                t.traits[cats[slot].trait_type] = e ? e.name : undefined;
+            }
+        }
+        const PI = new E.Interface(["event TransferSingle(address indexed operator, address indexed from, address indexed to, uint256 id, uint256 value)"]);
+        const plogs = await CH.getLogs({ address: C.parts, topics: [PI.getEvent("TransferSingle").topicHash, ZPAD(C.nft), ZPAD(ZERO)] }, C.nftBlock, head);
+        const paid = {};
+        for (const l of plogs) {
+            if (gachaTx.has(l.transactionHash)) continue;
+            const ev = PI.parseLog(l);
+            const pid = Number(ev.args.id);
+            if (sup.has(pid)) add(paid, ev.args.to, pid, Number(ev.args.value));
+        }
+        return Object.entries(owed).map(([k, n]) => {
+            const [who, pid] = k.split(":");
+            return { who: E.getAddress(who), pid: Number(pid), owed: n, paid: paid[k] || 0, name: LK.L.byPid[pid]?.zh || LK.L.byPid[pid]?.name || pid };
+        }).sort((a, b) => (b.owed - b.paid) - (a.owed - a.paid));
+    }
+    const GIVE = () => A.find((x) => x.c === "nft" && x.fn === "giveParts");
+    function refundBox() {
+        const g = GIVE();
+        if (!g || !(canSend(g) || canBatch(g))) return "";
+        const due = (rf.rows || []).filter((r) => r.owed > r.paid);
+        const body = rf.busy ? `<p class="muted small">${L("掃描鏈上換裝紀錄中…（第一次會比較久）", "Scanning equip history…")}</p>`
+            : rf.err ? `<p class="msg bad">${esc(rf.err)}</p>`
+            : !rf.rows ? `<p class="muted small">${L("按「掃描」找出被換掉或脫掉、還沒退還的超稀有配件。", "Press Scan to find super-rare parts that were replaced and not yet returned.")}</p>`
+            : !due.length ? `<p class="muted small">${L("目前沒有需要退還的超稀有配件 ✓", "Nothing to return ✓")}</p>`
+            : `<div class="adm-scroll"><table class="adm-table"><thead><tr><th>${L("錢包", "Wallet")}</th><th>${L("配件", "Part")}</th><th>${L("應退／已退", "Owed / paid")}</th><th></th></tr></thead><tbody>${due.map((r, i) => `<tr><td>${addrLink(r.who)}</td><td>${esc(r.name)} <small class="muted">#${r.pid}</small></td><td>${r.owed} / ${r.paid}</td><td><button type="button" class="adm-rf" data-r="${i}">${canSend(g) ? L(`退還 ${r.owed - r.paid} 個`, `Return ${r.owed - r.paid}`) : L("加入 Safe 批次", "Add to Safe batch")}</button></td></tr>`).join("")}</tbody></table></div>`;
+        return `<div class="adm-look" id="admRefund"><div class="adm-h"><b>${L("超稀有退還", "Super-rare returns")}</b><span class="muted small">${L("VIP 換裝時被換掉或脫掉的超稀有配件，用 giveParts 退回原持有者", "Super-rare parts replaced during VIP equip are returned with giveParts")}</span></div>${body}<div class="adm-btns"><button type="button" id="adRfScan"${rf.busy ? " disabled" : ""}>${rf.rows ? L("重新掃描", "Rescan") : L("掃描", "Scan")}</button></div><div class="msg adm-msg ${rf.cls || ""}" id="adRfMsg">${esc(rf.msg || "")}</div></div>`;
+    }
+    async function runScan() {
+        rf.busy = true; rf.err = ""; rf.msg = ""; render();
+        try { rf.rows = await scanRefunds(); rf.at = Date.now(); }
+        catch (e) { console.warn(e); rf.err = errText(e); }
+        rf.busy = false; render();
+    }
+    function bindRefund(box) {
+        $("adRfScan")?.addEventListener("click", runScan);
+        const due = (rf.rows || []).filter((r) => r.owed > r.paid);
+        box.querySelectorAll(".adm-rf").forEach((b) => b.addEventListener("click", async () => {
+            const r = due[Number(b.dataset.r)], g = GIVE(), n = BigInt(r.owed - r.paid), m = $("adRfMsg");
+            if (!r || !g) return;
+            if (!canSend(g)) {
+                batch.push({ to: C.nft, data: new E.Interface([g.frag]).encodeFunctionData("giveParts", [r.who, BigInt(r.pid), n]), safe: st.roles.nft.owner, label: `${L("退還超稀有", "Return super-rare")} ${r.name} ×${n} → ${short(r.who)}` });
+                saveBatch(); render(); return;
+            }
+            b.disabled = true;
+            try {
+                m.className = "msg adm-msg"; m.textContent = L("請在錢包確認…", "Confirm in your wallet…");
+                const c = new E.Contract(C.nft, [g.frag], await CH.signer());
+                const tx = await c.giveParts(r.who, r.pid, n);
+                m.textContent = L("等待上鏈…", "Waiting for confirmation…");
+                const rc = await tx.wait();
+                if (!rc || rc.status !== 1) throw new Error("reverted");
+                r.paid += Number(n);
+                rf.msg = L(`已退還 ${r.name} ×${n} 給 ${short(r.who)}`, `Returned ${r.name} ×${n} to ${short(r.who)}`); rf.cls = "ok";
+                render();
+            } catch (e) { console.warn(e); m.className = "msg adm-msg bad"; m.textContent = errText(e); b.disabled = false; }
+        }));
+    }
     function render() {
         const box = $("adminPanel");
         if (!box) return;
@@ -261,12 +358,12 @@ ${batch.length ? `<ol>${list}</ol>` : `<p class="muted small">${L("還沒有加�
         }).join("");
         box.innerHTML = `<span class="eyebrow">ADMIN</span><h2>${L("管理員面板", "Admin panel")}</h2>
 <p class="muted small">${L("只有 owner／admin／operator（或 owner Safe 的簽署人）看得到。★ owner 的操作：owner 是 Safe 時請加入批次，用 Safe 多簽執行。", "Only owners, admins, operators (or signers of the owner Safe) see this. ★ owner actions: when the owner is a Safe, add them to the batch and execute in the Safe.")}</p>
-${roleTable()}${batchBar()}${lookupBox()}${sections}`;
+${roleTable()}${batchBar()}${refundBox()}${lookupBox()}${sections}`;
         bind(box);
     }
     function collect(x, card) {
         return x.a.map(([name, type, zh, en], i) => {
-            const el = card.querySelector(`#ad-${x.c}-${x.fn}-${i}`);
+            const el = card.querySelector(`#adf-${x.c}-${x.fn}-${i}`);
             try { return T[type](el.value); }
             catch (e) { throw new Error(`${L(zh, en)}：${e.shortMessage || e.message}`); }
         });
@@ -340,6 +437,7 @@ ${roleTable()}${batchBar()}${lookupBox()}${sections}`;
             a.click();
             setTimeout(() => URL.revokeObjectURL(a.href), 2000);
         });
+        bindRefund(box);
         $("adLookBtn")?.addEventListener("click", async () => {
             const out = $("adLookOut");
             let a;

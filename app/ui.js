@@ -190,13 +190,11 @@
         $("nftTitle").textContent = t("n.title." + S.nft);
         $("tokTitle").textContent = t("t.title." + S.tok);
         $("nftOver").classList.toggle("hidden", S.nft !== "mint");
-        for (const [sw, key, attr, right, pane] of [["mtSw", "mt", "data-mt", "reveal", "data-mtp"], ["trSw", "tr", "data-tr", "redeem", "data-trp"], ["eqSw", "eq", "data-eq", "gacha", null]]) {
+        for (const [sw, key, attr, right, pane] of [["mtSw", "mt", "data-mt", "reveal", "data-mtp"], ["trSw", "tr", "data-tr", "redeem", "data-trp"]]) {
             $(sw).classList.toggle("right", S[key] === right);
             $$(`[${attr}]`).forEach((b) => b.setAttribute("aria-pressed", String(b.getAttribute(attr) === S[key])));
             if (pane) $$(`[${pane}]`).forEach((p) => p.classList.toggle("hidden", p.getAttribute(pane) !== S[key]));
         }
-        $("eqMine").classList.toggle("hidden", S.eq !== "mine");
-        $("eqGacha").classList.toggle("hidden", S.eq !== "gacha");
     }
     function chapters() {
         const box = $("chaps");

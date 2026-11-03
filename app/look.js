@@ -132,5 +132,5 @@
     const tierOf = (list) => (list.some((p) => p.opt.tier === "super") ? "super" : list.some((p) => p.opt.tier === "rare") ? "rare" : "normal");
     const imageOf = (id) => `${A}/v2/images/${id}.png`;
 
-    window.ASCLook = { L, loadTraits, sync, lookOf, picks, compose, drawOrder, tierOf, imageOf, empty, rollTraits, A };
+    window.ASCLook = { L, loadTraits, sync, v1Traits, lookOf, picks, compose, drawOrder, tierOf, imageOf, empty, rollTraits, A };
 })();

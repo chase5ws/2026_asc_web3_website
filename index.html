@@ -14,7 +14,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@600;900&family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="./app/style.css?v=20261102q">
+<link rel="stylesheet" href="./app/style.css?v=20261103b">
 </head>
 <body>
 <div class="app" id="app">
@@ -26,6 +26,7 @@
 <nav class="subnav" aria-label="子選單"><div class="subs" data-subs="nft">
 <button class="sub" data-sub="mint" type="button" data-t="s.mint">鑄造</button>
 <button class="sub" data-sub="equip" type="button" data-t="s.equip">換裝</button>
+<button class="sub" data-sub="gacha" type="button" data-t="s.gacha">轉蛋</button>
 <button class="sub" data-sub="bag" type="button" data-t="s.bag">背包</button>
 <button class="sub" data-sub="market" type="button" data-t="s.market">市場</button>
 </div>
@@ -145,21 +146,25 @@
 <div class="eq-left">
 <div class="vipbar"><span><b data-t="v.title">VIP 會員</b><small class="muted" id="vDesc"></small></span><div style="display:flex;gap:8px;align-items:center"><span class="soft small" id="vUntil"></span><select id="vPer" aria-label="VIP 方案" style="min-height:40px;max-width:100%;background:var(--bg2);color:var(--ink);border:1px solid var(--line2);border-radius:10px;padding:0 8px"></select><button class="btn" style="min-height:40px;font-size:14px" type="button" id="bVip" data-t="v.buy">購買 VIP</button></div></div>
 <div class="msg" id="mVip"></div>
+<div class="note perk"><b data-t="q.perkT">★ VIP 特殊福利</b><span data-t="q.perk"></span></div>
 <div class="panelhead"><h3 data-t="q.pick">選擇要換裝的喵武士</h3><span class="muted small"><span data-t="q.fee">換裝費</span> <b id="qFee">–</b></span></div>
 <div class="mycats" id="qCats"></div>
 <div class="eq-preview" id="qBox"><div class="stack" id="qPrev"></div><div class="eq-slots" id="eqSlots"></div></div>
-<div class="sw eqsw" id="eqSw" role="group" aria-label="我的 / 轉蛋"><span class="thumb" aria-hidden="true"></span><button type="button" data-eq="mine" data-t="q.mine">我的</button><button type="button" data-eq="gacha" data-t="q.gacha">轉蛋</button></div>
+<div class="panelhead"><h3 data-t="q.mine">我的</h3><span class="muted small" data-t="q.fromBag"></span></div>
 <div id="eqMine" class="tiles"></div>
-<div id="eqGacha" class="hidden" style="display:flex;flex-direction:column;gap:10px"><div class="tiles" id="eqPool"></div><span class="soft small"><span data-t="g.have">轉蛋次數</span> <b id="gPulls">–</b> · <span data-t="g.each">每抽</span> <b id="gFee">–</b> · <span data-t="g.trade">抽到的配件可以交易</span></span>
+<div style="display:flex;gap:10px;flex-wrap:wrap"><button class="btn alt" style="flex:1 1 120px" type="button" data-jump="nft:market" data-t="q.toMarket">去市場買配件</button><button class="btn alt" style="flex:1 1 120px" type="button" id="eqReset" data-t="q.reset">還原</button><button class="btn" style="flex:2 1 200px" type="button" id="bEquip" data-t="q.confirm">確認換裝</button></div>
+<span class="soft small" id="qNeed"></span>
+<div class="msg" id="mEquip"></div>
+<span class="soft small" data-t="q.rule"></span>
+</div>
+</div>
+
+<div data-part="gacha" class="hidden">
+<div id="eqGacha" style="display:flex;flex-direction:column;gap:14px"><div id="eqPool" style="display:flex;flex-direction:column;gap:14px"></div><span class="soft small"><span data-t="g.have">轉蛋次數</span> <b id="gPulls">–</b> · <span data-t="g.each">每抽</span> <b id="gFee">–</b> · <span data-t="g.trade">抽到的配件可以交易</span></span>
 <div class="note warn hidden" id="gNote"></div>
 <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center"><select id="gN" aria-label="買幾次" style="min-height:44px;background:var(--bg2);color:var(--ink);border:1px solid var(--line2);border-radius:10px;padding:0 8px"><option>1</option><option>5</option><option selected>10</option><option>30</option></select><button class="btn alt" style="flex:1 1 90px;min-height:44px;font-size:14px" type="button" id="bBuyPulls" data-t="n.buyPulls">買次數</button><button class="btn" style="flex:1 1 90px;min-height:44px;font-size:14px" type="button" id="bPull1" data-t="n.pull1">抽 1 次</button><button class="btn blue" style="flex:1 1 90px;min-height:44px;font-size:14px" type="button" id="bPull10" data-t="n.pull10">抽 10 次</button></div>
 <div class="msg" id="mGacha"></div>
 <div class="results" id="gResults"></div>
-</div>
-<div style="display:flex;gap:10px;flex-wrap:wrap"><button class="btn alt" style="flex:1 1 120px" type="button" data-jump="nft:market" data-t="q.toMarket">去市場買配件</button><button class="btn alt" style="flex:1 1 120px" type="button" id="eqReset" data-t="q.reset">還原</button><button class="btn" style="flex:2 1 200px" type="button" id="bEquip" data-t="q.confirm">確認換裝</button></div>
-<span class="soft small" id="qNeed"></span>
-<div class="msg" id="mEquip"></div>
-<span class="muted small" data-t="q.fromBag"></span>
 </div>
 </div>
 
@@ -257,14 +262,14 @@
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.13.4/ethers.umd.min.js"></script>
 <script src="./config.js"></script>
-<script src="./app/i18n.js?v=20261102l"></script>
+<script src="./app/i18n.js?v=20261103b"></script>
 <script src="./app/chain.js?v=20261102l"></script>
-<script src="./app/look.js?v=20261102l"></script>
+<script src="./app/look.js?v=20261103b"></script>
 <script src="./app/price.js?v=20261102l"></script>
-<script src="./app/ui.js?v=20261102q"></script>
-<script src="./app/nft.js?v=20261102l"></script>
+<script src="./app/ui.js?v=20261103b"></script>
+<script src="./app/nft.js?v=20261103b"></script>
 <script src="./app/market.js?v=20261102l"></script>
 <script src="./app/token.js?v=20261102l"></script>
-<script src="./app/admin.js?v=20261102q"></script>
+<script src="./app/admin.js?v=20261103b"></script>
 </body>
 </html>

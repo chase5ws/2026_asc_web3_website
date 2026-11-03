@@ -47,3 +47,7 @@ Object.assign(window.ASC_T.zh, {"v.plan": "{d} 天｜{a} ASC（約 {u} USDT）",
 Object.assign(window.ASC_T.en, {"v.plan": "{d} days · {a} ASC (≈ {u} USDT)", "v.price": "About 1 USDT a day ({p} ASC per {d} days), burned on payment"});
 Object.assign(window.ASC_T.zh, {"v.price": "每天約 {u} USDT（{p} ASC／{d} 天），付款直接銷毀"});
 Object.assign(window.ASC_T.en, {"v.price": "About {u} USDT a day ({p} ASC per {d} days), burned on payment"});
+Object.assign(window.ASC_T.zh, { "s.gacha": "轉蛋", "n.title.gacha": "轉蛋", "g.tier.super": "超稀有", "g.tier.rare": "稀有", "g.tier.normal": "普通", "g.sum": "{n} 種・合計 {p}%",
+    "q.perkT": "★ VIP 特殊福利", "q.perk": "超稀有配件（金柄武士刀、黃金鎧甲、金色閃電眼…）換下或脫掉後不會消失，會由管理員退回你的背包，可以再穿或拿去市場賣。", "q.rule": "換裝規則：同一個部位換上新配件（或脫掉）時，原本的普通、稀有配件會消失；超稀有配件依 VIP 特殊福利退回背包。", "q.lose": "會消失：{x}", "q.back": "★ VIP 福利，會退回背包：{x}" });
+Object.assign(window.ASC_T.en, { "s.gacha": "Gacha", "n.title.gacha": "Gacha", "g.tier.super": "Super rare", "g.tier.rare": "Rare", "g.tier.normal": "Common", "g.sum": "{n} kinds · {p}% total",
+    "q.perkT": "★ VIP special perk", "q.perk": "Super-rare parts (golden-hilt katana, golden armor, golden lightning eyes…) are not lost when replaced or taken off — an admin returns them to your inventory, to wear again or sell in the market.", "q.rule": "Rule: when a slot is replaced (or taken off), the old common/rare part is gone; super-rare parts come back under the VIP special perk.", "q.lose": "Will be gone: {x}", "q.back": "★ VIP perk, returned to inventory: {x}" });
