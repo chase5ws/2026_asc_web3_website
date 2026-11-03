@@ -331,19 +331,22 @@ html{scroll-padding-top:90px}
 .adm-tabs small{margin-left:6px;padding:0 6px;border-radius:999px;background:var(--line);font-size:11px;color:var(--soft);font-weight:500}
 .adm-search{flex:1 1 220px;min-width:0;min-height:44px;padding:0 14px;border-radius:12px;border:1px solid var(--line2);background:var(--bg2);color:var(--ink);font-size:14px}
 .adm-search:focus{outline:none;border-color:var(--gold)}
-/* 權限篩選 */
-.adm-lvf{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:-4px}
-.adm-lvl{font-size:12px;color:var(--muted);margin-right:2px}
-.adm-lvf button{display:flex;flex-direction:column;align-items:flex-start;gap:0;min-height:44px;padding:5px 14px;border-radius:12px;border:1px solid var(--line2);background:var(--bg2);color:var(--soft);text-align:left;transition:border-color .2s,background .2s}
-.adm-lvf button b{display:flex;align-items:center;gap:6px;font-size:13.5px}
-.adm-lvf button b small{padding:0 6px;border-radius:999px;background:var(--line);font-size:11px;font-weight:500;color:var(--soft)}
-.adm-lvf button span{font-size:11px;color:var(--muted);font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
-.adm-lvf button:hover{border-color:var(--soft)}
-.adm-lvf button[aria-pressed="true"]{border-color:var(--ink);background:var(--card2);color:#fff}
-.adm-lvf button[data-lv="operator"][aria-pressed="true"]{border-color:#7fc0ff;background:rgba(61,139,255,.14)}
-.adm-lvf button[data-lv="admin"][aria-pressed="true"]{border-color:var(--red);background:rgba(200,32,46,.14)}
-.adm-lvf button[data-lv="owner"][aria-pressed="true"],.adm-lvf button[data-lv="pending"][aria-pressed="true"]{border-color:var(--gold);background:rgba(212,175,106,.12)}
-.adm-lvf button[aria-pressed="true"] span{color:var(--soft)}
+/* 角色切換（右上）：選哪個身分＝顯示哪些功能＋直接送／加入批次 */
+.adm-role{display:flex;gap:4px;padding:4px;border-radius:16px;background:var(--bg2);border:1px solid var(--line2)}
+.adm-role button{display:flex;flex-direction:column;align-items:flex-start;gap:0;min-width:120px;padding:6px 14px;border-radius:12px;border:1px solid transparent;background:transparent;color:var(--soft);text-align:left;transition:background .2s,border-color .2s}
+.adm-role button b{display:flex;align-items:center;gap:6px;font-size:14px}
+.adm-role button b small{padding:0 6px;border-radius:999px;background:var(--line);font-size:11px;font-weight:500;color:var(--soft)}
+.adm-role button span{font-size:11px;color:var(--muted);font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+.adm-role button em{font-style:normal;font-size:11px;color:var(--muted)}
+.adm-role button:hover{background:rgba(255,255,255,.03)}
+.adm-role button[aria-pressed="true"]{color:#fff}
+.adm-role button[aria-pressed="true"] span,.adm-role button[aria-pressed="true"] em{color:rgba(255,255,255,.85)}
+.adm-role button[data-r="admin"][aria-pressed="true"]{background:var(--red);border-color:var(--red)}
+.adm-role button[data-r="operator"][aria-pressed="true"]{background:#1f5fc4;border-color:#3d8bff}
+.adm-role button[data-r="owner"][aria-pressed="true"],.adm-role button[data-r="pending"][aria-pressed="true"]{background:var(--gold);border-color:var(--gold);color:#111}
+.adm-role button[data-r="owner"][aria-pressed="true"] *,.adm-role button[data-r="pending"][aria-pressed="true"] *{color:#111}
+.adm-role button[data-r="owner"][aria-pressed="true"] small,.adm-role button[data-r="pending"][aria-pressed="true"] small{background:rgba(0,0,0,.15)}
+.adm-hint code{font-size:12px;color:var(--soft)}
 .adm-tabs button.dim{opacity:.45}
 .adm-who{margin-left:6px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px;letter-spacing:0;color:var(--muted)}
 .adm-pane{display:flex;flex-direction:column;gap:14px}
@@ -433,12 +436,12 @@ html{scroll-padding-top:90px}
 .adm-toast{pointer-events:auto;padding:10px 16px;border-radius:12px;background:#13224a;border:1px solid var(--line2);color:var(--ink);font-size:14px;box-shadow:0 10px 30px rgba(0,0,0,.55);animation:pop .2s;transition:opacity .35s}
 .adm-toast.ok{border-color:var(--ok)}.adm-toast.bad{border-color:#ff8a8a}.adm-toast.out{opacity:0}.adm-toast a{margin-left:10px}
 @media (max-width:640px){
-  .adm-head>div:first-child{flex:1 0 100%}
+  .adm-head>div:first-child{flex:1 1 auto}
   .adm-mode{flex:1}
   .adm-quick{grid-template-columns:minmax(0,1fr)}
   .adm-state{grid-template-columns:repeat(2,minmax(0,1fr))}
   .adm-tabs{flex-basis:100%}
-  .adm-lvl{flex-basis:100%}.adm-lvf button{flex:1 1 calc(50% - 4px)}
+  .adm-role{flex:1 1 100%;order:3;min-width:0}.adm-role button>*{max-width:100%;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.adm-role button{flex:1 1 0;min-width:0;padding:6px 8px}.adm-role button span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%}
   .adm-fab{right:14px;bottom:calc(14px + env(safe-area-inset-bottom));min-height:50px;padding:0 16px}
   .adm-toasts{bottom:84px}
   .adm-in{padding:2px 12px 12px}

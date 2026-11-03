@@ -180,8 +180,7 @@
     const visible = () => !!CH.account && KINDS.some(([k]) => { const m = me(k); return m.owner || m.signer || m.admin || m.op || m.pending; });
 
     /* ── 畫面 ──
-     *   兩種模式（右上切換）：⚡ 直接送出（用連線錢包送交易）／🛡 Safe 模式（所有按鈕只加入批次＝購物車，最後下載 Transaction Builder JSON）。
-     *   owner 不是 Safe 時沒有 Safe 模式；只是 Safe 簽署人（沒有直接權限）時固定 Safe 模式。
+     *   右上角色切換：★ owner（Safe：所有按鈕只加入批次＝購物車，最後下載 Transaction Builder JSON）／admin／operator（只顯示該權限的功能、直接送交易）。
      *   版面：權限摘要 → 快速開關 → 分頁（金庫／喵武士／配件／市場／工具）＋搜尋 → 右下角批次按鈕＋側邊抽屜。 */
     const short = (a) => (a ? CH.short(a) : "–");
     const addrLink = (a) => (a ? `<a href="${CH.link("address", a)}" target="_blank" rel="noopener">${short(a)}</a>` : "–");
@@ -189,11 +188,14 @@
     const ls = { get: (k, d) => { try { return localStorage.getItem(k) ?? d; } catch (_) { return d; } }, set: (k, v) => { try { localStorage.setItem(k, v); } catch (_) {} } };
     const GROUPS = [["operator", "日常操作（operator）", "Daily (operator)"], ["admin", "參數設定（admin）", "Settings (admin)"], ["owner", "★ owner（Safe 多簽）", "★ Owner (Safe multisig)"], ["pending", "接受主人", "Accept ownership"]];
 
-    let mode = ls.get("asc-admin-mode", "direct"); // direct | safe
     let tab = ls.get("asc-admin-tab", "vault");
     let query = "", cartOpen = false;
-    let lvf = ls.get("asc-admin-lv", "all"); // 權限篩選：all／operator／admin／owner／pending
-    const LVS = [["operator", "operator", "operator"], ["admin", "admin", "admin"], ["owner", "★ owner", "★ owner"], ["pending", "新主人", "pending owner"]];
+    /* 角色切換（右上）：選「用哪個身分操作」＝同時決定顯示哪些功能、走哪條路
+     *   ★ owner：Safe 能做的全部功能，一律加入批次（owner 是一般錢包時直接送）
+     *   admin／operator：只顯示該權限、而且連線錢包能直接送的功能，直接送交易
+     *   新主人：acceptOwnership */
+    let role = ls.get("asc-admin-role", "");
+    const ROLES = [["owner", "★ owner", "★ owner"], ["admin", "admin", "admin"], ["operator", "operator", "operator"], ["pending", "新主人", "pending owner"]];
     /* 某個權限在各合約由哪個錢包擔任（全部一樣就顯示一個，不同就顯示「各合約不同」） */
     function holder(lv, k) {
         const r = st.roles[k];
@@ -210,8 +212,17 @@
     }
     const openRows = new Set();
     const anySafe = () => KINDS.some(([k]) => safeOf(st.roles[k]?.owner));
-    const anyDirect = () => A.some((x) => canSend(x));
-    const effMode = () => (!anySafe() ? "direct" : !anyDirect() ? "safe" : mode);
+    function rowOk(x, r = curRole()) {
+        if (r === "owner") return x.lv !== "pending" && (canBatch(x) || me(x.c).owner);
+        if (r === "pending") return x.lv === "pending" && (canSend(x) || canBatch(x));
+        return x.lv === r && canSend(x);
+    }
+    const roles = () => ROLES.filter(([r]) => A.some((x) => rowOk(x, r)));
+    function curRole() {
+        const av = ROLES.map(([r]) => r).filter((r) => A.some((x) => rowOk(x, r)));
+        return av.includes(role) ? role : ["admin", "operator", "owner", "pending"].find((r) => av.includes(r)) || "owner";
+    }
+    const effMode = () => { const r = curRole(); return (r === "owner" || r === "pending") && anySafe() ? "safe" : "direct"; };
     /* 這個操作要走批次還是直接送：Safe 模式能批次就批次；直接模式能送就送，不能送才批次 */
     const viaSafe = (x) => (effMode() === "safe" ? canBatch(x) : !canSend(x));
 
@@ -345,7 +356,7 @@ ${danger ? `<p class="adm-warn">⚠️ ${L("這個操作影響很大，請再確
             const pend = batch.some((b) => b.q === q.k);
             const shown = pend ? !cur : cur;
             const tip = pend ? `<span class="adm-pend">🛒 ${L("批次中", "In batch")}：${yes(cur)} → ${yes(!cur)}</span>` : `<span class="adm-now ${cur ? "on" : "off"}">● ${L("目前", "Now")} ${yes(cur)}</span>`;
-            return `<div class="adm-q${pend ? " pend" : ""}" data-q="${q.k}" data-lv="${x.lv}"><div><b>${esc(L(q.zh, q.en))}</b><small>${esc(KN(q.c))} · <code>${esc(x.fn)}</code>${q.sub ? ` · ${esc(L(...q.sub))}` : ""}</small>${tip}<span class="adm-qmsg"></span></div><label class="adm-sw" title="${esc(L(q.zh, q.en))}"><input type="checkbox" aria-label="${esc(L(q.zh, q.en))}"${shown ? " checked" : ""}><i></i></label></div>`;
+            return `<div class="adm-q${pend ? " pend" : ""}" data-q="${q.k}" data-lv="${x.lv}" data-i="${A.indexOf(x)}"><div><b>${esc(L(q.zh, q.en))}</b><small>${esc(KN(q.c))} · <code>${esc(x.fn)}</code>${q.sub ? ` · ${esc(L(...q.sub))}` : ""}</small>${tip}<span class="adm-qmsg"></span></div><label class="adm-sw" title="${esc(L(q.zh, q.en))}"><input type="checkbox" aria-label="${esc(L(q.zh, q.en))}"${shown ? " checked" : ""}><i></i></label></div>`;
         }).join("");
         return items ? `<h3 class="adm-sect-h">${L("快速開關", "QUICK SWITCHES")}</h3><div class="adm-quick">${items}</div>` : "";
     }
@@ -505,7 +516,7 @@ ${x.a.length ? `<div class="adm-fields">${x.a.map((a, i) => field(x, i, a, pre))
         batch.forEach((b, i) => (groups[(b.safe || "").toLowerCase()] ||= []).push(i));
         const keys = Object.keys(groups);
         const body = !batch.length
-            ? `<div class="adm-empty"><div>🛒</div><p>${L("批次是空的", "The batch is empty")}</p><p class="muted small">${L("切到 🛡 Safe 模式後，按「加入批次」或撥動快速開關，操作會先放在這裡。", "Switch to 🛡 Safe mode, then press “Add to batch” or flip a quick switch — actions collect here.")}</p></div>`
+            ? `<div class="adm-empty"><div>🛒</div><p>${L("批次是空的", "The batch is empty")}</p><p class="muted small">${L("右上角切到「★ owner」（Safe）後，按「加入批次」或撥動快速開關，操作會先放在這裡。", "Switch to “★ owner” (Safe) at the top right, then press “Add to batch” or flip a quick switch — actions collect here.")}</p></div>`
             : keys.map((sk) => {
                 const s = safeOf(sk), idx = groups[sk];
                 let full = sk; try { full = E.getAddress(sk); } catch (_) {}
@@ -573,35 +584,36 @@ ${x.a.length ? `<div class="adm-fields">${x.a.map((a, i) => field(x, i, a, pre))
 
     /* ── 模式、分頁、搜尋 ── */
     function hintHtml() {
-        if (!anySafe()) return "";
-        if (effMode() === "safe") return `🛡 <b>${L("Safe 模式", "Safe mode")}</b>：${L("所有按鈕只會「加入批次」（像購物車），不會送出交易；最後到右下角下載 JSON，用 Safe 多簽執行。", "every button only adds to the batch (like a cart) — nothing is sent. Download the JSON from the bottom-right and execute it in the Safe.")}${!anyDirect() ? ` <span class="muted">${L("（你只是 Safe 簽署人，所以固定這個模式）", "(you're a Safe signer only, so this mode is fixed)")}</span>` : ""}`;
-        return `⚡ <b>${L("直接送出", "Direct")}</b>：${L("有權限的操作用你連線的錢包直接送交易；標「🛡 只能走 Safe」的 ★ owner 操作會加入批次。", "actions you're allowed to do are sent from your connected wallet; “🛡 Safe only” ★ owner actions go to the batch.")}`;
+        const r = curRole(), who = holderText(r);
+        if (effMode() === "safe") return `🛡 <b>${r === "pending" ? L("新主人（Safe）", "Pending owner (Safe)") : L("★ owner（Safe 多簽）", "★ Owner (Safe multisig)")}</b>：${L("所有按鈕只會「加入批次」（像購物車），不會送出交易；最後到右下角下載 JSON，用 Safe 多簽執行。", "every button only adds to the batch (like a cart) — nothing is sent. Download the JSON from the bottom-right and execute it in the Safe.")}`;
+        return `⚡ <b>${esc(r)}</b>${who ? ` <code>${esc(who)}</code>` : ""}：${L(`只顯示 ${r} 的功能，用你連線的錢包直接送交易。`, `showing ${r} actions only, sent directly from your connected wallet.`)}`;
     }
-    function setMode(m) {
-        mode = m; ls.set("asc-admin-mode", m);
+    function roleBar() {
+        const av = roles(), cur = curRole();
+        if (!av.length) return "";
+        return `<div class="adm-role" role="group" aria-label="role">${av.map(([r, zh, en]) => {
+            const safe = (r === "owner" || r === "pending") && anySafe();
+            const n = A.filter((x) => rowOk(x, r)).length;
+            return `<button type="button" data-r="${r}" aria-pressed="${r === cur}"><b>${esc(L(zh, en))}<small>${n}</small></b><span>${esc(holderText(r) || "–")}</span><em>${safe ? `🛡 ${L("加入批次", "to batch")}` : `⚡ ${L("直接送出", "send")}`}</em></button>`;
+        }).join("")}</div>`;
+    }
+    function setRole(r) {
+        role = r; ls.set("asc-admin-role", r);
         const box = $("adminPanel");
         box.classList.toggle("safe", effMode() === "safe");
-        box.querySelectorAll(".adm-mode button").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.m === effMode())));
+        box.querySelectorAll(".adm-role button").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.r === curRole())));
         const h = $("admHint"); if (h) h.innerHTML = hintHtml();
         afterCart();
         renderRefund();
-    }
-    function lvBar() {
-        const avail = LVS.filter(([lv]) => A.some((x) => x.lv === lv && (canSend(x) || canBatch(x))));
-        if (avail.length < 2) return "";
-        if (lvf !== "all" && !avail.some(([lv]) => lv === lvf)) lvf = "all";
-        const n = (lv) => A.filter((x) => (lv === "all" || x.lv === lv) && (canSend(x) || canBatch(x))).length;
-        const btn = (lv, label, sub) => `<button type="button" data-lv="${lv}" aria-pressed="${lvf === lv}"><b>${esc(label)}<small>${n(lv)}</small></b>${sub ? `<span>${esc(sub)}</span>` : ""}</button>`;
-        return `<div class="adm-lvf" role="group" aria-label="role filter"><span class="adm-lvl">${L("權限篩選", "Filter by role")}</span>${btn("all", L("全部", "All"), L("所有錢包", "all wallets"))}${avail.map(([lv, zh, en]) => btn(lv, L(zh, en), holderText(lv))).join("")}</div>`;
+        applyView();
     }
     function applyView() {
         const box = $("adminPanel"), q = query.trim().toLowerCase();
         box.classList.toggle("searching", !!q);
-        const lvOk = (el) => lvf === "all" || el.dataset.lv === lvf;
+        const lvOk = (el) => { const x = A[Number(el.dataset.i)]; return !x || rowOk(x); };
         box.querySelectorAll(".adm-act").forEach((r) => r.classList.toggle("hidden", !lvOk(r) || (!!q && !r.dataset.s.includes(q) && !r.textContent.toLowerCase().includes(q))));
         box.querySelectorAll(".adm-q").forEach((r) => r.classList.toggle("hidden", !lvOk(r)));
         const qb = $("admQuickBox"); if (qb) qb.classList.toggle("hidden", !qb.querySelector(".adm-q:not(.hidden)"));
-        box.querySelectorAll(".adm-lvf button").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.lv === lvf)));
         box.querySelectorAll(".adm-tabs button").forEach((b) => { const sm = b.querySelector("small"), p = box.querySelector(`.adm-pane[data-pane="${b.dataset.tab}"]`); if (!sm || !p) return; const c = [...p.querySelectorAll(".adm-act")].filter(lvOk).length; sm.textContent = c; b.classList.toggle("dim", !c); });
         box.querySelectorAll(".adm-grp").forEach((g) => g.classList.toggle("hidden", !g.querySelector(".adm-act:not(.hidden)")));
         let hits = 0;
@@ -609,7 +621,7 @@ ${x.a.length ? `<div class="adm-fields">${x.a.map((a, i) => field(x, i, a, pre))
             const n = p.querySelectorAll(".adm-act:not(.hidden)").length;
             hits += n;
             p.classList.toggle("hidden", q ? !n : p.dataset.pane !== tab);
-            p.querySelector(".adm-lvnone")?.classList.toggle("hidden", !!q || lvf === "all" || n > 0 || !p.querySelector(".adm-act"));
+            p.querySelector(".adm-lvnone")?.classList.toggle("hidden", !!q || n > 0 || !p.querySelector(".adm-act"));
         });
         box.querySelectorAll(".adm-tabs button").forEach((b) => b.setAttribute("aria-selected", String(!q && b.dataset.tab === tab)));
         const none = $("admNone"); if (none) none.classList.toggle("hidden", !q || hits > 0);
@@ -631,18 +643,17 @@ ${x.a.length ? `<div class="adm-fields">${x.a.map((a, i) => field(x, i, a, pre))
             box.innerHTML = `<span class="eyebrow">ADMIN</span><h2>${L("管理員", "Admin")}</h2><p class="muted">${CH.account && !st.ok ? L("讀取權限中…", "Checking roles…") : L("請用 owner／admin／operator 錢包連線才能看到管理功能。", "Connect an owner / admin / operator wallet to see admin tools.")}</p>`;
             return;
         }
-        const m = effMode(), lock = anySafe() && !anyDirect();
+        const m = effMode();
         if (![...KINDS.map(([k]) => k), "tools"].includes(tab)) tab = "vault";
         const tabs = [...KINDS.map(([k, zh, en]) => [k, L(zh, en).split(" ")[0], count(k)]), ["tools", L("🔧 工具", "🔧 Tools"), 0]];
         box.classList.toggle("safe", m === "safe");
         box.innerHTML = `<div class="adm-head"><div><span class="eyebrow">ADMIN</span><h2>${L("管理員面板", "Admin panel")}</h2></div>
-${anySafe() ? `<div class="adm-mode${lock ? " lock" : ""}" role="group" aria-label="mode"><button type="button" data-m="direct" aria-pressed="${m === "direct"}"${lock ? " disabled" : ""}>⚡ ${L("直接送出", "Direct")}</button><button type="button" data-m="safe" aria-pressed="${m === "safe"}">🛡 ${L("Safe 模式", "Safe mode")}</button></div>` : ""}
+${roleBar()}
 <button type="button" class="adm-ref" id="admRefresh" title="${L("重新讀取鏈上狀態", "Reload on-chain state")}" aria-label="refresh">↻</button></div>
-${anySafe() ? `<p class="adm-hint" id="admHint">${hintHtml()}</p>` : ""}
+<p class="adm-hint" id="admHint">${hintHtml()}</p>
 ${rolesHtml()}
 <div id="admQuickBox">${quickHtml()}</div>
 <div class="adm-bar"><div class="adm-tabs" role="tablist">${tabs.map(([k, label, n]) => `<button type="button" role="tab" data-tab="${k}">${esc(label)}${n ? `<small>${n}</small>` : ""}</button>`).join("")}</div><input type="search" class="adm-search" id="admSearch" placeholder="🔍 ${L("搜尋功能，例如 VIP、凍結、airdrop", "Search, e.g. VIP, freeze, airdrop")}" value="${esc(query)}" autocomplete="off"></div>
-${lvBar()}
 ${KINDS.map(([k, zh, en]) => paneHtml(k, zh, en)).join("")}
 <div class="adm-pane" data-pane="tools"><div id="admRefundBox">${refundHtml()}</div>${lookupHtml()}</div>
 <p class="muted small hidden" id="admNone">${L("找不到符合的功能", "No matching actions")}</p>
@@ -675,7 +686,7 @@ ${KINDS.map(([k, zh, en]) => paneHtml(k, zh, en)).join("")}
         return x.name || x.msg || String(e?.message || e);
     }
     function bind(box) {
-        box.querySelectorAll(".adm-mode button").forEach((b) => b.addEventListener("click", () => { if (!b.disabled) setMode(b.dataset.m); }));
+        box.querySelectorAll(".adm-role button").forEach((b) => b.addEventListener("click", () => setRole(b.dataset.r)));
         $("admRefresh")?.addEventListener("click", (ev) => { ev.currentTarget.classList.add("spin"); load(); });
         box.querySelectorAll(".adm-tabs button").forEach((b) => b.addEventListener("click", () => {
             tab = b.dataset.tab; ls.set("asc-admin-tab", tab);
@@ -683,7 +694,6 @@ ${KINDS.map(([k, zh, en]) => paneHtml(k, zh, en)).join("")}
             applyView();
         }));
         $("admSearch")?.addEventListener("input", (e) => { query = e.target.value; applyView(); });
-        box.querySelectorAll(".adm-lvf button").forEach((b) => b.addEventListener("click", () => { lvf = b.dataset.lv; ls.set("asc-admin-lv", lvf); applyView(); }));
         const qb = $("admQuickBox"); if (qb) bindQuick(qb);
         box.querySelectorAll("details.adm-act").forEach((d) => d.addEventListener("toggle", () => (d.open ? openRows.add(d.dataset.key) : openRows.delete(d.dataset.key))));
         box.querySelectorAll(".adm-act").forEach((card) => {
