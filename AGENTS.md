@@ -86,3 +86,23 @@ ASC 鏢局的公開網頁（純靜態，沒有建置步驟，GitHub Pages）。*
 - `app/admin.js`：KINDS 加衣櫃（角色、狀態、函式卡：emergencyPause／setPaused／setChangeFee／setOperator／setFixedSlots／addStock／seedWorn／closeSeed／removeStock／withdrawUnassigned／upgradeToAndCall），🔧 工具新增「衣櫃上線」：讀 V2 `Equipped` 算出還穿著的 V2 配件，加入 Safe 批次：衣櫃 acceptOwnership → setAdmin → NFT giveParts(衣櫃) → seedWorn → addStock → closeSeed → NFT setPrices(鑄造, 1e9, 轉蛋)。「換裝退還」改讀衣櫃 `SlotChanged`：只有 oldKind＝0 的超稀有要退。
 - 測試（雲端 hardhat 本機鏈＋主網合約原始碼＋假 MetaMask／假 Safe，Chromium）：上線批次 61 筆 Safe 逐筆執行成功、一般人付費換裝（V2 配件退回）、VIP 借穿與歸還、公庫存要選部位才列出；ipfs `sync_v2.py` 讀兩個地址結果正確。`?v=20261103q`。
 - **上線順序**：先推 ipfs → 本機 `npm start` 開 http://localhost:8080/#admin（新版管理面板）用 Safe 簽署人錢包產生「衣櫃上線」批次 → Safe 簽署執行 → 馬上推網站。不能先推網站：補登記前用衣櫃換掉 V2 時期的配件會被當成原始外觀消失，而且之後 seedWorn 會因 AlreadyTracked 整批失敗。
+
+## 專案地圖與未完成事項（2026-11-03 從 `~/Documents/GitHub/AI_HANDOFF.md` 整理過來，原檔已不需要）
+| 專案（`~/Documents/GitHub/`） | 角色 | 交接文件 |
+|---|---|---|
+| `2026_asc_web3_website`（本專案） | 玩家網站＋管理面板；`contracts-asc/` 存主網合約資料（V2 四份＋衣櫃） | 本檔 |
+| `2026_web3_solidity_smart_contract`（原 `2022_web3_solidity_asc_smart_contract`） | 通用合約模板（Token／NFT／Part／Market／Wardrobe）、一鍵部署網頁 | 它的 `AGENTS.md` |
+| `2026_asc_discord_bot` | Discord 機器人：綁錢包、驗證、白名單、被盜凍結／救援（operator 交易由作者在 `/nft/op/<金鑰>` 網頁用 MetaMask 送） | 它的 `AGENTS.md` |
+| `2026_asc_web3_ipfs` | V1／V2 圖片與 metadata（GitHub Pages）、`traits.json`、`scripts/sync_v2.py`（Action 每 10 分鐘出圖） | 它的 `README.md` |
+| `2024_web3_solidity_asc_smart_contract`、`2026_asc_web3_contract` | 舊專案，參考用 | — |
+
+- 已上鏈的舊東西（不要動壞）：V1 NFT `0x39c7…7488`（31 顆，baseURI＝`https://chase5ws.github.io/2026_asc_web3_ipfs/metadata/`）、V1 金庫 `0x9a43…5Ad`（保底已提領，剩少量 USDT 只能經兌換取出）。
+- 使用者偏好：繁體中文；花很多時間的步驟先告知；owner 動作一律走 Safe，不碰私鑰；git commit／push 由使用者在終端機做。
+- 未完成：
+  1. 衣櫃上線（見上一節的上線順序）。
+  2. Polygonscan 驗證 V2 四份合約（`contracts-asc/` 或合約模板 git 歷史裡的 `deployments/polygon-2026-10-26/VERIFY.md`）。
+  3. 白名單：operator `setMintAllowance` → admin `setSale(true)`（目前鑄造費 0）。
+  4. ipfs repo 清理：刪除 `contract/`（舊 V2 合約副本）、`git rm -r --cached scripts/__pycache__`。
+  5. 選用：V1 圖片／metadata 搬進網站後，Safe 對 V1 `setBaseURI` 新路徑（目前留在 ipfs repo 也可以）。
+  6. 合約模板改成通用版（拿掉 ASC 字樣、ASC 專用的 v1／deployments 改存到本專案 `contracts-asc/`）。
+- `~/Documents/GitHub/` 根目錄的 `.pgtest*_to_delete.mjs`、`.botpage_to_delete.html` 是以前的暫存檔，可以刪。
