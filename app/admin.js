@@ -210,7 +210,6 @@
         const a = hs[0], you = same(a, CH.account) ? L("（你）", " (you)") : "", s = safeOf(a);
         return `${short(a)}${you}${s ? " · Safe" : ""}`;
     }
-    const openRows = new Set();
     const anySafe = () => KINDS.some(([k]) => safeOf(st.roles[k]?.owner));
     function rowOk(x, r = curRole()) {
         if (r === "owner") return x.lv !== "pending" && (canBatch(x) || me(x.c).owner);
@@ -389,18 +388,68 @@ ${danger ? `<p class="adm-warn">⚠️ ${L("這個操作影響很大，請再確
         if (type === "addrs" || type === "uints") return `<label class="adm-f wide">${lab}<textarea id="${id}" rows="2" placeholder="${esc(HINT()[type])}">${esc(val)}</textarea></label>`;
         return `<label class="adm-f${type === "str" || type.endsWith("8") ? " wide" : ""}">${lab}<input id="${id}" value="${esc(val)}" placeholder="${esc(HINT()[type] || "")}" autocomplete="off" spellcheck="false"></label>`;
     }
+    /* 每個管理函式一張方塊（跟快速開關同款）：沒有參數＝方塊上直接按；有參數＝點方塊開彈跳視窗填寫 */
+    const drafts = {}; // 彈跳視窗填到一半關掉，下次打開還在
     function actionRow(x, idx) {
-        let pre = null;
-        try { pre = x.pre ? x.pre(st) : null; } catch (_) {}
         const send = canSend(x), bat = canBatch(x);
         if (!send && !bat) return "";
+        const key = `${x.c}:${x.sig}`, form = x.a.length > 0;
+        const btns = `${send ? `<button type="button" class="adm-send">⚡ ${L("送出", "Send")}</button>` : ""}${bat ? `<button type="button" class="adm-add">🛒 ${L("加入批次", "Add to batch")}</button>` : ""}`;
+        return `<div class="adm-act${x.danger ? " danger" : ""}${send && bat ? " both" : ""}${form ? " form" : ""}" data-i="${idx}" data-lv="${x.lv}" data-key="${esc(key)}" data-s="${esc(`${x.zh} ${x.en} ${x.fn}`.toLowerCase())}"${form ? ` role="button" tabindex="0" aria-haspopup="dialog"` : ""}>
+<div class="tt"><b>${esc(L(x.zh, x.en))}</b><code>${esc(x.fn)}</code>${x.d[0] ? `<p>${esc(L(x.d[0], x.d[1]))}</p>` : ""}</div>
+<div class="tb">${form ? `<span class="adm-pn">📝 ${L(`${x.a.length} 個參數`, `${x.a.length} param${x.a.length > 1 ? "s" : ""}`)}</span>${drafts[key] ? `<span class="adm-draft">${L("草稿", "draft")}</span>` : ""}<span class="adm-go">${L("填寫", "Fill in")} ›</span>` : `<div class="adm-btns">${btns}</div>`}${!send ? `<span class="adm-only">🛡 ${L("只能走 Safe", "Safe only")}</span>` : ""}</div>
+<div class="msg adm-msg"></div></div>`;
+    }
+    function openForm(x, card) {
         const key = `${x.c}:${x.sig}`;
-        return `<details class="adm-act${x.danger ? " danger" : ""}${send && bat ? " both" : ""}" data-i="${idx}" data-lv="${x.lv}" data-key="${esc(key)}" data-s="${esc(`${x.zh} ${x.en} ${x.fn}`.toLowerCase())}"${openRows.has(key) ? " open" : ""}>
-<summary><b>${esc(L(x.zh, x.en))}</b><code>${esc(x.fn)}</code>${!send ? `<span class="adm-only">🛡 ${L("只能走 Safe", "Safe only")}</span>` : ""}</summary>
-<div class="adm-in">${x.d[0] ? `<p class="muted small">${esc(L(x.d[0], x.d[1]))}</p>` : ""}
-${x.a.length ? `<div class="adm-fields">${x.a.map((a, i) => field(x, i, a, pre)).join("")}</div>` : `<p class="muted small">${L("不需要參數", "No parameters")}</p>`}
-<div class="adm-btns">${send ? `<button type="button" class="adm-send">⚡ ${L("送出交易", "Send")}</button>` : ""}${bat ? `<button type="button" class="adm-add">🛒 ${L("加入批次", "Add to batch")}</button>` : ""}</div>
-<div class="msg adm-msg"></div></div></details>`;
+        let pre = null;
+        try { pre = x.pre ? x.pre(st) : null; } catch (_) {}
+        if (drafts[key]) pre = drafts[key];
+        const safe = viaSafe(x);
+        const d = document.createElement("div");
+        d.className = "adm-modal";
+        d.innerHTML = `<div class="adm-dlg wide${x.danger ? " danger" : ""}" role="dialog" aria-modal="true">
+<div class="adm-dh"><div><h3>${esc(L(x.zh, x.en))}</h3><p class="muted small">${esc(KN(x.c))} · <code>${esc(x.fn)}</code> · ${addrLink(C[x.c])}</p></div><button type="button" class="x" data-a="x" aria-label="close">✕</button></div>
+${x.d[0] ? `<p class="adm-ddesc">${esc(L(x.d[0], x.d[1]))}</p>` : ""}
+<div class="adm-fields">${x.a.map((a, i) => field(x, i, a, pre)).join("")}</div>
+${x.danger ? `<p class="adm-warn">⚠️ ${L("這個操作影響很大，請再確認一次。", "High impact — please double-check.")}</p>` : ""}
+<div class="msg adm-msg"></div>
+<div class="adm-btns"><button type="button" class="alt" data-a="reset">${L("還原預設", "Reset")}</button><span style="flex:1"></span><button type="button" class="alt" data-a="x">${L("取消", "Cancel")}</button><button type="button" class="${safe ? "adm-add" : "adm-send"}" data-a="go">${safe ? `🛒 ${L("加入批次", "Add to batch")}` : `⚡ ${L("送出交易", "Send transaction")}`}</button></div></div>`;
+        const dlg = d.querySelector(".adm-dlg"), m = dlg.querySelector(".adm-msg");
+        const msg = (t, kind, hash) => { m.className = "msg adm-msg" + (kind ? " " + kind : ""); m.textContent = t; if (hash) { const a = document.createElement("a"); a.href = CH.link("tx", hash); a.target = "_blank"; a.rel = "noopener"; a.textContent = L("看交易", "View tx"); m.appendChild(a); } };
+        const save = () => { drafts[key] = x.a.map(([, type], i) => { const el = dlg.querySelector(`#adf-${x.c}-${x.fn}-${i}`); return type === "bool" ? String(el.checked) : el.value; }); };
+        let busy = false;
+        const key2 = (e) => { if (e.key === "Escape" && !busy && document.querySelector(".adm-modal:last-child") === d) close(); };
+        const close = (done) => { if (done) delete drafts[key]; else save(); d.remove(); document.removeEventListener("keydown", key2); renderTileBadge(card, key); };
+        d.addEventListener("click", async (e) => {
+            if (e.target === d && !busy) return close();
+            const a = e.target.closest("[data-a]")?.dataset.a;
+            if (!a || busy) return;
+            if (a === "x") return close();
+            if (a === "reset") { delete drafts[key]; let p0 = null; try { p0 = x.pre ? x.pre(st) : null; } catch (_) {} dlg.querySelector(".adm-fields").innerHTML = x.a.map((f, i) => field(x, i, f, p0)).join(""); return; }
+            let args;
+            try { args = collect(x, dlg); } catch (err) { msg(err.message, "bad"); return; }
+            if (safe) { addBatch(x, args); close(true); return; }
+            if (!(await confirmIt(x, args))) return;
+            const btn = e.target.closest("button");
+            busy = true; btn.disabled = true;
+            try {
+                const h = await sendTx(x, args, msg);
+                toast(`${L("完成", "Done")}：${L(x.zh, x.en)}`, "ok", h);
+                busy = false; close(true);
+                await load();
+            } catch (err) { console.warn(err); msg(errText(err), "bad"); busy = false; btn.disabled = false; }
+        });
+        dlg.addEventListener("input", () => { if (m.classList.contains("bad")) msg(""); });
+        document.addEventListener("keydown", key2);
+        document.body.appendChild(d);
+        (dlg.querySelector(".adm-fields input, .adm-fields textarea") || dlg.querySelector('[data-a="go"]')).focus();
+    }
+    function renderTileBadge(card, key) {
+        if (!card?.isConnected) return;
+        const tb = card.querySelector(".tb"), has = tb.querySelector(".adm-draft");
+        if (drafts[key] && !has) tb.querySelector(".adm-pn")?.insertAdjacentHTML("afterend", `<span class="adm-draft">${L("草稿", "draft")}</span>`);
+        if (!drafts[key] && has) has.remove();
     }
     function paneHtml(k, zh, en) {
         const groups = GROUPS.map(([lv, gz, ge]) => {
@@ -695,10 +744,14 @@ ${KINDS.map(([k, zh, en]) => paneHtml(k, zh, en)).join("")}
         }));
         $("admSearch")?.addEventListener("input", (e) => { query = e.target.value; applyView(); });
         const qb = $("admQuickBox"); if (qb) bindQuick(qb);
-        box.querySelectorAll("details.adm-act").forEach((d) => d.addEventListener("toggle", () => (d.open ? openRows.add(d.dataset.key) : openRows.delete(d.dataset.key))));
         box.querySelectorAll(".adm-act").forEach((card) => {
             const x = A[Number(card.dataset.i)];
             if (msgs[card.dataset.i]) say(card, ...msgs[card.dataset.i]);
+            if (card.classList.contains("form")) {
+                card.addEventListener("click", (e) => { if (!e.target.closest("a")) openForm(x, card); });
+                card.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); openForm(x, card); } });
+                return;
+            }
             card.querySelector(".adm-send")?.addEventListener("click", async (ev) => {
                 const btn = ev.currentTarget;
                 let args;

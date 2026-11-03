@@ -55,7 +55,8 @@ ASC 鏢局的公開網頁（純靜態，沒有建置步驟，GitHub Pages）。*
 ## 2026-11-03 管理員面板 UI 改版（`app/admin.js`、`app/style.css` 的 `.adm-*`）
 - 右上 **模式切換**：⚡ 直接送出（連線錢包送交易）／🛡 Safe 模式（所有按鈕只「加入批次」，像購物車）；記在 localStorage `asc-admin-mode`。owner 不是 Safe 時沒有 Safe 模式；只是 Safe 簽署人時固定 Safe 模式。
 - **快速開關**（清單 `Q`）：兌換與互轉、買 ASC、只限驗證（setPolicy 其他參數沿用現值）、白名單鑄造、NFT 運作（pause/unpause）、轉蛋只限 VIP、市場交易。直接模式＝確認框後送交易；Safe 模式＝加入批次，再撥一次取消。
-- 合約分頁（金庫／喵武士／配件／市場／🔧 工具＝超稀有退還＋查詢錢包，記在 `asc-admin-tab`）＋搜尋；每個函式一列可展開，依 operator／admin／★owner 分組；bool 參數改成開關。
+- 合約分頁（金庫／喵武士／配件／市場／🔧 工具＝超稀有退還＋查詢錢包，記在 `asc-admin-tab`）＋搜尋；依 operator／admin／★owner 分組；bool 參數改成開關。
+- 每個函式是一張**方塊**（跟快速開關同款、網格排列）：沒有參數＝方塊上直接按「⚡ 送出／🛒 加入批次」；有參數＝點方塊開**彈跳視窗**（`openForm`）填寫，按鈕依目前角色是送交易或加入批次；有 warn 的送出前再跳確認框。視窗關掉會保留草稿（方塊顯示「草稿」，記憶體內，重新整理就沒了），可「還原預設」。
 - 右下角 🛒 批次按鈕＋側邊抽屜：依 Safe 分組、顯示解碼後參數、↑↓ 調順序、✕ 刪除、下載 Transaction Builder JSON（格式同前）。批次項目多存 `c`、`sig`（顯示用即時解碼）、`q`（快速開關）、`tag`。
 - **右上角色切換**（取代原本的「直接送出／Safe 模式」和權限篩選列，localStorage `asc-admin-role`）：★ owner／admin／operator（有接受主人時多「新主人」），只出現你能用的角色；每顆顯示功能數、擔任的錢包（你＝「（你）」、Safe 標 Safe）與走法。選 ★ owner＝Safe 能做的全部功能、一律加入批次（owner 是一般錢包則直接送）；選 admin／operator＝只顯示該權限而且連線錢包能直接送的功能、直接送交易。快速開關、分頁數字（0 個變淡）跟著切換；分組標題顯示該合約的權限錢包。預設 admin → operator → owner。
 - `window.confirm／alert` 換成自訂確認框與提示（toast）。`window.ASCAdmin` 多了 `render`、`batch`。

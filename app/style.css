@@ -359,21 +359,33 @@ html{scroll-padding-top:90px}
 .adm-state b.on{color:var(--ok)}.adm-state b.off{color:#ff8a8a}
 .adm-grp h4{margin:0 0 8px;font-size:12px;letter-spacing:.1em;color:var(--muted);font-weight:500}
 .adm-grp[data-lv="owner"] h4{color:var(--gold)}.adm-grp[data-lv="operator"] h4{color:#7fc0ff}
-.adm-list{display:flex;flex-direction:column;gap:6px}
-/* 每個函式一列，點開填參數 */
-.adm-act{border:1px solid var(--line);border-radius:12px;background:var(--bg2);transition:border-color .2s}
-.adm-act>summary{list-style:none;cursor:pointer;display:flex;align-items:center;flex-wrap:wrap;gap:4px 10px;padding:11px 14px;min-height:48px}
-.adm-act>summary::-webkit-details-marker{display:none}
-.adm-act>summary::after{content:"";margin-left:auto;width:8px;height:8px;flex:none;border-right:2px solid var(--muted);border-bottom:2px solid var(--muted);transform:rotate(-45deg);transition:transform .2s}
-.adm-act[open]>summary::after{transform:rotate(45deg)}
-.adm-act>summary:hover{background:rgba(255,255,255,.02)}
-.adm-act>summary b{font-size:14px}.adm-act>summary code{font-size:11px;color:var(--muted)}
-.adm-act[open]{border-color:var(--line2);background:var(--card)}
-.adm-act.danger{border-color:rgba(200,32,46,.55)}.adm-act.danger>summary b{color:#ff9a9a}
+.adm-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:10px}
+/* 每個函式一張方塊；.form＝點了開彈跳視窗 */
+.adm-act{display:flex;flex-direction:column;gap:10px;min-height:132px;padding:14px;border-radius:14px;background:var(--bg2);border:1px solid var(--line);transition:border-color .2s,background .2s,transform .15s}
+.adm-act.form{cursor:pointer}
+.adm-act.form:hover,.adm-act.form:focus-visible{border-color:var(--gold);background:var(--card);outline:none}
+.adm-act.form:active{transform:scale(.985)}
+.adm-act .tt{flex:1;display:flex;flex-direction:column;gap:2px;min-width:0}
+.adm-act .tt b{font-size:14.5px;line-height:1.4}
+.adm-act .tt code{font-size:11px;color:var(--muted)}
+.adm-act .tt p{margin:4px 0 0;font-size:12px;line-height:1.5;color:var(--muted);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.adm-act .tb{display:flex;align-items:center;flex-wrap:wrap;gap:6px}
+.adm-act .tb .adm-btns{width:100%}
+.adm-act .tb .adm-btns button{flex:1;min-height:36px;padding:0 10px;font-size:13px}
+.adm-pn{font-size:12px;color:var(--soft)}
+.adm-draft{font-size:11px;padding:0 7px;border-radius:999px;background:rgba(65,211,255,.12);color:#41d3ff}
+.adm-go{margin-left:auto;font-size:13px;font-weight:700;color:var(--gold)}
+.adm-act.danger{border-color:rgba(200,32,46,.55)}.adm-act.danger .tt b{color:#ff9a9a}
+.adm-act.danger.form:hover{border-color:var(--red)}
+.adm-act .adm-msg{font-size:12px}
 .adm-only{font-size:11px;color:var(--gold);padding:0 7px;border-radius:999px;border:1px solid rgba(212,175,106,.45)}
 .adm-panel.safe .adm-only{display:none}
-.adm-in{display:flex;flex-direction:column;gap:10px;padding:2px 14px 14px}
-.adm-in p{margin:0}
+/* 參數彈跳視窗 */
+.adm-dlg.wide{width:min(600px,100%)}
+.adm-dh{display:flex;align-items:flex-start;gap:12px}.adm-dh>div{flex:1;min-width:0}
+.adm-dh .x{width:36px;height:36px;flex:none;border-radius:50%;border:1px solid var(--line2);background:transparent;color:var(--soft)}
+.adm-ddesc{padding:10px 12px;border-radius:10px;background:var(--card);font-size:13px;color:var(--soft)}
+.adm-dlg .adm-msg:empty{display:none}
 .adm-panel:not(.safe) .adm-act.both .adm-add{display:none}
 .adm-panel.safe .adm-act.both .adm-send{display:none}
 .adm-fields{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
@@ -444,7 +456,7 @@ html{scroll-padding-top:90px}
   .adm-role{flex:1 1 100%;order:3;min-width:0}.adm-role button>*{max-width:100%;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.adm-role button{flex:1 1 0;min-width:0;padding:6px 8px}.adm-role button span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%}
   .adm-fab{right:14px;bottom:calc(14px + env(safe-area-inset-bottom));min-height:50px;padding:0 16px}
   .adm-toasts{bottom:84px}
-  .adm-in{padding:2px 12px 12px}
+  .adm-list{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.adm-act{min-height:118px;padding:12px}.adm-act .tt p{-webkit-line-clamp:2}
 }
 
 .sw3.p-admin .thumb{opacity:0}
