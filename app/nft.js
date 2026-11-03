@@ -207,7 +207,7 @@
             const normal = rows.filter((x) => x.p.tier === "normal").sort((a, b) => a.p.pid - b.p.pid);
             pool.innerHTML = "";
             if (!feat.length) pool.appendChild(el(`<p class="muted small">${esc(D.prizes.length ? "–" : t("e.EmptyPool"))}</p>`));
-            feat.forEach((x) => pool.appendChild(tile(x.p, `<span class="q">${pc(x.w)}%</span>`, null, false, "gm-t " + x.p.tier)));
+            feat.forEach((x) => pool.appendChild(tile(x.p, `<span class="q">${pc(x.w)}%</span>`, null, false, "lg-t " + x.p.tier)));
             pool.scrollLeft = 0;
             // 機率摘要：超稀有／稀有／普通／沒中
             const sum = (tier) => rows.filter((x) => x.p.tier === tier).reduce((a, x) => a + x.w, 0);
@@ -217,12 +217,13 @@
             normal.forEach((x) => np.appendChild(tile(x.p, `<span class="q">${pc(x.w)}%</span>`)));
             $("gAllSum").textContent = t("g.allSum", { n: normal.length, p: pc(sum("normal")) });
             $("gAllSum").parentElement.classList.toggle("hidden", !normal.length);
-            // 玻璃罩裡的扭蛋：顏色依獎池（超稀有金、稀有藍、普通灰藍）
+            // 寶箱上方飄的光點：顏色依獎池（超稀有金、稀有藍、普通白）
             const dome = $("gDome");
-            const cols = [...feat.map((x) => (x.p.tier === "super" ? "#d4af6a" : "#5aa0ff")), ...Array(10).fill("#a9b6d6"), "#c8202e", "#e9eefb"].slice(0, 16);
-            dome.innerHTML = cols.map((c, i) => `<i style="--c:${c};left:${4 + ((i * 37) % 88)}%;top:${18 + ((i * 53) % 62)}%;animation-delay:${((i % 7) * 0.4).toFixed(1)}s"></i>`).join("");
+            const cols = [...feat.map((x) => (x.p.tier === "super" ? "#ffd257" : "#6cb6ff")), ...Array(6).fill("#fff3d6")].slice(0, 12);
+            dome.innerHTML = cols.map((c, i) => `<i style="--c:${c};left:${10 + ((i * 37) % 80)}%;animation-delay:${((i * 0.53) % 4).toFixed(2)}s;animation-duration:${(3.2 + (i % 4) * 0.6).toFixed(1)}s"></i>`).join("");
             railArrows();
         }
+        renderLog();
         const pulls = D.nftMe?.[2] || 0n;
         $("gPulls").textContent = CH.account ? int(pulls) : "–";
         $("gFee").textContent = fee(s[6]);
@@ -232,6 +233,22 @@
         const off = !CH.account || vipOnly || !D.prizes.length;
         $("bPull1").disabled = $("bPull10").disabled = off;
         $("bBuyPulls").disabled = off || s[6] === 0n;
+    }
+    /* 系統訊息（像線上遊戲的聊天框）：只存在這次開啟的頁面，切換語言會重畫 */
+    const LOG = [{ k: "g.log0" }, { k: "g.log1" }];
+    function logAdd(...xs) { LOG.push(...xs); if (LOG.length > 60) LOG.splice(2, LOG.length - 60); renderLog(); }
+    function renderLog() {
+        const box = $("gLog");
+        if (same(box, JSON.stringify([LOG, S.lang]))) return;
+        const nm = (pid) => { const p = LK.L.byPid[pid]; return p ? partName(p) : "#" + pid; };
+        box.innerHTML = LOG.map((x) => {
+            if (x.k) return `<p class="sys">${esc(t(x.k, x.v || {}))}</p>`;
+            if (x.miss) return `<p class="miss">${esc(t("g.logMiss"))}</p>`;
+            if (x.ann) return `<p class="ann">${esc(t("g.logAnn", { x: nm(x.ann) }))}</p>`;
+            const p = LK.L.byPid[x.pid];
+            return `<p class="got">${esc(t("g.logGot", { x: "\u0000" })).replace("\u0000", `<span class="it ${p?.tier || "normal"}">[${esc(nm(x.pid))}]</span>`)}</p>`;
+        }).join("");
+        box.scrollTop = box.scrollHeight;
     }
     /** 大獎展示：左右箭頭（桌機用；手機直接滑），到頭就淡掉 */
     function railArrows() {
@@ -265,19 +282,22 @@
         const have = D.nftMe?.[2] || 0n;
         const pay = (BigInt(times) > have ? BigInt(times) - have : 0n) * D.nftS[6];
         $("gResults").innerHTML = "";
+        logAdd({ k: "g.logStart", v: { n: times } });
         const r = await send($("mGacha"), [$("bPull1"), $("bPull10")], async (step) => { await payAsc(C.nft, pay, step); return gachaTx(times); });
-        if (!r) { FX.close(); return; }
+        if (!r) { FX.close(); logAdd({ k: "g.logFail" }); return; }
         const iface = CH.read.nft.interface;
         const got = r.logs.filter((l) => l.address.toLowerCase() === C.nft.toLowerCase()).map((l) => { try { return iface.parseLog(l); } catch (_) { return null; } }).filter((e) => e?.name === "GachaPull");
         const box = $("gResults");
         got.forEach((e, i) => {
             const p = e.args.hit ? LK.L.byPid[Number(e.args.partId)] : null;
-            const n = p ? tile(p, "") : el(`<div class="tile miss" style="justify-content:center"><b style="font:900 28px var(--serif);color:var(--muted)">×</b><span>${esc(t("g.miss"))}</span></div>`);
+            const n = p ? tile(p, "", null, false, "lg-t " + p.tier) : el(`<div class="tile lg-t miss"><b>×</b><span>${esc(t("g.miss"))}</span></div>`);
             n.style.animationDelay = `${i * 0.08}s`;
             box.appendChild(n);
         });
         const hits = got.filter((e) => e.args.hit).length;
         U.say($("mGacha"), hits ? `${t("g.got")} ${hits} / ${got.length}` : t("g.nothing"), hits ? "ok" : "", r.hash);
+        logAdd(...got.map((e) => (e.args.hit ? { pid: Number(e.args.partId) } : { miss: 1 })),
+            ...got.filter((e) => e.args.hit && LK.L.byPid[Number(e.args.partId)]?.tier === "super").map((e) => ({ ann: Number(e.args.partId) })));
         // 本機先把抽到的配件放進背包（換裝頁馬上看得到；之後讀鏈會是同一份數字）
         for (const e of got) if (e.args.hit) { const pid = Number(e.args.partId); D.bag[pid] = (D.bag[pid] || 0) + 1; }
         U.draw();
@@ -287,7 +307,6 @@
     /* ───── 轉蛋動畫：扭蛋機轉動（等上鏈）→ 一顆顆扭蛋落下、搖晃、打開；依抽到的稀有度變色與特效 ───── */
     FX = (() => {
         const RANK = { miss: 0, normal: 1, rare: 2, super: 3 };
-        const BALL = ["#c8202e", "#1d4fb8", "#d4af6a", "#33c48d", "#b67cff", "#5aa0ff", "#e9eefb", "#ff7eb6", "#c8202e"];
         let root = null, skip = false, wake = null, timer = null, run = 0;
         const reduce = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
         const wait = (ms) => new Promise((r) => { if (skip) return r(); wake = r; timer = setTimeout(r, ms); });
@@ -312,11 +331,13 @@
         function open(times) {
             close();
             skip = reduce();
-            const balls = BALL.map((c, i) => `<i style="--c:${c};left:${8 + (i % 4) * 24}%;top:${14 + Math.floor(i / 4) * 26}%;animation-delay:${(i * 0.07).toFixed(2)}s"></i>`).join("");
+            const rays = Array.from({ length: 9 }, (_, i) => `<i style="--r:${-60 + i * 15}deg;animation-delay:${(i * 0.11).toFixed(2)}s"></i>`).join("");
             root = el(`<div class="gfx spin${skip ? " fast" : ""}" role="dialog" aria-modal="true" aria-live="polite"><div class="gfx-in">
-                <div class="gfx-mach" aria-hidden="true"><div class="gfx-dome">${balls}</div><div class="gfx-body"><span class="gfx-knob"></span><span class="gfx-slot"></span></div></div>
+                <div class="gfx-head"><i aria-hidden="true">◆</i><b>${esc(t("g.winT"))}</b><i aria-hidden="true">◆</i></div>
+                <div class="gfx-mach" aria-hidden="true"><div class="gfx-rays">${rays}</div><div class="lg-chest big"><i class="lid"></i><i class="lock"></i><i class="base"></i></div></div>
                 <p class="gfx-txt">${esc(t("g.fx.spin", { n: times }))}</p>
                 <div class="gfx-res${times === 1 ? " one" : ""}"></div>
+                <div class="gfx-log hidden"></div>
                 <div class="gfx-btns"><button type="button" class="btn alt gfx-skip hidden">${esc(t("g.fx.skip"))}</button><button type="button" class="btn gfx-ok hidden">${esc(t("g.fx.ok"))}</button></div>
             </div></div>`);
             root.querySelector(".gfx-skip").onclick = doSkip;
@@ -357,6 +378,14 @@
                 card.classList.add("open");
                 if (rank >= 2 && !skip) sparks(card, rank === 3 ? 18 : 10);
                 if (rank === 3 && !skip) { const f = el(`<div class="gfx-flash"></div>`); root.appendChild(f); setTimeout(() => f.remove(), 900); }
+                // 視窗下方的系統訊息，一行一行跑出來
+                const lg = root.querySelector(".gfx-log");
+                lg.classList.remove("hidden");
+                lg.appendChild(el(r.p
+                    ? `<p class="got">${esc(t("g.logGot", { x: "\u0000" })).replace("\u0000", `<span class="it ${r.p.tier}">[${esc(partName(r.p))}]</span>`)}</p>`
+                    : `<p class="miss">${esc(t("g.logMiss"))}</p>`));
+                if (rank === 3) lg.appendChild(el(`<p class="ann">${esc(t("g.logAnn", { x: partName(r.p) }))}</p>`));
+                lg.scrollTop = lg.scrollHeight;
                 await wait(one ? 500 : rank >= 2 ? 420 : 120);
             }
             if (me !== run) return;
