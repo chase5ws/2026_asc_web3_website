@@ -91,6 +91,8 @@
                 say(box, t("tx.done"), "ok", tx.hash);
             }
             await refresh();
+            // 公開 RPC 的節點有時落後幾秒：過一下再讀一次，背包、外觀才會是最新的
+            if (receipt) setTimeout(() => refresh(), 5000);
             return receipt;
         } catch (e) {
             console.warn(e);

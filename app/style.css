@@ -467,3 +467,63 @@ html{scroll-padding-top:90px}
 @media (max-width:760px){.navrow .sw3{flex:1;width:auto}.adnav{min-height:38px;padding:0 12px;font-size:13px}}
 .note.perk{display:flex;flex-direction:column;gap:4px;padding:12px 14px;border-radius:12px;border:1px solid var(--gold);background:linear-gradient(135deg,rgba(212,175,106,.18),rgba(212,175,106,.05));color:var(--ink);font-size:13.5px;line-height:1.6}
 .note.perk b{color:var(--gold);font-size:14.5px;letter-spacing:.04em}
+
+/* ───── 轉蛋動畫（app/nft.js 的 FX）：扭蛋機轉動 → 扭蛋落下、搖晃、打開；普通灰藍、稀有藍（同 .rk）、超稀有金＋光芒＋閃光 ───── */
+.gfx{position:fixed;inset:0;z-index:60;display:grid;place-items:center;padding:16px;background:rgba(4,8,26,.84);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);animation:gfxIn .25s ease both}
+.gfx-in{width:min(560px,100%);max-height:92vh;overflow:auto;display:flex;flex-direction:column;align-items:center;gap:14px;padding:20px 16px;border:1px solid var(--line2);border-radius:18px;background:linear-gradient(180deg,var(--card2),var(--card));box-shadow:0 20px 60px rgba(0,0,0,.55)}
+.gfx-txt{margin:0;text-align:center;color:var(--soft);font-size:14px;line-height:1.6}
+.gfx-txt b{color:var(--gold);font-size:18px}
+.gfx-btns{display:flex;gap:10px;justify-content:center;width:100%}
+.gfx-btns .btn{min-width:120px;min-height:42px}
+.gfx-mach{position:relative;width:132px;height:172px;flex:none}
+.gfx.res .gfx-mach{display:none}
+.gfx-dome{position:absolute;left:6px;right:6px;top:0;height:112px;border-radius:50% 50% 14px 14px;border:2px solid var(--line2);overflow:hidden;background:radial-gradient(circle at 35% 28%,rgba(255,255,255,.35),rgba(255,255,255,.06) 42%,rgba(120,150,220,.14))}
+.gfx-dome i{position:absolute;width:24px;height:24px;border-radius:50%;background:var(--c);box-shadow:inset -4px -4px 0 rgba(0,0,0,.2),inset 3px 3px 0 rgba(255,255,255,.25)}
+.gfx-body{position:absolute;left:0;right:0;bottom:0;height:66px;border-radius:12px;background:linear-gradient(180deg,var(--red),#8f1520);border:2px solid #6d0f18}
+.gfx-knob{position:absolute;left:50%;top:13px;width:32px;height:32px;margin-left:-16px;border-radius:50%;background:var(--gold);border:3px solid #9b7b3f}
+.gfx-knob::after{content:"";position:absolute;left:50%;top:2px;bottom:2px;width:6px;margin-left:-3px;border-radius:3px;background:#6f5527}
+.gfx-slot{position:absolute;right:12px;bottom:10px;width:28px;height:16px;border-radius:5px;background:#3b0a10}
+.gfx.spin .gfx-mach{animation:gfxShake .35s ease-in-out infinite}
+.gfx.spin .gfx-knob{animation:gfxKnob .9s linear infinite}
+.gfx.spin .gfx-dome i{animation:gfxBall .45s ease-in-out infinite alternate}
+.gfx-res{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px;width:100%}
+.gfx-res:empty{display:none}
+.gfx-res.one{grid-template-columns:minmax(0,220px);justify-content:center}
+.gfx-card{--tc:#7f8db0;position:relative;isolation:isolate;aspect-ratio:3/4;display:grid;place-items:center;animation:gfxDrop .38s cubic-bezier(.3,1.4,.6,1) both}
+.gfx-card.t-normal{--tc:#a9b6d6}.gfx-card.t-rare{--tc:#5aa0ff}.gfx-card.t-super{--tc:var(--gold)}
+.gfx-cap{position:absolute;left:12%;right:12%;top:50%;aspect-ratio:1;transform:translateY(-55%);display:flex;flex-direction:column;transition:filter .3s}
+.gfx-cap i{flex:1;display:block}
+.gfx-cap .top{border-radius:999px 999px 0 0;background:linear-gradient(160deg,#f4f7ff,#b9c4e0);border-bottom:2px solid #8592b5}
+.gfx-cap .bot{border-radius:0 0 999px 999px;background:linear-gradient(160deg,#5b6a93,#2b3554)}
+.gfx-card.shake .gfx-cap{animation:gfxWob .12s ease-in-out infinite alternate;filter:drop-shadow(0 0 10px var(--tc))}
+.gfx-card.t-rare.shake .gfx-cap{animation-duration:.09s;filter:drop-shadow(0 0 16px var(--tc))}
+.gfx-card.t-super.shake .gfx-cap{animation-duration:.06s;filter:drop-shadow(0 0 24px var(--tc)) drop-shadow(0 0 6px #fff)}
+.gfx-card.open .gfx-cap{animation:none}
+.gfx-card.open .top{animation:gfxTop .45s ease-in forwards}
+.gfx-card.open .bot{animation:gfxBot .45s ease-in forwards}
+.gfx-prize{position:relative;width:100%;display:flex;flex-direction:column;align-items:center;gap:4px;text-align:center;font-size:12px;line-height:1.3;color:var(--ink);opacity:0;transform:scale(.3)}
+.gfx-card.open .gfx-prize{animation:gfxPop .5s .1s cubic-bezier(.3,1.6,.5,1) forwards}
+.gfx-prize img{width:100%;aspect-ratio:1;object-fit:cover;border-radius:10px;border:2px solid var(--tc);background:var(--bg2);box-shadow:0 0 18px -2px var(--tc)}
+.gfx-prize b{font:900 34px var(--serif);color:var(--muted);line-height:1}
+.gfx-card.t-miss.open .gfx-prize{opacity:.55}
+.gfx-res.one .gfx-prize{font-size:15px}
+.gfx-card.open.t-rare::before,.gfx-card.open.t-super::before{content:"";position:absolute;inset:-22%;z-index:-1;border-radius:50%;background:repeating-conic-gradient(from 0deg,var(--tc) 0 9deg,transparent 9deg 24deg);opacity:.5;-webkit-mask:radial-gradient(circle,#000 22%,transparent 68%);mask:radial-gradient(circle,#000 22%,transparent 68%);animation:gfxRays 5s linear infinite,gfxIn .4s ease both}
+.gfx-card.open.t-super::before{opacity:.8;animation-duration:3s,.4s}
+.gfx-spark{position:absolute;left:50%;top:42%;width:7px;height:7px;margin:-3px;border-radius:50%;background:var(--tc);box-shadow:0 0 8px var(--tc);pointer-events:none;animation:gfxSpark .8s ease-out forwards}
+.gfx-flash{position:fixed;inset:0;pointer-events:none;background:radial-gradient(circle,rgba(255,230,160,.85),rgba(212,175,106,.25) 45%,transparent 75%);animation:gfxFlash .8s ease-out forwards}
+.gfx.fast *,.gfx.fast *::before{animation-duration:.01s!important;animation-delay:0s!important;animation-iteration-count:1!important}
+@media (prefers-reduced-motion:reduce){.gfx *,.gfx *::before{animation-duration:.01s!important;animation-delay:0s!important;animation-iteration-count:1!important}}
+@media (max-width:420px){.gfx-res{gap:6px}.gfx-res:not(.one) .gfx-prize{font-size:10px}.gfx-res:not(.one) .gfx-prize .rk{display:none}}
+@keyframes gfxIn{from{opacity:0}to{opacity:1}}
+@keyframes gfxShake{0%,100%{transform:rotate(-2deg)}50%{transform:rotate(2deg)}}
+@keyframes gfxKnob{to{transform:rotate(360deg)}}
+@keyframes gfxBall{from{transform:translate(0,0)}to{transform:translate(3px,-9px) rotate(40deg)}}
+@keyframes gfxDrop{from{opacity:0;transform:translateY(-46px) scale(.6)}to{opacity:1;transform:none}}
+@keyframes gfxWob{from{transform:translateY(-55%) rotate(-9deg)}to{transform:translateY(-55%) rotate(9deg)}}
+@keyframes gfxTop{to{opacity:0;transform:translate(-28%,-80%) rotate(-38deg)}}
+@keyframes gfxBot{to{opacity:0;transform:translate(24%,70%) rotate(28deg)}}
+@keyframes gfxPop{to{opacity:1;transform:none}}
+@keyframes gfxRays{to{transform:rotate(360deg)}}
+@keyframes gfxSpark{from{opacity:1;transform:translate(0,0) scale(1)}to{opacity:0;transform:translate(var(--dx),var(--dy)) scale(.2)}}
+@keyframes gfxFlash{from{opacity:1}to{opacity:0}}
+

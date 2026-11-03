@@ -7,6 +7,7 @@
     const getJson = (u) => fetch(u, { cache: "no-cache" }).then((r) => (r.ok ? r.json() : null)).catch(() => null);
     const weight = (o) => Number(o.weight ?? L.traits.weights?.[o.tier || "normal"] ?? 0);
     const empty = (cat) => cat.options.find((o) => !o.file) || null;
+    const REWIND = 30; // 約 1 分鐘的區塊
     const layerUrl = (f) => `${A}/${f.split("/").map(encodeURIComponent).join("/")}`;
 
     async function loadTraits() {
@@ -92,7 +93,13 @@
             }
         }
         for (const t of Object.values(L.tokens)) if (!t.traits && t.seed && (t.kind === 1 || t.kind === 2)) t.traits = rollTraits(t.seed);
-        L.scanned = head;
+        // 公開 RPC 是多台節點輪流回應，剛上鏈的事件有時還查不到：下次再多掃最後 REWIND 個區塊（事件重複套用結果相同）
+        L.scanned = Math.max(C.nftBlock - 1, head - REWIND);
+    }
+
+    /** 強制重讀：丟掉快取，下次 sync 從 v2/state.json 重新讀起再補鏈上事件（換裝頁的「刷新」） */
+    function reset() {
+        L.scanned = 0;
     }
 
     /** 每個部位最後的選項：[{cat, slot, opt, part}]（沒穿＝不穿選項；沒有不穿選項的部位就沒有） */
@@ -132,5 +139,5 @@
     const tierOf = (list) => (list.some((p) => p.opt.tier === "super") ? "super" : list.some((p) => p.opt.tier === "rare") ? "rare" : "normal");
     const imageOf = (id) => `${A}/v2/images/${id}.png`;
 
-    window.ASCLook = { L, loadTraits, sync, v1Traits, lookOf, picks, compose, drawOrder, tierOf, imageOf, empty, rollTraits, A };
+    window.ASCLook = { L, loadTraits, sync, reset, applyEquip, v1Traits, lookOf, picks, compose, drawOrder, tierOf, imageOf, empty, rollTraits, A };
 })();
