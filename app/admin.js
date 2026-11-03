@@ -150,6 +150,7 @@
         st.vault = { open, depositOpen, shutdown, verifiedOnly, transferTaxBps: tax, flagPenaltyBps: flag, capBps: cap, startPrice, maxDepositPerPeriod: maxDep, periodStart, reserve, feeToReserveBps: toRes, feeToNextBps: toNext, usdtBal, supply, keepDays, keepRates };
         const [saleOpen, paused, maxSupply, nextId, randomFee, changeFee, gachaFee, vipPrice, vipDays, gachaVipOnly, pool] = await Promise.all([
             N.saleOpen(), n.paused(), N.maxSupply(), N.nextId(), N.randomFee(), N.changeFee(), N.gachaFee(), n.vipPrice(), n.vipDays(), N.gachaVipOnly(), n.gachaPool()]);
+        if (changeFee > 0n) { try { localStorage.setItem("asc-admin-changefee", String(changeFee)); } catch (_) {} }
         st.nft = { saleOpen, paused, maxSupply, nextId, randomFee, changeFee, gachaFee, vipPrice, vipDays, gachaVipOnly, pool: { ids: pool.prizes.map((p) => Number(p.partId)), weights: pool.prizes.map((p) => Number(p.weight)), miss: Number(pool.miss) } };
         const [feeBps, flagFeeBps, maxTradeValue, mPaused, count] = await Promise.all([m.feeBps(), m.flagFeeBps(), m.maxTradeValue(), m.paused(), m.listingCount()]);
         st.market = { feeBps, flagFeeBps, maxTradeValue, paused: mPaused, count };
@@ -342,9 +343,13 @@ ${danger ? `<p class="adm-warn">⚠️ ${L("這個操作影響很大，請再確
         { k: "v-ver", c: "vault", fn: "setPolicy", zh: "只限驗證錢包", en: "Verified wallets only", get: (s) => s.vault.verifiedOnly, args: (on, s) => [on, s.vault.transferTaxBps, s.vault.flagPenaltyBps, s.vault.maxDepositPerPeriod] },
         { k: "n-sale", c: "nft", fn: "setSale", zh: "白名單鑄造", en: "Whitelist mint", get: (s) => s.nft.saleOpen, args: (on) => [on] },
         { k: "n-run", c: "nft", fn: (on) => (on ? "unpause" : "pause"), zh: "NFT 運作", en: "NFT running", sub: ["關＝暫停鑄造、解盲、換裝、轉蛋", "Off = pause mint, reveal, equip, gacha"], get: (s) => !s.nft.paused, args: () => [] },
+        { k: "n-free", c: "nft", fn: "setPrices", zh: "VIP 免換裝費", en: "Free equip for VIP", sub: ["換裝費設 0（合約只有 VIP 能換裝）；關＝恢復上次的換裝費", "Equip fee 0 (only VIPs can equip); off = restore the last fee"],
+            get: (s) => s.nft.changeFee === 0n, ok: (on) => on || !!lastFee(), args: (on, s) => [s.nft.randomFee, on ? 0n : BigInt(lastFee()), s.nft.gachaFee] },
         { k: "n-vip", c: "nft", fn: "setGachaVipOnly", zh: "轉蛋只限 VIP", en: "Gacha VIP only", get: (s) => s.nft.gachaVipOnly, args: (on) => [on] },
         { k: "m-run", c: "market", fn: (on) => (on ? "unpause" : "pause"), zh: "市場交易", en: "Market trading", sub: ["關＝暫停市場（賣家仍可下架）", "Off = pause (sellers can still cancel)"], get: (s) => !s.market.paused, args: () => [] }
     ];
+    /** 記住最後一次看到的非 0 換裝費，關掉「VIP 免換裝費」時恢復用 */
+    const lastFee = () => { try { return localStorage.getItem("asc-admin-changefee") || ""; } catch (_) { return ""; } };
     const qAct = (q, on) => A.find((x) => x.c === q.c && x.fn === (typeof q.fn === "function" ? q.fn(on) : q.fn));
     function quickHtml() {
         const items = Q.map((q) => {
@@ -352,6 +357,7 @@ ${danger ? `<p class="adm-warn">⚠️ ${L("這個操作影響很大，請再確
             try { cur = !!q.get(st); } catch (_) { return ""; }
             const x = qAct(q, !cur);
             if (!x || !(canSend(x) || canBatch(x))) return "";
+            if (q.ok && !q.ok(!cur, st)) return "";
             const pend = batch.some((b) => b.q === q.k);
             const shown = pend ? !cur : cur;
             const tip = pend ? `<span class="adm-pend">🛒 ${L("批次中", "In batch")}：${yes(cur)} → ${yes(!cur)}</span>` : `<span class="adm-now ${cur ? "on" : "off"}">● ${L("目前", "Now")} ${yes(cur)}</span>`;
@@ -485,16 +491,20 @@ ${x.danger ? `<p class="adm-warn">⚠️ ${L("這個操作影響很大，請再�
             if (ev.name === "PresetMinted") { t.ref = Number(ev.args.ref); continue; }
             if (!t.traits) t.traits = t.ref != null ? await LK.v1Traits(t.ref) : t.seed ? LK.rollTraits(t.seed) : {};
             const who = ev.args.owner;
-            const off = (slot) => { const pid = pidOf(slot, t.traits[cats[slot]?.trait_type]); if (pid != null && sup.has(pid)) add(owed, who, pid, 1); };
+            // 換下來要退：自己穿上去（從背包燒掉）的任何配件；超稀有照舊連鑄造時的原始外觀也退
+            t.worn ||= {};
+            const off = (slot) => { const pid = pidOf(slot, t.traits[cats[slot]?.trait_type]); if (pid != null && (sup.has(pid) || t.worn[slot] === pid)) add(owed, who, pid, 1); };
             for (const pid of ev.args.partIds.map(Number)) {
                 const slot = Math.floor(pid / 256), o = cats[slot]?.options[pid % 256];
                 if (!o) continue;
                 off(slot);
                 t.traits[cats[slot].trait_type] = o.name;
+                t.worn[slot] = pid;
             }
             for (const slot of ev.args.clearSlots.map(Number)) {
                 if (!cats[slot]) continue;
                 off(slot);
+                delete t.worn[slot];
                 const e = LK.empty(cats[slot]);
                 t.traits[cats[slot].trait_type] = e ? e.name : undefined;
             }
@@ -506,7 +516,7 @@ ${x.danger ? `<p class="adm-warn">⚠️ ${L("這個操作影響很大，請再�
             if (gachaTx.has(l.transactionHash)) continue;
             const ev = PI.parseLog(l);
             const pid = Number(ev.args.id);
-            if (sup.has(pid)) add(paid, ev.args.to, pid, Number(ev.args.value));
+            add(paid, ev.args.to, pid, Number(ev.args.value));
         }
         return Object.entries(owed).map(([k, n]) => {
             const [who, pid] = k.split(":");
@@ -521,10 +531,10 @@ ${x.danger ? `<p class="adm-warn">⚠️ ${L("這個操作影響很大，請再�
         const safe = viaSafe(g);
         const body = rf.busy ? `<p class="muted small">${L("掃描鏈上換裝紀錄中…（第一次會比較久）", "Scanning equip history…")}</p>`
             : rf.err ? `<p class="msg bad">${esc(rf.err)}</p>`
-            : !rf.rows ? `<p class="muted small">${L("按「掃描」找出被換掉或脫掉、還沒退還的超稀有配件。", "Press Scan to find super-rare parts that were replaced and not yet returned.")}</p>`
-            : !due.length ? `<p class="muted small">${L("目前沒有需要退還的超稀有配件 ✓", "Nothing to return ✓")}</p>`
+            : !rf.rows ? `<p class="muted small">${L("按「掃描」找出換裝時被換掉或脫掉、還沒退還的配件（玩家自己穿上的任何配件＋超稀有）。", "Press Scan to find parts replaced or taken off during equip and not yet returned (any part the player put on, plus super-rares).")}</p>`
+            : !due.length ? `<p class="muted small">${L("目前沒有需要退還的配件 ✓", "Nothing to return ✓")}</p>`
             : `<div class="adm-scroll"><table class="adm-table"><thead><tr><th>${L("錢包", "Wallet")}</th><th>${L("配件", "Part")}</th><th>${L("應退／已退", "Owed / paid")}</th><th></th></tr></thead><tbody>${due.map((r, i) => `<tr><td>${addrLink(r.who)}</td><td>${esc(r.name)} <small class="muted">#${r.pid}</small></td><td>${r.owed} / ${r.paid}</td><td><button type="button" class="adm-rf${safe ? " cart" : ""}" data-r="${i}">${safe ? `🛒 ${L("加入批次", "Add to batch")}` : `⚡ ${L(`退還 ${r.owed - r.paid} 個`, `Return ${r.owed - r.paid}`)}`}</button></td></tr>`).join("")}</tbody></table></div>`;
-        return `<div class="adm-look"><div class="adm-h"><b>${L("超稀有退還", "Super-rare returns")}</b><span class="muted small">${L("VIP 換裝時被換掉或脫掉的超稀有配件，用 giveParts 退回原持有者", "Super-rare parts replaced during VIP equip are returned with giveParts")}</span></div>${body}<div class="adm-btns"><button type="button" class="alt" id="adRfScan"${rf.busy ? " disabled" : ""}>${rf.rows ? L("重新掃描", "Rescan") : L("掃描", "Scan")}</button></div><div class="msg adm-msg ${rf.cls || ""}" id="adRfMsg">${esc(rf.msg || "")}</div></div>`;
+        return `<div class="adm-look"><div class="adm-h"><b>${L("換裝退還", "Equip returns")}</b><span class="muted small">${L("換裝時被換掉或脫掉的配件，用 giveParts 退回原持有者。「已退」＝轉蛋以外由合約發給他的同款配件（送禮也算在內）", "Parts replaced or taken off during equip are returned with giveParts. “Paid” counts every non-gacha mint of that part to the wallet (gifts included)")}</span></div>${body}<div class="adm-btns">${due.length > 1 && safe ? `<button type="button" id="adRfAll">🛒 ${L(`全部加入批次（${due.length} 筆）`, `Add all to batch (${due.length})`)}</button>` : ""}<button type="button" class="alt" id="adRfScan"${rf.busy ? " disabled" : ""}>${rf.rows ? L("重新掃描", "Rescan") : L("掃描", "Scan")}</button></div><div class="msg adm-msg ${rf.cls || ""}" id="adRfMsg">${esc(rf.msg || "")}</div></div>`;
     }
     function renderRefund() {
         const el = $("admRefundBox");
@@ -541,11 +551,16 @@ ${x.danger ? `<p class="adm-warn">⚠️ ${L("這個操作影響很大，請再�
     function bindRefund(el) {
         $("adRfScan")?.addEventListener("click", runScan);
         const due = (rf.rows || []).filter((r) => r.owed > r.paid);
+        $("adRfAll")?.addEventListener("click", () => {
+            const g = GIVE();
+            if (!g) return;
+            for (const r of due) { const n = BigInt(r.owed - r.paid); addBatch(g, [r.who, BigInt(r.pid), n], { tag: [`換裝退還 ${r.name} ×${n}`, `Equip return ${r.name} ×${n}`] }); }
+        });
         el.querySelectorAll(".adm-rf").forEach((b) => b.addEventListener("click", async () => {
             const r = due[Number(b.dataset.r)], g = GIVE(), m = $("adRfMsg");
             if (!r || !g) return;
             const n = BigInt(r.owed - r.paid), args = [r.who, BigInt(r.pid), n];
-            if (viaSafe(g)) { addBatch(g, args, { tag: [`退還超稀有 ${r.name} ×${n}`, `Return super-rare ${r.name} ×${n}`] }); return; }
+            if (viaSafe(g)) { addBatch(g, args, { tag: [`換裝退還 ${r.name} ×${n}`, `Equip return ${r.name} ×${n}`] }); return; }
             b.disabled = true;
             try {
                 await sendTx(g, args, (t, kind) => { m.className = "msg adm-msg " + (kind || ""); m.textContent = t; });

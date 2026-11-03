@@ -12,6 +12,16 @@
     const isVip = () => Number(D.nftMe?.[1] || 0) > Date.now() / 1000;
     const nft = () => write("nft");
 
+    /** 鑄造時的原始外觀（跟現在不同的部位＝玩家自己穿上的配件，換下來會由管理員退回）；V1 外觀要非同步讀，讀到再重畫 */
+    const origCache = {};
+    function origOf(id) {
+        if (id in origCache) return origCache[id];
+        const t = tok(id);
+        if (!t) return null;
+        if (t.ref != null) { origCache[id] = null; LK.v1Traits(t.ref).then((x) => { origCache[id] = x; renderEquip(); }).catch(() => {}); return null; }
+        if (t.seed && (t.kind === 1 || t.kind === 2)) return (origCache[id] = LK.rollTraits(t.seed));
+        return null;
+    }
     /** 某顆現在的外觀（換裝試穿：try／take 疊上去） */
     function picksOf(id, withTry) {
         const look = LK.lookOf(id);
@@ -151,7 +161,10 @@
         const changes = Object.entries(Q.try).filter(([slot, pid]) => cur.find((x) => x.slot === Number(slot))?.part?.pid !== pid);
         const takes = [...Q.take].filter((slot) => cur.find((x) => x.slot === slot)?.opt.file);
         const off = [...changes.map(([slot]) => Number(slot)), ...takes].map((slot) => cur.find((x) => x.slot === slot)?.part).filter(Boolean);
-        const lose = off.filter((p) => p.tier !== "super").map(partName), back = off.filter((p) => p.tier === "super").map(partName);
+        // 會退回：超稀有，或不是原始外觀（＝自己穿上的）；原始外觀的普通／稀有換掉就消失。原始外觀讀不到時只保證超稀有
+        const orig = Q.id != null ? origOf(Q.id) : null;
+        const isBack = (p) => p.tier === "super" || (!!orig && orig[p.cat] !== p.name);
+        const lose = off.filter((p) => !isBack(p)).map(partName), back = off.filter(isBack).map(partName);
         $("qNeed").textContent = Q.id != null ? (isVip() ? [t("q.need", { n: changes.length, m: takes.length }), lose.length ? t("q.lose", { x: lose.join("、") }) : "", back.length ? t("q.back", { x: back.join("、") }) : ""].filter(Boolean).join("　") : t("q.notVip")) : "";
         $("bEquip").disabled = Q.id == null || !isVip() || !(changes.length + takes.length);
         $("eqReset").disabled = !(Object.keys(Q.try).length + Q.take.size);
