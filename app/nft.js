@@ -197,20 +197,31 @@
         if (!D.ready) return;
         const s = D.nftS;
         const total = D.prizes.reduce((a, p) => a + p.w, 0) + D.miss;
+        // 轉蛋機：最上面一條橫的只放稀有與超稀有（超稀有在前，左右滑動）；普通收在下方「普通配件」
         const pool = $("eqPool");
         if (!same(pool, JSON.stringify([D.prizes, D.miss, S.lang]))) {
-            pool.innerHTML = "";
             const pc = (w) => { const r = total ? w / total : 0; return (r * 100).toFixed(r < 0.01 ? 2 : 1); };
             const rows = D.prizes.map((x) => ({ p: LK.L.byPid[x.pid], w: x.w })).filter((x) => x.p);
-            for (const tier of ["super", "rare", "normal"]) {
-                const list = rows.filter((x) => x.p.tier === tier).sort((a, b) => a.w - b.w || a.p.pid - b.p.pid);
-                if (!list.length) continue;
-                const sum = list.reduce((a, x) => a + x.w, 0);
-                const grp = el(`<div style="display:flex;flex-direction:column;gap:8px"><div class="panelhead"><h3>${tierTag(tier)} ${esc(t("g.tier." + tier))}</h3><span class="muted small">${esc(t("g.sum", { n: list.length, p: pc(sum) }))}</span></div><div class="tiles"></div></div>`);
-                list.forEach((x) => grp.querySelector(".tiles").appendChild(tile(x.p, `<span class="q">${pc(x.w)}%</span>`)));
-                pool.appendChild(grp);
-            }
-            if (D.miss && total) pool.appendChild(el(`<div class="tiles"><div class="tile miss" style="justify-content:center"><b style="font:900 28px var(--serif);color:var(--muted)">×</b><span>${esc(t("g.miss"))}</span><span class="q">${pc(D.miss)}%</span></div></div>`));
+            const order = { super: 0, rare: 1 };
+            const feat = rows.filter((x) => x.p.tier !== "normal").sort((a, b) => order[a.p.tier] - order[b.p.tier] || a.w - b.w || a.p.pid - b.p.pid);
+            const normal = rows.filter((x) => x.p.tier === "normal").sort((a, b) => a.p.pid - b.p.pid);
+            pool.innerHTML = "";
+            if (!feat.length) pool.appendChild(el(`<p class="muted small">${esc(D.prizes.length ? "–" : t("e.EmptyPool"))}</p>`));
+            feat.forEach((x) => pool.appendChild(tile(x.p, `<span class="q">${pc(x.w)}%</span>`, null, false, "gm-t " + x.p.tier)));
+            pool.scrollLeft = 0;
+            // 機率摘要：超稀有／稀有／普通／沒中
+            const sum = (tier) => rows.filter((x) => x.p.tier === tier).reduce((a, x) => a + x.w, 0);
+            $("gOdds").innerHTML = ["super", "rare", "normal"].filter((tier) => sum(tier)).map((tier) => `${tierTag(tier)} ${pc(sum(tier))}%`).concat(D.miss && total ? [`<span class="rk">${esc(t("g.miss"))}</span> ${pc(D.miss)}%`] : []).join("　");
+            const np = $("eqPoolNormal");
+            np.innerHTML = "";
+            normal.forEach((x) => np.appendChild(tile(x.p, `<span class="q">${pc(x.w)}%</span>`)));
+            $("gAllSum").textContent = t("g.allSum", { n: normal.length, p: pc(sum("normal")) });
+            $("gAllSum").parentElement.classList.toggle("hidden", !normal.length);
+            // 玻璃罩裡的扭蛋：顏色依獎池（超稀有金、稀有藍、普通灰藍）
+            const dome = $("gDome");
+            const cols = [...feat.map((x) => (x.p.tier === "super" ? "#d4af6a" : "#5aa0ff")), ...Array(10).fill("#a9b6d6"), "#c8202e", "#e9eefb"].slice(0, 16);
+            dome.innerHTML = cols.map((c, i) => `<i style="--c:${c};left:${4 + ((i * 37) % 88)}%;top:${18 + ((i * 53) % 62)}%;animation-delay:${((i % 7) * 0.4).toFixed(1)}s"></i>`).join("");
+            railArrows();
         }
         const pulls = D.nftMe?.[2] || 0n;
         $("gPulls").textContent = CH.account ? int(pulls) : "–";
@@ -222,6 +233,18 @@
         $("bPull1").disabled = $("bPull10").disabled = off;
         $("bBuyPulls").disabled = off || s[6] === 0n;
     }
+    /** 大獎展示：左右箭頭（桌機用；手機直接滑），到頭就淡掉 */
+    function railArrows() {
+        const st = $("eqPool");
+        $("gPrev").disabled = st.scrollLeft <= 2;
+        $("gNext").disabled = st.scrollLeft + st.clientWidth >= st.scrollWidth - 2;
+        // 右邊還有東西時淡出邊緣，提示可以往左滑
+        st.parentElement.classList.toggle("more", !$("gNext").disabled);
+    }
+    $("eqPool").addEventListener("scroll", railArrows, { passive: true });
+    $("gPrev").onclick = () => $("eqPool").scrollBy({ left: -$("eqPool").clientWidth * 0.8, behavior: "smooth" });
+    $("gNext").onclick = () => $("eqPool").scrollBy({ left: $("eqPool").clientWidth * 0.8, behavior: "smooth" });
+    addEventListener("resize", () => { if (S.page === "nft" && S.nft === "gacha") railArrows(); });
     $("bBuyPulls").onclick = () => {
         const n = Number($("gN").value || 1);
         send($("mGacha"), $("bBuyPulls"), async (step) => { await payAsc(C.nft, D.nftS[6] * BigInt(n), step); return (await nft()).buyPulls(n); });

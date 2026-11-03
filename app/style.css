@@ -527,3 +527,57 @@ html{scroll-padding-top:90px}
 @keyframes gfxSpark{from{opacity:1;transform:translate(0,0) scale(1)}to{opacity:0;transform:translate(var(--dx),var(--dy)) scale(.2)}}
 @keyframes gfxFlash{from{opacity:1}to{opacity:0}}
 
+
+/* ───── 轉蛋頁＝一台扭蛋機（index.html 的 .gm，app/nft.js 的 renderGacha）：
+   上方招牌是「大獎展示」橫條（只放稀有、超稀有，左右滑動）→ 玻璃罩 → 紅色機身（次數、按鈕、旋鈕）→ 出蛋口（結果）；普通配件收在最下方 ───── */
+.gm{position:relative;display:flex;flex-direction:column;gap:0;max-width:980px;width:100%;margin:0 auto}
+.gm-top{position:relative;z-index:2;padding:14px 14px 12px;border:2px solid #9b7b3f;border-radius:22px 22px 14px 14px;background:linear-gradient(180deg,#1a2a58,#0f1b3a);box-shadow:inset 0 0 0 1px rgba(212,175,106,.25),0 8px 22px rgba(0,0,0,.35)}
+.gm-head{display:flex;justify-content:space-between;align-items:center;gap:8px 14px;flex-wrap:wrap;margin-bottom:10px}
+.gm-title{font:900 18px var(--serif);letter-spacing:.12em;color:var(--gold);text-shadow:0 0 12px rgba(212,175,106,.45)}
+.gm-odds{font-size:12px;color:var(--soft);display:flex;gap:4px 6px;flex-wrap:wrap;align-items:center}
+.gm-rail{position:relative}
+.gm-strip{display:flex;gap:10px;overflow-x:auto;overscroll-behavior-x:contain;scroll-snap-type:x mandatory;scroll-padding:0 4px;padding:4px 4px 10px;-webkit-overflow-scrolling:touch;scrollbar-width:thin;scrollbar-color:var(--line2) transparent}
+.gm-strip::-webkit-scrollbar{height:6px}.gm-strip::-webkit-scrollbar-thumb{background:var(--line2);border-radius:3px}
+.gm-strip>.tile{flex:0 0 112px;scroll-snap-align:start}
+.gm-strip>p{margin:0;padding:18px 0}
+.tile.gm-t.rare{border-color:rgba(90,160,255,.7);box-shadow:0 0 14px -4px #5aa0ff}
+.tile.gm-t.super{border-color:var(--gold);box-shadow:0 0 18px -3px var(--gold);background:linear-gradient(180deg,rgba(212,175,106,.16),var(--card2) 55%)}
+.tile.gm-t.super img{animation:gmGlow 2.4s ease-in-out infinite}
+.gm-arrow{position:absolute;top:50%;z-index:3;width:34px;height:34px;margin-top:-22px;border-radius:50%;border:1px solid var(--line2);background:rgba(7,13,31,.85);color:var(--ink);font-size:22px;line-height:1;display:grid;place-items:center;padding:0}
+.gm-arrow.l{left:-8px}.gm-arrow.r{right:-8px}
+.gm-arrow:disabled{opacity:0;pointer-events:none}
+.gm-rail.more::after{content:"";position:absolute;top:0;right:0;bottom:10px;width:40px;pointer-events:none;background:linear-gradient(90deg,transparent,#0f1b3a);border-radius:0 12px 12px 0}
+.gm-dome{position:relative;z-index:1;height:120px;margin:-6px 26px 0;border:2px solid var(--line2);border-top:0;border-radius:0 0 46% 46%/0 0 40% 40%;overflow:hidden;background:radial-gradient(ellipse at 30% 20%,rgba(255,255,255,.22),rgba(255,255,255,.04) 40%,rgba(120,150,220,.1)),linear-gradient(180deg,rgba(15,27,58,.6),rgba(19,34,74,.35))}
+.gm-dome i{position:absolute;width:26px;height:26px;border-radius:50%;background:var(--c);box-shadow:inset -4px -4px 0 rgba(0,0,0,.2),inset 3px 3px 0 rgba(255,255,255,.28);animation:gmFloat 3.2s ease-in-out infinite alternate}
+.gm-body{position:relative;margin-top:-8px;padding:20px 16px 16px;border-radius:18px;background:linear-gradient(180deg,#b81c2a,#7d111c);border:2px solid #5d0c15;box-shadow:inset 0 2px 0 rgba(255,255,255,.18),0 10px 24px rgba(0,0,0,.4);display:flex;flex-direction:column;gap:12px}
+.gm-info{display:flex;gap:6px 16px;flex-wrap:wrap;align-items:baseline;font-size:13px;color:#ffe9ec;padding-right:64px}
+.gm-info b{color:#fff;font-size:16px}
+.gm-info .soft{color:rgba(255,233,236,.75)}
+.gm-ctrl{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.gm-ctrl select{min-height:44px;background:#3b0a10;color:#fff;border:1px solid rgba(255,255,255,.25);border-radius:10px;padding:0 8px}
+.gm-ctrl .btn{flex:1 1 90px;min-height:44px;font-size:14px}
+.gm-ctrl .btn:not(.alt):not(.blue){background:var(--gold);color:#2a1d05}
+.gm-ctrl .btn.alt{border-color:rgba(255,255,255,.35);color:#fff;background:rgba(0,0,0,.18)}
+.gm-body .note{margin:0}
+.gm-knob{position:absolute;top:12px;right:16px;width:46px;height:46px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#f3d798,var(--gold) 55%,#9b7b3f);border:3px solid #6f5527;box-shadow:0 3px 8px rgba(0,0,0,.35)}
+.gm-knob::after{content:"";position:absolute;left:50%;top:5px;bottom:5px;width:8px;margin-left:-4px;border-radius:4px;background:#6f5527}
+.gm-knob{transition:transform .5s ease}
+.gm:has(#bPull1:hover:not(:disabled),#bPull10:hover:not(:disabled)) .gm-knob{transform:rotate(180deg)}
+.gm-tray{margin:-6px 30px 0;padding:18px 14px 14px;border:2px solid #5d0c15;border-top:0;border-radius:0 0 16px 16px;background:linear-gradient(180deg,#3b0a10,#1a0508);display:flex;flex-direction:column;gap:10px;min-height:46px}
+.gm-tray .msg:empty{display:none}
+.gm-tray .results:empty{display:none}
+.gm-all{margin-top:16px;border:1px solid var(--line2);border-radius:14px;background:var(--card);padding:0 12px}
+.gm-all summary{cursor:pointer;min-height:44px;display:flex;align-items:center;color:var(--soft);font-size:14px}
+.gm-all[open]{padding-bottom:12px}
+@keyframes gmFloat{from{transform:translateY(0)}to{transform:translateY(-8px) rotate(25deg)}}
+@keyframes gmGlow{0%,100%{filter:none}50%{filter:drop-shadow(0 0 8px rgba(212,175,106,.8)) brightness(1.08)}}
+@media (max-width:600px){
+  .gm-top{padding:12px 10px 10px}
+  .gm-strip>.tile{flex-basis:96px}
+  .gm-arrow{display:none}
+  .gm-dome{height:90px;margin:-6px 16px 0}
+  .gm-tray{margin:-6px 16px 0}
+  .gm-knob{width:38px;height:38px}
+  .gm-info{padding-right:48px}
+}
+@media (prefers-reduced-motion:reduce){.gm-dome i,.tile.gm-t.super img{animation:none}}
