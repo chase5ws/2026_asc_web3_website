@@ -71,7 +71,8 @@
         if (head <= L.scanned) return;
         const nft = read.nft;
         const topics = ["Minted", "PresetMinted", "Revealed", "Equipped", "RandomSeed"].map((n) => nft.interface.getEvent(n).topicHash);
-        const logs = await getLogs({ address: C.nft, topics: [topics] }, L.scanned + 1, head);
+        const logs = await getLogs({ address: [C.nft, C.wardrobe].filter(Boolean), topics: [topics] }, L.scanned + 1, head);
+        logs.sort((a, b) => a.blockNumber - b.blockNumber || a.index - b.index);
         for (const l of logs) {
             const ev = nft.interface.parseLog(l);
             if (!ev) continue;

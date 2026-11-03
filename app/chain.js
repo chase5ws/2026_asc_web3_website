@@ -10,7 +10,10 @@
         "error NotRevealed(uint256 tokenId)", "error AlreadyRevealed(uint256 tokenId)", "error NoChange()", "error BadAmount()", "error EmptyPool()", "error WalletFrozen(address account)",
         "error OnlyWallet()", "error NotSeller()", "error NotActive()", "error TooMuch(uint256 remaining)", "error PriceChanged()", "error SelfTrade()", "error OverTradeCap(uint256 cap)",
         "error EnforcedPause()", "error ERC20InsufficientAllowance(address spender, uint256 allowance, uint256 needed)", "error ERC20InsufficientBalance(address sender, uint256 balance, uint256 needed)",
-        "error ERC1155InsufficientBalance(address sender, uint256 balance, uint256 needed, uint256 tokenId)", "error ERC1155MissingApprovalForAll(address operator, address owner)"
+        "error ERC1155InsufficientBalance(address sender, uint256 balance, uint256 needed, uint256 tokenId)", "error ERC1155MissingApprovalForAll(address operator, address owner)",
+        // 衣櫃（Wardrobe）
+        "error IsPaused()", "error BadSlot(uint256 slot)", "error DuplicateSlot(uint256 slot)", "error WrongSlot(uint256 slot, uint256 partId)", "error SlotRequired(uint256 slot)",
+        "error NoChange(uint256 slot)", "error NoStock(uint256 partId)", "error NotEnough(uint256 partId, uint256 available)"
     ];
     const ABI = {
         vault: [
@@ -48,6 +51,14 @@
             "function feeBps() view returns (uint256)", "function flagFeeBps() view returns (uint256)", "function maxTradeValue() view returns (uint256)", "function paused() view returns (bool)",
             "function listingCount() view returns (uint256)", "function listings(uint256,uint256) view returns (tuple(address seller, uint256 id, uint256 remaining, uint256 unitPrice, bool active)[])",
             "function listPart(uint256,uint256,uint256) returns (uint256)", "function buy(uint256,uint256,uint256)", "function cancel(uint256)"
+        ],
+        wardrobe: [
+            ...ERRORS,
+            "function change(uint256 id, tuple(uint32 slot, uint32 partId, bool borrow)[] cs)", "function changeFee() view returns (uint256)", "function paused() view returns (bool)",
+            "function wornMany(uint256 id, uint256[] slots) view returns (uint256[] partIds, uint8[] kinds)", "function stocks(uint256[] ids) view returns (uint256[])",
+            "function fixedSlot(uint256) view returns (bool)",
+            "event Equipped(uint256 indexed tokenId, address indexed owner, uint256[] partIds, uint256[] clearSlots)",
+            "event SlotChanged(uint256 indexed tokenId, address indexed owner, uint256 slot, uint256 oldPart, uint8 oldKind, uint256 newPart, uint8 newKind)"
         ],
         usdt: ["function balanceOf(address) view returns (uint256)", "function allowance(address,address) view returns (uint256)", "function approve(address,uint256) returns (bool)"]
     };

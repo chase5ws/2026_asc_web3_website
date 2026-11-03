@@ -167,6 +167,19 @@
                 D.bag = Object.fromEntries(pids.map((p, i) => [p, Number(bal[i])]).filter(([, q]) => q > 0));
                 D.ids = ids.map(Number).sort((a, b) => a - b);
             } else Object.assign(D, { usdt: 0n, asc: 0n, bag: {}, ids: [] });
+            // 衣櫃：換裝費、暫停、公庫存（普通配件）、不能空著的部位、自己每隻喵武士每個部位是誰的
+            if (C.wardrobe) {
+                try {
+                    const w = read.wardrobe, normal = LK.L.parts.filter((p) => p.tier === "normal").map((p) => p.pid);
+                    const slots = LK.L.cats.map((_, i) => i);
+                    const [wFee, wPaused, stk, fixed, worn, ok] = await Promise.all([
+                        w.changeFee(), w.paused(), normal.length ? w.stocks(normal) : [], Promise.all(slots.map((i) => w.fixedSlot(i))),
+                        Promise.all(D.ids.map((id) => w.wornMany(id, slots))), CH.account ? read.parts.isApprovedForAll(CH.account, C.wardrobe) : false
+                    ]);
+                    D.wd = { fee: wFee, paused: wPaused, stock: Object.fromEntries(normal.map((pid, i) => [pid, Number(stk[i])]).filter(([, n]) => n > 0)), fixed: fixed.map(Boolean), approved: ok,
+                        worn: Object.fromEntries(D.ids.map((id, i) => [id, worn[i].kinds.map((k, j) => ({ kind: Number(k), pid: Number(worn[i].partIds[j]) }))])) };
+                } catch (e) { console.warn("衣櫃讀取失敗", e); D.wd = D.wd || null; }
+            }
             await LK.sync().catch((e) => console.warn("外觀同步", e));
             D.ready = true;
         })().catch((e) => console.warn("讀鏈失敗", e)).finally(() => { loading = null; draw(); });

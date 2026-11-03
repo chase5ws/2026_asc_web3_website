@@ -4,7 +4,8 @@
     const { C, write } = CH;
     const { S, D, $, t, el, esc, send, payAsc, int, fee, date, tile, partName, optName, slotName, tierTag } = U;
     let FX = null; // 轉蛋動畫（在下面「轉蛋」區塊建立）
-    const Q = { id: null, try: {}, take: new Set(), slot: null, sel: new Set() };
+    const Q = { id: null, try: {}, borrow: {}, take: new Set(), slot: null, sel: new Set() };
+    const NONE = 2 ** 32 - 1; // 衣櫃：脫掉
     const VIP_PLANS = [60, 90, 180, 360]; // 訂閱方案（天）
     const same = (box, sig) => { if (box._sig === sig) return true; box._sig = sig; return false; };
     const tok = (id) => LK.L.tokens[String(id)];
@@ -12,16 +13,6 @@
     const isVip = () => Number(D.nftMe?.[1] || 0) > Date.now() / 1000;
     const nft = () => write("nft");
 
-    /** 鑄造時的原始外觀（跟現在不同的部位＝玩家自己穿上的配件，換下來會由管理員退回）；V1 外觀要非同步讀，讀到再重畫 */
-    const origCache = {};
-    function origOf(id) {
-        if (id in origCache) return origCache[id];
-        const t = tok(id);
-        if (!t) return null;
-        if (t.ref != null) { origCache[id] = null; LK.v1Traits(t.ref).then((x) => { origCache[id] = x; renderEquip(); }).catch(() => {}); return null; }
-        if (t.seed && (t.kind === 1 || t.kind === 2)) return (origCache[id] = LK.rollTraits(t.seed));
-        return null;
-    }
     /** 某顆現在的外觀（換裝試穿：try／take 疊上去） */
     function picksOf(id, withTry) {
         const look = LK.lookOf(id);
@@ -108,15 +99,15 @@
             }).join("");
             if (cur && plans.some((x) => String(x.n) === cur)) sel.value = cur;
         }
-        $("qFee").textContent = fee(s[5]);
+        $("qFee").textContent = !D.wd ? "–" : isVip() ? t("q.vipFree") : fee(D.wd.fee);
 
         const cats = D.ids.filter(revealed);
-        if (!cats.includes(Q.id)) { Q.id = cats[0] ?? null; Q.try = {}; Q.take.clear(); }
+        if (!cats.includes(Q.id)) { Q.id = cats[0] ?? null; Q.try = {}; Q.borrow = {}; Q.take.clear(); }
         const qc = $("qCats");
         if (!same(qc, JSON.stringify([cats, Q.id, S.lang, cats.map((id) => tok(id)?.traits)]))) {
             qc.innerHTML = "";
             if (!cats.length) qc.appendChild(el(`<p class="muted">${esc(CH.account ? t("q.noneCat") : t("lock"))}</p>`));
-            cats.forEach((id) => qc.appendChild(catCard(id, id === Q.id, () => { Q.id = id; Q.try = {}; Q.take.clear(); Q.slot = null; renderEquip(); })));
+            cats.forEach((id) => qc.appendChild(catCard(id, id === Q.id, () => { Q.id = id; Q.try = {}; Q.borrow = {}; Q.take.clear(); Q.slot = null; renderEquip(); })));
         }
         $("qBox").classList.toggle("hidden", Q.id == null);
         const cur = Q.id != null ? picksOf(Q.id) : [];
@@ -136,7 +127,7 @@
                 const row = el(`<div class="slot${trying ? " try" : ""}${Q.slot === slot ? " on" : ""}" role="button" tabindex="0">${thumb}<span><small>${esc(slotName(cat.trait_type))} · ${esc(trying ? t("q.trying") : t("q.wear"))}</small>${esc(p ? optName(p.opt, slot) : "–")}</span></div>`);
                 if (canTake && (p?.opt.file || Q.take.has(slot))) {
                     const x = el(`<button type="button" class="x">${esc(Q.take.has(slot) ? t("q.untake") : t("q.take"))}</button>`);
-                    x.onclick = (e) => { e.stopPropagation(); Q.take.has(slot) ? Q.take.delete(slot) : (Q.take.add(slot), delete Q.try[slot]); renderEquip(); };
+                    x.onclick = (e) => { e.stopPropagation(); Q.take.has(slot) ? Q.take.delete(slot) : (Q.take.add(slot), delete Q.try[slot], delete Q.borrow[slot]); renderEquip(); };
                     row.appendChild(x);
                 }
                 row.onclick = () => { Q.slot = Q.slot === slot ? null : slot; S.eq = "mine"; U.draw(); };
@@ -144,47 +135,98 @@
             });
         }
 
-        // 我的配件（可以點來試穿）
+        // 我的配件＋VIP 公庫存（點了試穿）：自己的配件穿上由衣櫃保管、換下退回；VIP 借公庫存的普通配件免費，換下歸還
+        const vip = isVip(), W = D.wd;
+        const pick = (p, borrow) => {
+            if (Q.id == null) return;
+            const wearing = cur.find((x) => x.slot === p.slot)?.part?.pid === p.pid;
+            if ((Q.try[p.slot] === p.pid && !!Q.borrow[p.slot] === borrow) || wearing) { delete Q.try[p.slot]; delete Q.borrow[p.slot]; }
+            else { Q.try[p.slot] = p.pid; if (borrow) Q.borrow[p.slot] = true; else delete Q.borrow[p.slot]; Q.take.delete(p.slot); }
+            renderEquip();
+        };
         const mine = $("eqMine");
         const bag = Object.entries(D.bag).map(([pid, q]) => [LK.L.byPid[pid], q]).filter(([p]) => p && (Q.slot == null || p.slot === Q.slot));
-        if (!same(mine, JSON.stringify([bag.map(([p, q]) => [p.pid, q]), Q.try, Q.id, S.lang]))) {
+        // 公庫存種類多：選了部位才列出那個部位的，沒選只顯示一行提示
+        const stockAll = Object.entries(W?.stock || {}).map(([pid, n]) => [LK.L.byPid[pid], n]).filter(([p]) => p);
+        const stock = Q.slot == null ? [] : stockAll.filter(([p]) => p.slot === Q.slot);
+        if (!same(mine, JSON.stringify([bag.map(([p, q]) => [p.pid, q]), stock.map(([p, n]) => [p.pid, n]), stockAll.length, Q.slot, Q.try, Q.borrow, Q.id, S.lang, vip]))) {
             mine.innerHTML = "";
-            if (!bag.length) mine.appendChild(el(`<p class="muted small">${esc(t("q.noBag"))}</p>`));
-            bag.forEach(([p, q]) => mine.appendChild(tile(p, `<span class="q">×${q}</span>`, () => {
-                if (Q.id == null) return;
-                const wearing = cur.find((x) => x.slot === p.slot)?.part?.pid === p.pid;
-                if (Q.try[p.slot] === p.pid || wearing) delete Q.try[p.slot];
-                else { Q.try[p.slot] = p.pid; Q.take.delete(p.slot); }
-                renderEquip();
-            }, Q.try[p.slot] === p.pid)));
+            if (!bag.length && !stock.length && !stockAll.length) mine.appendChild(el(`<p class="muted small">${esc(t("q.noBag"))}</p>`));
+            bag.forEach(([p, q]) => mine.appendChild(tile(p, `<span class="q">×${q}</span>`, () => pick(p, false), Q.try[p.slot] === p.pid && !Q.borrow[p.slot])));
+            if (Q.slot == null && stockAll.length) mine.appendChild(el(`<p class="eq-stockh small">${esc(vip ? t("q.stockPick") : t("q.stockVip"))}</p>`));
+            if (stock.length) {
+                mine.appendChild(el(`<p class="eq-stockh small">${esc(vip ? t("q.stockT") : t("q.stockVip"))}</p>`));
+                stock.forEach(([p, n]) => {
+                    const b = tile(p, `<span class="q free">${esc(t("q.free"))}</span>`, vip ? () => pick(p, true) : () => U.say($("mEquip"), t("q.stockVip")), Q.try[p.slot] === p.pid && !!Q.borrow[p.slot], "stock" + (vip ? "" : " locked"));
+                    b.title = t("q.stockLeft", { n });
+                    mine.appendChild(b);
+                });
+            }
         }
         const changes = Object.entries(Q.try).filter(([slot, pid]) => cur.find((x) => x.slot === Number(slot))?.part?.pid !== pid);
         const takes = [...Q.take].filter((slot) => cur.find((x) => x.slot === slot)?.opt.file);
-        const off = [...changes.map(([slot]) => Number(slot)), ...takes].map((slot) => cur.find((x) => x.slot === slot)?.part).filter(Boolean);
-        // 會退回：超稀有，或不是原始外觀（＝自己穿上的）；原始外觀的普通／稀有換掉就消失。原始外觀讀不到時只保證超稀有
-        const orig = Q.id != null ? origOf(Q.id) : null;
-        const isBack = (p) => p.tier === "super" || (!!orig && orig[p.cat] !== p.name);
-        const lose = off.filter((p) => !isBack(p)).map(partName), back = off.filter(isBack).map(partName);
-        $("qNeed").textContent = Q.id != null ? (isVip() ? [t("q.need", { n: changes.length, m: takes.length }), lose.length ? t("q.lose", { x: lose.join("、") }) : "", back.length ? t("q.back", { x: back.join("、") }) : ""].filter(Boolean).join("　") : t("q.notVip")) : "";
-        $("bEquip").disabled = Q.id == null || !isVip() || !(changes.length + takes.length);
+        // 換下來的去向：自己的→退回背包；公庫存→歸還；原始外觀→超稀有由管理員退回，其他消失
+        const worn = (W && Q.id != null && W.worn[Q.id]) || [];
+        const ret = [], giveBack = [], admin = [], lose = [];
+        for (const slot of [...changes.map(([sl]) => Number(sl)), ...takes]) {
+            const p = cur.find((x) => x.slot === slot)?.part;
+            if (!p) continue;
+            const k = worn[slot]?.kind ?? 0;
+            (k === 1 ? ret : k === 2 ? giveBack : p.tier === "super" ? admin : lose).push(partName(p));
+        }
+        const cost = !W ? null : vip ? 0n : W.fee;
+        $("qNeed").textContent = Q.id == null ? "" : !W ? t("q.noWd") : W.paused ? t("q.paused") : [
+            t("q.need", { n: changes.length, m: takes.length }),
+            ret.length ? t("q.ret", { x: ret.join("、") }) : "", giveBack.length ? t("q.giveBack", { x: giveBack.join("、") }) : "",
+            admin.length ? t("q.back", { x: admin.join("、") }) : "", lose.length ? t("q.lose", { x: lose.join("、") }) : "",
+            changes.length + takes.length ? (cost ? t("q.cost", { f: fee(cost) }) : t("q.costFree")) : ""
+        ].filter(Boolean).join("　");
+        $("bEquip").disabled = Q.id == null || !W || W.paused || !(changes.length + takes.length);
         $("eqReset").disabled = !(Object.keys(Q.try).length + Q.take.size);
-        Q._changes = changes.map(([, pid]) => pid);
+        Q._changes = changes.map(([slot, pid]) => ({ slot: Number(slot), partId: pid, borrow: !!Q.borrow[slot] }));
         Q._takes = takes;
 
     }
-    $("eqReset").onclick = () => { Q.try = {}; Q.take.clear(); renderEquip(); };
+    $("eqReset").onclick = () => { Q.try = {}; Q.borrow = {}; Q.take.clear(); renderEquip(); };
     $("bVip").onclick = () => {
         const n = Number($("vPer").value || 1);
         send($("mVip"), $("bVip"), async (step) => { await payAsc(C.nft, D.vip.price * BigInt(n), step); return (await nft()).buyVip(n); });
     };
     $("bEquip").onclick = async () => {
-        const id = Q.id, parts = [...Q._changes], clear = [...Q._takes];
-        const r = await send($("mEquip"), $("bEquip"), async (step) => { await payAsc(C.nft, D.nftS[5], step); return (await nft()).equip(id, parts, clear); });
+        const id = Q.id, W = D.wd;
+        if (!W) return;
+        const cs = [...Q._changes, ...Q._takes.map((slot) => ({ slot, partId: NONE, borrow: false }))];
+        const own = cs.filter((c) => c.partId !== NONE && !c.borrow);
+        const cost = isVip() ? 0n : W.fee;
+        const r = await send($("mEquip"), $("bEquip"), async (step) => {
+            // 第一次穿自己的配件：授權衣櫃保管配件（只要一次）
+            if (own.length && !W.approved && !(await CH.read.parts.isApprovedForAll(CH.account, C.wardrobe))) {
+                step("approve", t("q.partsApprove"));
+                const tx = await (await write("parts")).setApprovalForAll(C.wardrobe, true);
+                step("pending", tx.hash);
+                await tx.wait();
+                W.approved = true;
+            }
+            if (cost > 0n) await payAsc(C.wardrobe, cost, step);
+            const c = await write("wardrobe");
+            let opts = {};
+            try { opts = { gasLimit: ((await c.change.estimateGas(id, cs)) * 13n) / 10n }; } catch (_) { /* 估不出來就交給錢包，錯誤訊息照常顯示 */ }
+            return c.change(id, cs, opts);
+        });
         if (r) {
-            // 本機先套用新外觀，不用等鏈上事件同步（之後同步到的是同一份結果）
-            const tk = tok(id);
-            if (tk?.traits) LK.applyEquip(tk, parts, clear);
-            Q.try = {}; Q.take.clear();
+            // 本機先套用：外觀、背包、每個部位是誰的（之後讀鏈會是同一份結果）
+            const tk = tok(id), wn = W.worn[id] || [];
+            if (tk?.traits) LK.applyEquip(tk, cs.filter((c) => c.partId !== NONE).map((c) => c.partId), cs.filter((c) => c.partId === NONE).map((c) => c.slot));
+            for (const c of cs) {
+                const old = wn[c.slot];
+                if (old?.kind === 1) D.bag[old.pid] = (D.bag[old.pid] || 0) + 1;
+                if (old?.kind === 2) W.stock[old.pid] = (W.stock[old.pid] || 0) + 1;
+                if (c.partId !== NONE && !c.borrow) { D.bag[c.partId] = (D.bag[c.partId] || 0) - 1; if (D.bag[c.partId] <= 0) delete D.bag[c.partId]; }
+                if (c.borrow) W.stock[c.partId] = Math.max(0, (W.stock[c.partId] || 0) - 1);
+                wn[c.slot] = c.partId === NONE ? { kind: 3, pid: NONE } : { kind: c.borrow ? 2 : 1, pid: c.partId };
+            }
+            W.worn[id] = wn;
+            Q.try = {}; Q.borrow = {}; Q.take.clear();
             renderEquip();
         }
     };

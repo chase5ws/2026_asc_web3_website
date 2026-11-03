@@ -11,6 +11,7 @@ window.ASC_CONFIG = {
     nft: "0xc70E923942B9404268C4842E6A42CFE5be6152E0", // 喵武士 AscCatSamuraiV2
     parts: "0x624197e0E623a2684548c6713aaf8104dBEcA2F9", // 配件 AscCatParts（ERC-1155）
     market: "0xb71aD1e721dE0c5E50223cf4a3C3b3f3E37320c4", // 配件市場 AscMarket
+    wardrobe: "0x6bB0D831d87EB27Aa77A6656784830D1171226BB", // 衣櫃 Wardrobe（UUPS 代理，換裝用；contracts-asc/wardrobe/）
     usdt: "0xc2132D05D31c914a87C6611C10748AEb04B58e8F", // USDT0（6 位小數）
     vaultBlock: 96182573, // 金庫部署區塊（走勢圖補資料用）
     nftBlock: 96182586, // NFT 部署區塊

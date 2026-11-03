@@ -78,3 +78,11 @@ ASC 鏢局的公開網頁（純靜態，沒有建置步驟，GitHub Pages）。*
 - 「超稀有退還」改成「換裝退還」：除了超稀有（照舊連原始外觀也退），玩家自己用 `equip` 穿上（燒掉）的任何配件被換掉或脫掉也要退；鑄造時的原始外觀（普通、稀有）不退。「已退」＝轉蛋以外由喵武士合約發給該錢包的同款配件（送禮也算）。Safe 模式多一顆「全部加入批次」。掃描邏輯用假事件測過（原始 A→B→S→A、臉 C 脫掉：退 B、S、C，不退 A）。
 - 換裝頁：VIP 福利、換裝規則、預覽文字改成「自己穿上的配件與超稀有會由管理員退回；原始外觀換掉會消失」（`origOf`：鑄造時的外觀，V1 空投要非同步讀）。`?v=20261103m`。
 - 方案 B（衣櫃合約，UUPS 可升級、代管配件、VIP 免費普通配件公庫存）待做，見對話紀錄。
+
+## 2026-11-03 換裝改接衣櫃（Wardrobe，`config.js` 的 `wardrobe`，資料在 `contracts-asc/wardrobe/`）
+- 規則：自己的配件穿上由衣櫃保管、換下退回背包（NFT 轉手跟著走）；VIP 免換裝費、可免費借穿公庫存的普通配件（換下歸還，VIP 到期照穿）；一般人付衣櫃的 `changeFee`；鑄造原始外觀換掉消失（超稀有由管理面板「換裝退還」退）。舊 V2 `equip` 在上線批次把 V2 換裝費設 10 億停用。
+- `app/chain.js`：`ABI.wardrobe`、衣櫃錯誤。`app/look.js`：同時讀 NFT＋衣櫃的 `Equipped`（同格式，依區塊順序）。`app/ui.js`：`D.wd`＝{fee, paused, stock（普通配件公庫存）, fixed, approved, worn[id][slot]={kind,pid}}（kind 0 原始、1 自己的、2 借的、3 脫掉）。
+- `app/nft.js` 換裝頁：不再限 VIP；我的配件＋（VIP）公庫存，公庫存要先點部位才列出（`Q.borrow`）；預覽每個換下的去向（退回背包／歸還公庫存／管理員退／消失）與費用；送出前第一次 `setApprovalForAll(衣櫃)`、一般人 `approve` ASC；`change(id, [{slot, partId, borrow}])`，脫掉 partId＝2^32−1；成功後本機先套用外觀、背包、公庫存。
+- `app/admin.js`：KINDS 加衣櫃（角色、狀態、函式卡：emergencyPause／setPaused／setChangeFee／setOperator／setFixedSlots／addStock／seedWorn／closeSeed／removeStock／withdrawUnassigned／upgradeToAndCall），🔧 工具新增「衣櫃上線」：讀 V2 `Equipped` 算出還穿著的 V2 配件，加入 Safe 批次：衣櫃 acceptOwnership → setAdmin → NFT giveParts(衣櫃) → seedWorn → addStock → closeSeed → NFT setPrices(鑄造, 1e9, 轉蛋)。「換裝退還」改讀衣櫃 `SlotChanged`：只有 oldKind＝0 的超稀有要退。
+- 測試（雲端 hardhat 本機鏈＋主網合約原始碼＋假 MetaMask／假 Safe，Chromium）：上線批次 61 筆 Safe 逐筆執行成功、一般人付費換裝（V2 配件退回）、VIP 借穿與歸還、公庫存要選部位才列出；ipfs `sync_v2.py` 讀兩個地址結果正確。`?v=20261103q`。
+- **上線順序**：先推 ipfs → 本機 `npm start` 開 http://localhost:8080/#admin（新版管理面板）用 Safe 簽署人錢包產生「衣櫃上線」批次 → Safe 簽署執行 → 馬上推網站。不能先推網站：補登記前用衣櫃換掉 V2 時期的配件會被當成原始外觀消失，而且之後 seedWorn 會因 AlreadyTracked 整批失敗。

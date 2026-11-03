@@ -12,6 +12,7 @@
     const ZERO = "0x0000000000000000000000000000000000000000";
 
     const KINDS = [["vault", "金庫 AscPointV2", "Vault AscPointV2"], ["nft", "喵武士 AscCatSamuraiV2", "Cat Samurai AscCatSamuraiV2"], ["parts", "配件 AscCatParts", "Parts AscCatParts"], ["market", "市場 AscMarket", "Market AscMarket"]];
+    if (C.wardrobe) KINDS.push(["wardrobe", "衣櫃 Wardrobe", "Wardrobe Wardrobe"]);
     const ROLE_ABI = ["function owner() view returns (address)", "function pendingOwner() view returns (address)", "function admin() view returns (address)", "function operator() view returns (address)"];
     const SAFE_ABI = ["function getOwners() view returns (address[])", "function getThreshold() view returns (uint256)"];
     const ERRS = new E.Interface(["error NotAdmin()", "error NotOperator()", "error NotGuardian()", "error BadRoleTarget()", "error RenounceDisabled()", "error OwnableUnauthorizedAccount(address account)",
@@ -104,7 +105,21 @@
         { c: "market", lv: "owner", sig: "rescueParts(uint256 id,uint256 amount,address to)", zh: "救回直接轉進來的配件", en: "Rescue parts", d: ["只能動超出掛單保管量的部分", "Only beyond escrowed amounts"], a: [["id", "uint", "配件編號", "Part ID"], ["amount", "uint", "數量", "Amount"], ["to", "addr", "收款", "To"]], warn: true },
         { c: "market", lv: "owner", sig: "rescueERC20(address token,address to,uint256 amount)", zh: "救回誤轉代幣", en: "Rescue ERC-20", d: ["數量是最小單位", "Amount in smallest units"], a: [["token", "addr", "代幣", "Token"], ["to", "addr", "收款", "To"], ["amount", "uint", "數量", "Amount"]], warn: true }
     ];
-    // 4 份合約共用：權限
+    // 衣櫃（UUPS 可升級；owner 是 Safe）
+    if (C.wardrobe) A.push(
+        { c: "wardrobe", lv: "operator", sig: "emergencyPause()", zh: "緊急暫停換裝", en: "Emergency pause", d: ["operator 只能暫停；恢復要 admin", "Operator can only pause; admin resumes"], a: [], warn: true },
+        { c: "wardrobe", lv: "admin", sig: "setPaused(bool v)", zh: "暫停／恢復換裝", en: "Pause / resume equip", d: ["", ""], a: [["v", "bool", "暫停", "Paused"]], pre: (s) => [String(!!s.wardrobe?.paused)] },
+        { c: "wardrobe", lv: "admin", sig: "setChangeFee(uint256 fee)", zh: "一般人換裝費（ASC）", en: "Equip fee for non-VIP (ASC)", d: ["VIP 一律免費；付款直接銷毀", "VIPs are always free; fees are burned"], a: [["fee", "uint", "換裝費", "Fee"]], pre: (s) => [String(s.wardrobe?.changeFee ?? 0n)] },
+        { c: "wardrobe", lv: "admin", sig: "setOperator(address op)", zh: "設定 operator", en: "Set operator", d: ["只能緊急暫停", "Can only emergency-pause"], a: [["op", "addr", "operator", "Operator"]], pre: (s) => [s.roles.wardrobe?.operator || ""] },
+        { c: "wardrobe", lv: "admin", sig: "setFixedSlots(uint256[] slots,bool v)", zh: "不能空著的部位", en: "Required slots", d: ["部位編號：0 武器、1 身體、2 衣服、3 臉、4 配飾…", "Slot numbers: 0 weapon, 1 body, 2 clothes, 3 face, 4 dress…"], a: [["slots", "uints", "部位", "Slots"], ["v", "bool", "不能空著", "Required"]], pre: () => ["", "true"] },
+        { c: "wardrobe", lv: "admin", sig: "addStock(uint256[] ids,uint256[] amounts)", zh: "放進公庫存", en: "Add to shared stock", d: ["先用喵武士的 giveParts 發配件給衣櫃地址", "First giveParts to the wardrobe address on the NFT contract"], a: [["ids", "uints", "配件編號", "Part IDs"], ["amounts", "uints", "數量", "Amounts"]] },
+        { c: "wardrobe", lv: "admin", sig: "seedWorn(uint256[] ids,uint256[] slots,uint256[] partIds)", zh: "補登記穿著中的配件", en: "Register worn parts", d: ["搬遷用；closeSeed 後不能再用", "Migration only; disabled after closeSeed"], a: [["ids", "uints", "喵武士編號", "Token IDs"], ["slots", "uints", "部位", "Slots"], ["partIds", "uints", "配件編號", "Part IDs"]], warn: true },
+        { c: "wardrobe", lv: "owner", sig: "closeSeed()", zh: "永久關閉補登記", en: "Close registration forever", d: ["關閉後不能再補登記", "Can't register again afterwards"], a: [], warn: true },
+        { c: "wardrobe", lv: "owner", sig: "removeStock(uint256 partId,uint256 amount,address to)", zh: "從公庫存拿出", en: "Remove from stock", d: ["穿在喵武士身上的拿不走", "Worn parts can't be taken"], a: [["partId", "uint", "配件編號", "Part ID"], ["amount", "uint", "數量", "Amount"], ["to", "addr", "收款", "To"]], warn: true },
+        { c: "wardrobe", lv: "owner", sig: "withdrawUnassigned(uint256 partId,uint256 amount,address to)", zh: "退出誤轉進來的配件", en: "Withdraw unassigned parts", d: ["只能動沒分配的", "Only unassigned ones"], a: [["partId", "uint", "配件編號", "Part ID"], ["amount", "uint", "數量", "Amount"], ["to", "addr", "收款", "To"]], warn: true },
+        { c: "wardrobe", lv: "owner", sig: "upgradeToAndCall(address newImplementation,bytes data)", zh: "升級衣櫃（換新實作）", en: "Upgrade wardrobe", d: ["新實作要先部署、測試；data 通常填 0x", "Deploy and test the new implementation first; data is usually 0x"], a: [["newImplementation", "addr", "新實作", "New implementation"], ["data", "str", "data", "data"]], pre: () => ["", "0x"], warn: true, danger: true }
+    );
+    // 共用：權限
     for (const [k] of KINDS) A.push(
         { c: k, lv: "owner", sig: "setAdmin(address a)", zh: "指定 admin（0＝取消）", en: "Set admin (0 = none)", d: ["只有一個；不能是 owner", "Only one; can't be the owner"], a: [["a", "addr", "admin", "Admin"]], pre: (s) => [s.roles[k].admin || ZERO], warn: true },
         { c: k, lv: "owner", sig: "transferOwnership(address newOwner)", zh: "轉移主人（第一步）", en: "Transfer ownership (step 1)", d: ["新地址要自己 acceptOwnership 才生效；admin 會被清空", "New owner must acceptOwnership; admin gets cleared"], a: [["newOwner", "addr", "新主人", "New owner"]], warn: true, danger: true },
@@ -154,6 +169,10 @@
         st.nft = { saleOpen, paused, maxSupply, nextId, randomFee, changeFee, gachaFee, vipPrice, vipDays, gachaVipOnly, pool: { ids: pool.prizes.map((p) => Number(p.partId)), weights: pool.prizes.map((p) => Number(p.weight)), miss: Number(pool.miss) } };
         const [feeBps, flagFeeBps, maxTradeValue, mPaused, count] = await Promise.all([m.feeBps(), m.flagFeeBps(), m.maxTradeValue(), m.paused(), m.listingCount()]);
         st.market = { feeBps, flagFeeBps, maxTradeValue, paused: mPaused, count };
+        if (C.wardrobe) {
+            const W = new E.Contract(C.wardrobe, ["function changeFee() view returns (uint256)", "function paused() view returns (bool)", "function seedClosed() view returns (bool)"], CH.ro);
+            try { const [changeFee, paused, seedClosed] = await Promise.all([W.changeFee(), W.paused(), W.seedClosed()]); st.wardrobe = { changeFee, paused, seedClosed }; } catch (_) { st.wardrobe = null; }
+        }
         st.parts = { minter: await new E.Contract(C.parts, ["function minter() view returns (address)"], CH.ro).minter() };
     }
 
@@ -330,6 +349,7 @@ ${danger ? `<p class="adm-warn">⚠️ ${L("這個操作影響很大，請再確
             nft: n && [[L("白名單鑄造", "Mint sale"), B(n.saleOpen)], [L("運作", "Running"), B(!n.paused)], [L("已用編號／上限", "Minted / max"), `${int(n.nextId)} / ${int(n.maxSupply)}`], [L("鑄造／換裝／轉蛋", "Mint / equip / gacha"), `${n.randomFee} / ${n.changeFee} / ${n.gachaFee} ASC`],
                 ["VIP", Number(n.vipPrice) ? `${n.vipPrice} ASC / ${n.vipDays} ${L("天", "days")}` : L("不販售", "Not for sale")], [L("轉蛋只限 VIP", "Gacha VIP only"), B(n.gachaVipOnly)], [L("獎池配件數", "Pool prizes"), `${n.pool.ids.length}（miss ${n.pool.miss}）`]],
             parts: st.parts && [["minter", same(st.parts.minter, C.nft) ? L("喵武士 NFT ✓", "Cat Samurai NFT ✓") : short(st.parts.minter)]],
+            wardrobe: st.wardrobe && [[L("運作", "Running"), B(!st.wardrobe.paused)], [L("一般人換裝費", "Non-VIP fee"), `${st.wardrobe.changeFee} ASC`], [L("補登記", "Registration"), st.wardrobe.seedClosed ? L("已關閉", "Closed") : L("開放中", "Open")]],
             market: m && [[L("手續費", "Fee"), pct(m.feeBps)], [L("被標記賣家", "Flagged seller"), pct(m.flagFeeBps)], [L("單筆上限", "Max trade"), Number(m.maxTradeValue) ? `${int(m.maxTradeValue)} ASC` : L("不限", "None")], [L("運作", "Running"), B(!m.paused)], [L("掛單數", "Listings"), int(m.count)]]
         }[k];
         if (!items) return "";
@@ -478,10 +498,32 @@ ${x.danger ? `<p class="adm-warn">⚠️ ${L("這個操作影響很大，請再�
         const I = CH.read.nft.interface;
         const names = ["Minted", "PresetMinted", "RandomSeed", "Equipped", "GachaPull"];
         const logs = await CH.getLogs({ address: C.nft, topics: [names.map((n) => I.getEvent(n).topicHash)] }, C.nftBlock, head);
+        // 衣櫃：自己的配件會自動退回，只有「原始外觀的超稀有」被換掉（SlotChanged 的 oldKind＝0）要管理員退；衣櫃的 Equipped 只用來更新外觀
+        const WI = C.wardrobe ? CH.read.wardrobe.interface : null;
+        if (WI) {
+            logs.push(...(await CH.getLogs({ address: C.wardrobe, topics: [["Equipped", "SlotChanged"].map((n) => WI.getEvent(n).topicHash)] }, C.nftBlock, head)));
+            logs.sort((a, b) => a.blockNumber - b.blockNumber || a.index - b.index);
+        }
         const toks = {}, owed = {}, gachaTx = new Set();
         const add = (m, who, pid, n) => { const k = who.toLowerCase() + ":" + pid; m[k] = (m[k] || 0) + n; };
         const pidOf = (slot, name) => { const i = cats[slot].options.findIndex((o) => o.name === name && o.file); return i < 0 ? null : slot * 256 + i; };
         for (const l of logs) {
+            if (WI && same(l.address, C.wardrobe)) {
+                const ev = WI.parseLog(l);
+                if (!ev) continue;
+                const t = (toks[String(ev.args.tokenId)] ||= {});
+                if (!t.traits) t.traits = t.ref != null ? await LK.v1Traits(t.ref) : t.seed ? LK.rollTraits(t.seed) : {};
+                t.worn ||= {};
+                if (ev.name === "SlotChanged") {
+                    const slot = Number(ev.args.slot);
+                    if (Number(ev.args.oldKind) === 0 && cats[slot]) { const pid = pidOf(slot, t.traits[cats[slot].trait_type]); if (pid != null && sup.has(pid)) add(owed, ev.args.owner, pid, 1); }
+                    delete t.worn[slot]; // 之後這個部位由衣櫃管
+                } else {
+                    for (const pid of ev.args.partIds.map(Number)) { const slot = Math.floor(pid / 256), o = cats[slot]?.options[pid % 256]; if (o) t.traits[cats[slot].trait_type] = o.name; }
+                    for (const slot of ev.args.clearSlots.map(Number)) { if (!cats[slot]) continue; const e = LK.empty(cats[slot]); t.traits[cats[slot].trait_type] = e ? e.name : undefined; }
+                }
+                continue;
+            }
             const ev = I.parseLog(l);
             if (!ev) continue;
             if (ev.name === "GachaPull") { gachaTx.add(l.transactionHash); continue; }
@@ -569,6 +611,60 @@ ${x.danger ? `<p class="adm-warn">⚠️ ${L("這個操作影響很大，請再�
                 renderRefund();
             } catch (e) { console.warn(e); m.className = "msg adm-msg bad"; m.textContent = errText(e); b.disabled = false; }
         }));
+    }
+    /* ── 衣櫃上線：產生 Safe 批次（接手 owner、設 admin、補發配件、補登記、公庫存、關閉登記、停用舊換裝） ── */
+    const wl = { busy: false, msg: "", cls: "" };
+    function launchHtml() {
+        if (!C.wardrobe || !st.roles.wardrobe) return "";
+        const r = st.roles.wardrobe, safe = st.roles.nft?.owner;
+        if (!safeOf(safe)) return "";
+        const pend = same(r.pending, safe), own = same(r.owner, safe);
+        if (!pend && !own) return "";
+        const nftAdmin = st.roles.nft?.admin || "";
+        return `<div class="adm-look"><div class="adm-h"><b>${L("衣櫃上線", "Wardrobe launch")}</b><span class="muted small">${L("讀 V2 換裝紀錄，把「V2 時期穿上、還穿著」的配件補發給衣櫃並登記（換下會退回），放公庫存，最後停用舊換裝。全部加入 Safe 批次。", "Reads V2 equip history, re-issues still-worn V2 parts to the wardrobe and registers them, fills the shared stock and disables the old equip — all added to the Safe batch.")}</span></div>
+<div class="adm-state"><div><span>${L("衣櫃主人", "Wardrobe owner")}</span><b>${pend ? L("等 Safe 接受", "Waiting for Safe") : "Safe ✓"}</b></div><div><span>${L("補登記", "Registration")}</span><b>${st.wardrobe?.seedClosed ? L("已關閉", "Closed") : L("開放中", "Open")}</b></div></div>
+<div class="adm-lookrow"><label class="muted small">${L("衣櫃 admin", "Wardrobe admin")} <input id="wlAdmin" value="${esc(nftAdmin)}" placeholder="0x…"></label><label class="muted small">${L("公庫存：每種普通配件", "Stock per common part")} <input id="wlStock" value="50" inputmode="numeric" style="max-width:90px"></label></div>
+<label class="muted small"><input type="checkbox" id="wlV2" checked> ${L("停用舊 V2 換裝（V2 換裝費設 10 億 ASC，鑄造費、轉蛋費沿用）", "Disable old V2 equip (set V2 equip fee to 1e9 ASC, keep mint & gacha fees)")}</label>
+<div class="adm-btns"><button type="button" id="wlGo"${wl.busy || st.wardrobe?.seedClosed ? " disabled" : ""}>🛒 ${L("掃描並加入批次", "Scan & add to batch")}</button></div><div class="msg adm-msg ${wl.cls}" id="wlMsg">${esc(wl.msg)}</div></div>`;
+    }
+    function renderLaunch() { const el = $("admLaunchBox"); if (!el) return; el.innerHTML = launchHtml(); $("wlGo")?.addEventListener("click", runLaunch); }
+    const act = (c, fn) => A.find((x) => x.c === c && x.fn === fn);
+    async function runLaunch() {
+        wl.busy = true; wl.msg = L("讀 V2 換裝紀錄中…", "Reading V2 equip history…"); wl.cls = ""; renderLaunch();
+        try {
+            const LK = window.ASCLook;
+            if (!LK.L.traits) await LK.loadTraits();
+            const per = BigInt(($("wlStock")?.value || "0").trim() || "0"), admin = ($("wlAdmin")?.value || "").trim(), stopV2 = $("wlV2")?.checked;
+            const head = await CH.ro.getBlockNumber();
+            const I = CH.read.nft.interface;
+            const logs = await CH.getLogs({ address: C.nft, topics: [[I.getEvent("Equipped").topicHash]] }, C.nftBlock, head);
+            const worn = {};
+            for (const l of logs) {
+                const ev = I.parseLog(l), w = (worn[String(ev.args.tokenId)] ||= {});
+                for (const pid of ev.args.partIds.map(Number)) w[Math.floor(pid / 256)] = pid;
+                for (const sl of ev.args.clearSlots.map(Number)) delete w[sl];
+            }
+            const seed = { ids: [], slots: [], pids: [] }, give = {};
+            for (const [id, w] of Object.entries(worn)) for (const [sl, pid] of Object.entries(w)) { seed.ids.push(BigInt(id)); seed.slots.push(BigInt(sl)); seed.pids.push(BigInt(pid)); give[pid] = (give[pid] || 0n) + 1n; }
+            const stock = {};
+            if (per > 0n) for (const p of LK.L.parts) if (p.tier === "normal") stock[p.pid] = per;
+            const r = st.roles.wardrobe, tags = [];
+            const S = st.roles.nft.owner; // 全部在同一個 Safe 執行（衣櫃還沒接手時 owner 是部署錢包，但 acceptOwnership 在第一筆）
+            const push = (x, args, tag) => { addBatch(x, args, { tag, safe: S }); tags.push(tag[0]); };
+            if (!same(r.owner, st.roles.nft.owner)) push(act("wardrobe", "acceptOwnership"), [], ["衣櫃 acceptOwnership", "Wardrobe acceptOwnership"]);
+            if (admin) push(act("wardrobe", "setAdmin"), [E.getAddress(admin)], [`衣櫃 setAdmin ${short(admin)}`, `Wardrobe setAdmin ${short(admin)}`]);
+            for (const pid of [...new Set([...Object.keys(give), ...Object.keys(stock)])].map(Number).sort((a, b) => a - b)) {
+                const n = (give[pid] || 0n) + (stock[pid] || 0n);
+                push(act("nft", "giveParts"), [C.wardrobe, BigInt(pid), n], [`給衣櫃 #${pid} ×${n}`, `Give wardrobe #${pid} ×${n}`]);
+            }
+            for (let i = 0; i < seed.ids.length; i += 100) push(act("wardrobe", "seedWorn"), [seed.ids.slice(i, i + 100), seed.slots.slice(i, i + 100), seed.pids.slice(i, i + 100)], [`衣櫃補登記 ${Math.min(100, seed.ids.length - i)} 件`, `Register ${Math.min(100, seed.ids.length - i)} worn parts`]);
+            const sk = Object.keys(stock);
+            if (sk.length) push(act("wardrobe", "addStock"), [sk.map(BigInt), sk.map((k) => stock[k])], [`公庫存 ${sk.length} 種 ×${per}`, `Stock ${sk.length} kinds ×${per}`]);
+            push(act("wardrobe", "closeSeed"), [], ["關閉補登記", "Close registration"]);
+            if (stopV2) push(act("nft", "setPrices"), [st.nft.randomFee, 1000000000n, st.nft.gachaFee], ["停用舊 V2 換裝", "Disable V2 equip"]);
+            wl.msg = L(`已加入 ${tags.length} 筆（補登記 ${seed.ids.length} 件）。到右下角 🛒 下載 Safe JSON，簽完同時推上新網站。`, `Added ${tags.length} items (${seed.ids.length} worn parts). Download the Safe JSON from 🛒 at the bottom right.`); wl.cls = "ok";
+        } catch (e) { console.warn(e); wl.msg = errText(e); wl.cls = "bad"; }
+        wl.busy = false; renderLaunch();
     }
     function lookupHtml() {
         return `<div class="adm-look"><div class="adm-h"><b>${L("查詢錢包", "Look up a wallet")}</b><span class="muted small">${L("驗證、標記、凍結、VIP、鑄造額度、轉蛋次數", "Verified, flagged, frozen, VIP, mint allowance, pulls")}</span></div><div class="adm-lookrow"><input id="adLookAddr" placeholder="0x…" autocomplete="off" spellcheck="false" aria-label="${L("錢包地址", "Wallet")}"><button type="button" id="adLookBtn">${L("查詢", "Look up")}</button></div><div class="adm-state" id="adLookOut"></div></div>`;
@@ -669,6 +765,7 @@ ${x.danger ? `<p class="adm-warn">⚠️ ${L("這個操作影響很大，請再�
         const h = $("admHint"); if (h) h.innerHTML = hintHtml();
         afterCart();
         renderRefund();
+        renderLaunch();
         applyView();
     }
     function applyView() {
@@ -721,7 +818,7 @@ ${rolesHtml()}
 <div id="admQuickBox">${quickHtml()}</div>
 <div class="adm-bar"><div class="adm-tabs" role="tablist">${tabs.map(([k, label, n]) => `<button type="button" role="tab" data-tab="${k}">${esc(label)}${n ? `<small>${n}</small>` : ""}</button>`).join("")}</div><input type="search" class="adm-search" id="admSearch" placeholder="🔍 ${L("搜尋功能，例如 VIP、凍結、airdrop", "Search, e.g. VIP, freeze, airdrop")}" value="${esc(query)}" autocomplete="off"></div>
 ${KINDS.map(([k, zh, en]) => paneHtml(k, zh, en)).join("")}
-<div class="adm-pane" data-pane="tools"><div id="admRefundBox">${refundHtml()}</div>${lookupHtml()}</div>
+<div class="adm-pane" data-pane="tools"><div id="admLaunchBox">${launchHtml()}</div><div id="admRefundBox">${refundHtml()}</div>${lookupHtml()}</div>
 <p class="muted small hidden" id="admNone">${L("找不到符合的功能", "No matching actions")}</p>
 <div id="admCartRoot"></div>`;
         bind(box);
@@ -790,6 +887,7 @@ ${KINDS.map(([k, zh, en]) => paneHtml(k, zh, en)).join("")}
             });
         });
         bindRefund(box);
+        $("wlGo")?.addEventListener("click", runLaunch);
         const look = async () => {
             const out = $("adLookOut");
             let a;
