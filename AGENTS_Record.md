@@ -1,3 +1,12 @@
 
 ## 2026-11-01 風險提示縮小
 - index.html 移除首頁、價格、交易區三個 note warn 提示框；改在 footer 最後一行用 11px 淡色小字（risk.short + 服務條款連結）。服務條款第 4 節保留完整聲明。
+
+## 2026-11-04 喵武士圖鑑（#nft/all）
+- 使用者：NFT 被拆成不同部位（配件是 ERC-1155），想要一個看到全部組合起來的地方。新增 NFT 子分頁「圖鑑」：列出所有已鑄造的喵武士，已解盲的用 traits 圖層疊出完整外觀（跟換裝、轉蛋同一套 `ASCLook`），盲盒顯示 box.png（不洩漏外觀）；篩選全部／已解盲／盲盒／我的（連錢包才有）。點一隻：大圖、每個部位（縮圖、部位、稀有度）、持有者（`ownerOf`，點開 Polygonscan）、在 OpenSea 查看（`config.opensea/合約/編號`）、下載組合圖（`2026_asc_web3_ipfs/v2/images/<id>.png`）、自己的可「去換裝」。網址 `#nft/all/<編號>` 直接打開那一隻（`ui.js` fromHash）。圖鑑不需要錢包，NFT 區塊上方的「先連結錢包」提示在圖鑑隱藏。
+- Discord 機器人的官方連結「喵喵武士 NFT」改連到圖鑑（原本的 OpenSea 合集網址 asc-cat-samurai-595172199 失效）。
+
+## 2026-11-04 衣櫃 owner 顯示 0x0000…0000
+- 使用者回報管理面板「衣櫃 Wardrobe」的 owner 是 0x0000…0000。衣櫃是 UUPS 代理，initialize 一定會設 owner；讀到 0x0 代表 `config.js` 的 `wardrobe` 很可能填成部署網頁結果表的「實作」地址（實作合約 `_disableInitializers`，永遠沒有 owner），或代理沒有 initialize。這裡沒辦法讀鏈確認。
+- 管理面板加檢查：讀 `wardrobe` 地址的 ERC-1967 實作欄位（`IMPL_SLOT`），owner 是 0x0 時在權限表下方說明是「不是代理（填成實作）」還是「代理沒 initialize」。確認正確的代理地址後要改 `config.js` 的 `wardrobe` 與 `2026_asc_web3_ipfs` 的 Actions 變數 `WARDROBE_ADDRESS`（sync_v2.py 預設值也是 0x6bB0…）。
+- 2026-11-04 追查：Polygonscan 上 `0x6bB0…26BB` 是驗證過的 Wardrobe「實作」，部署錢包 0xa2BC 的最後一筆是 Create: Wardrobe，代理（ERC1967Proxy＋initialize）、setOperator、setFixedSlots、transferOwnership 都還沒做。`deploy.html` 沒有本機進度時改成直接沿用這個實作（預填實作的部署交易 0x9795…b5c2，不重新部署）；`pages.yml` 暫時把部署頁發到 `/wardrobe-deploy/`（使用者要在 GitHub Pages 上操作），代理部署好、Safe 接手後刪掉那一步。

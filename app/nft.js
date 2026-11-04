@@ -505,6 +505,77 @@
         }
     }
 
+    /* ───── 圖鑑：全部喵武士組合後的樣子 ───── */
+    const A_FILTERS = ["all", "open", "box", "mine"];
+    const owners = {};
+    async function ownerOf(id) {
+        if (!(id in owners)) owners[id] = CH.read.nft.ownerOf(id).catch(() => null);
+        return owners[id];
+    }
+    const openseaUrl = (id) => `${C.opensea}/${C.nft}/${id}`;
+    function renderAll() {
+        if (!D.ready) { $("aCount").textContent = t("a.loading"); return; }
+        S.af ||= "all";
+        const all = Object.keys(LK.L.tokens).map(Number).filter((id) => LK.L.tokens[id]?.kind != null || LK.L.tokens[id]?.traits).sort((a, b) => a - b);
+        const mine = new Set(D.ids);
+        const list = all.filter((id) => S.af === "all" || (S.af === "open" ? revealed(id) : S.af === "box" ? !revealed(id) : mine.has(id)));
+        const fl = $("aFilter");
+        if (!same(fl, JSON.stringify([S.af, S.lang, !!CH.account]))) {
+            fl.innerHTML = "";
+            A_FILTERS.filter((f) => f !== "mine" || CH.account).forEach((f) => {
+                const b = el(`<button type="button" class="${S.af === f ? "on" : ""}">${esc(t("a.f." + f))}</button>`);
+                b.onclick = () => { S.af = f; renderAll(); };
+                fl.appendChild(b);
+            });
+        }
+        $("aCount").textContent = t("a.count", { n: int(list.length) });
+        const box = $("aCats");
+        if (!same(box, JSON.stringify([list, list.map((id) => [revealed(id), tok(id)?.traits]), [...mine], S.pick, S.lang]))) {
+            box.innerHTML = "";
+            if (!list.length) box.appendChild(el(`<p class="muted">${esc(t("a.empty"))}</p>`));
+            list.forEach((id) => {
+                const c = catCard(id, S.pick === id, () => { S.pick = S.pick === id ? null : id; history.replaceState(null, "", S.pick == null ? "#nft/all" : `#nft/all/${id}`); renderAll(); if (S.pick != null) $("aDetail").scrollIntoView({ behavior: "smooth", block: "nearest" }); });
+                if (mine.has(id)) c.appendChild(el(`<span class="mine">${esc(t("a.mineTag"))}</span>`));
+                box.appendChild(c);
+            });
+        }
+        renderPick(mine);
+    }
+    function renderPick(mine) {
+        const d = $("aDetail");
+        const id = S.pick;
+        if (id == null || !tok(id)) { d.classList.add("hidden"); d._sig = null; return; }
+        d.classList.remove("hidden");
+        if (same(d, JSON.stringify([id, revealed(id), tok(id)?.traits, mine.has(id), S.lang]))) return;
+        d.innerHTML = "";
+        const open = revealed(id);
+        if (open) { const st = document.createElement("div"); st.className = "stack"; LK.compose(st, picksOf(id)); d.appendChild(st); }
+        else d.appendChild(el(`<img class="boxed" src="./assets/box.png" alt="?">`));
+        const ref = tok(id)?.ref;
+        const info = el(`<div class="gal-info"><h3>AscCatSamurai #${id}</h3><span class="muted small">${ref != null ? esc(t("a.v1", { r: ref })) + " · " : ""}${open ? tierTag(LK.tierOf(picksOf(id))) : esc(t("a.boxT"))}</span><span class="muted small">${esc(t("a.owner"))} <span id="aOwner">…</span></span></div>`);
+        if (open) {
+            const parts = el(`<div class="gal-parts"></div>`);
+            for (const p of picksOf(id)) {
+                const name = p.part ? partName(p.part) : t("a.none");
+                const img = p.part ? `<img src="${p.part.thumb}" alt="" loading="lazy">` : `<img alt="">`;
+                parts.appendChild(el(`<div class="gal-part">${img}<span>${esc(name)}<small>${esc(slotName(p.cat))}${p.part ? " · " : ""}</small></span></div>`));
+                if (p.part) parts.lastChild.querySelector("small").insertAdjacentHTML("beforeend", tierTag(p.part.tier));
+            }
+            info.appendChild(parts);
+        }
+        const act = el(`<div class="gal-act"></div>`);
+        act.appendChild(el(`<a class="btn" href="${openseaUrl(id)}" target="_blank" rel="noopener">${esc(t("a.os"))}</a>`));
+        if (open) act.appendChild(el(`<a class="btn alt" href="${LK.imageOf(id)}?v=${esc(tok(id)?.rendered || Date.now())}" target="_blank" rel="noopener">${esc(t("a.img"))}</a>`));
+        if (mine.has(id) && open) { const b = el(`<button class="btn alt" type="button">${esc(t("a.equip"))}</button>`); b.onclick = () => { Q.id = id; Q.try = {}; Q.borrow = {}; Q.take.clear(); Q.slot = null; U.go("nft", "equip"); window.scrollTo(0, 0); }; act.appendChild(b); }
+        const x = el(`<button class="btn alt" type="button">${esc(t("a.close"))}</button>`);
+        x.onclick = () => { S.pick = null; history.replaceState(null, "", "#nft/all"); renderAll(); };
+        act.appendChild(x);
+        info.appendChild(act);
+        d.appendChild(info);
+        ownerOf(id).then((a) => { const o = $("aOwner"); if (o && S.pick === id) o.innerHTML = a ? `<a href="${CH.link("address", a)}" target="_blank" rel="noopener">${esc(CH.account && a.toLowerCase() === CH.account.toLowerCase() ? t("a.mineTag") : CH.short(a))}</a>` : "–"; });
+    }
+
+    U.renderers.push(() => { if (S.page === "nft" && S.nft === "all") renderAll(); });
     U.renderers.push(() => { if (S.page === "nft" && S.nft === "mint") renderMint(); });
     U.renderers.push(() => { if (S.page === "nft" && S.nft === "equip") renderEquip(); });
     U.renderers.push(() => { if (S.page === "nft" && S.nft === "gacha") renderGacha(); });

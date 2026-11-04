@@ -227,6 +227,9 @@
         $("nftTitle").textContent = t("n.title." + S.nft);
         $("tokTitle").textContent = t("t.title." + S.tok);
         $("nftOver").classList.toggle("hidden", S.nft !== "mint");
+        // 圖鑑不用連錢包：藏起 NFT 區塊上方的「先連結錢包」提示
+        const nl = document.querySelector('[data-page="nft"] > .lock');
+        if (nl) nl.style.display = S.nft === "all" ? "none" : "";
         for (const [sw, key, attr, right, pane] of [["mtSw", "mt", "data-mt", "reveal", "data-mtp"], ["trSw", "tr", "data-tr", "redeem", "data-trp"]]) {
             $(sw).classList.toggle("right", S[key] === right);
             $$(`[${attr}]`).forEach((b) => b.setAttribute("aria-pressed", String(b.getAttribute(attr) === S[key])));
@@ -274,7 +277,9 @@
     function fromHash() {
         const h = location.hash.slice(1);
         if (h.startsWith("bind=")) { location.replace("./bind/" + location.hash); return; }
-        const [p, s] = h.split("/");
+        const [p, s, x] = h.split("/");
+        // #nft/all/12：圖鑑直接打開第 12 號（Discord 官方連結、分享用）
+        if (p === "nft" && s === "all" && /^\d+$/.test(x || "")) S.pick = Number(x);
         if (p === "nft" || p === "tok") go(p, s, false);
         else if (p === "home") go("home", null, false);
         else if (p === "admin") { go("admin", null, false); window.scrollTo(0, 0); }

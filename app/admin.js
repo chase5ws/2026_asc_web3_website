@@ -134,8 +134,11 @@
     const saveBatch = () => { try { localStorage.setItem("asc-admin-batch", JSON.stringify(batch)); } catch (_) {} };
     const same = (a, b) => !!a && !!b && a.toLowerCase() === b.toLowerCase();
 
+    // ERC-1967 代理存實作地址的位置：衣櫃是 UUPS 代理，config.js 要填「代理」地址（填成實作的話 owner 會讀到 0x0）
+    const IMPL_SLOT = "0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc";
     async function readRoles() {
         const ro = CH.ro;
+        if (C.wardrobe) st.wdImpl = await ro.getStorage(C.wardrobe, IMPL_SLOT).then((v) => (BigInt(v) === 0n ? "" : E.getAddress("0x" + v.slice(-40)))).catch(() => null);
         await Promise.all(KINDS.map(async ([k]) => {
             const c = new E.Contract(C[k], ROLE_ABI, ro);
             const [owner, pending, admin, operator] = await Promise.all([c.owner(), c.pendingOwner().catch(() => ZERO), c.admin().catch(() => ZERO), k === "market" ? ZERO : c.operator().catch(() => ZERO)]);
@@ -322,11 +325,22 @@ ${danger ? `<p class="adm-warn">⚠️ ${L("這個操作影響很大，請再確
     }
 
     /* ── 權限摘要 ── */
+    /** 衣櫃 owner 是 0x0：多半是 config.js 填成「實作」地址（實作合約永遠沒有 owner），或代理還沒 initialize */
+    function wardrobeWarn(r) {
+        if (r.owner && r.owner !== ZERO) return "";
+        const why = st.wdImpl === ""
+            ? L("這個地址不是代理（沒有 ERC-1967 實作欄位），應該是填成了部署網頁結果表的「實作」。請把 config.js 的 wardrobe 改成「衣櫃（代理）」那個地址，2026_asc_web3_ipfs 的 Actions 變數 WARDROBE_ADDRESS 也一起改。",
+                "This address is not a proxy (no ERC-1967 implementation slot) — it looks like the implementation. Put the 'Wardrobe (proxy)' address from the deploy page into config.js wardrobe, and the WARDROBE_ADDRESS variable of 2026_asc_web3_ipfs.")
+            : st.wdImpl
+                ? L(`這是代理（實作 ${short(st.wdImpl)}），但 owner 是 0x0：代理沒有 initialize，換裝不能用。`, `Proxy (implementation ${short(st.wdImpl)}) but owner is 0x0: it was never initialized.`)
+                : L("衣櫃的 owner 是 0x0，換裝不能用：請到 Polygonscan 確認 config.js 的 wardrobe 是不是代理地址。", "Wardrobe owner is 0x0: check on Polygonscan that config.js wardrobe is the proxy address.");
+        return `<tr><td colspan="4"><p class="adm-warn">⚠️ ${esc(why)}</p></td></tr>`;
+    }
     function roleTable() {
         const rows = KINDS.map(([k, zh, en]) => {
             const r = st.roles[k], s = safeOf(r.owner);
             // 合約名稱連到 Polygonscan
-            return `<tr><td><a href="${CH.link("address", C[k])}" target="_blank" rel="noopener" title="${esc(C[k])}">${esc(L(zh, en))}</a></td><td>${addrLink(r.owner)}${s && s.th ? ` <span class="adm-tag">Safe ${s.th}/${s.owners.length}</span>` : ""}${r.pending && r.pending !== ZERO ? `<br><small class="muted">${L("等待接受", "pending")}：${addrLink(r.pending)}</small>` : ""}</td><td>${addrLink(r.admin)}</td><td>${k === "market" ? "—" : addrLink(r.operator)}</td></tr>`;
+            return `<tr><td><a href="${CH.link("address", C[k])}" target="_blank" rel="noopener" title="${esc(C[k])}">${esc(L(zh, en))}</a></td><td>${addrLink(r.owner)}${s && s.th ? ` <span class="adm-tag">Safe ${s.th}/${s.owners.length}</span>` : ""}${r.pending && r.pending !== ZERO ? `<br><small class="muted">${L("等待接受", "pending")}：${addrLink(r.pending)}</small>` : ""}</td><td>${addrLink(r.admin)}</td><td>${k === "market" ? "—" : addrLink(r.operator)}</td></tr>${k === "wardrobe" ? wardrobeWarn(r) : ""}`;
         }).join("");
         return `<div class="adm-scroll"><table class="adm-table"><thead><tr><th>${L("合約", "Contract")}</th><th>owner</th><th>admin</th><th>operator</th></tr></thead><tbody>${rows}</tbody></table></div>`;
     }
