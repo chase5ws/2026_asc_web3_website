@@ -119,7 +119,7 @@
         if (prev._sig !== sig) { prev._sig = sig; LK.compose(prev, now); }
 
         const slots = $("eqSlots");
-        if (!same(slots, JSON.stringify([sig, Q.slot, [...Q.take], Q.try, S.lang]))) {
+        if (!same(slots, JSON.stringify([sig, Q.slot, [...Q.take], Q.try, S.lang, Object.keys(D.bag), Object.keys(D.wd?.stock || {}).length, isVip()]))) {
             slots.innerHTML = "";
             slots.appendChild(el(`<p class="eq-step">${esc(t("q.step2"))}</p>`));
             LK.L.cats.forEach((cat, slot) => {
@@ -127,13 +127,14 @@
                 const trying = Q.try[slot] != null || Q.take.has(slot);
                 const canTake = !!LK.empty(cat);
                 const thumb = p?.part ? `<img src="${p.part.thumb}" alt="">` : `<span class="boxed" style="width:44px;height:44px;border-radius:8px;display:grid;place-items:center;background:var(--bg2);color:var(--muted)">–</span>`;
-                const row = el(`<div class="slot${trying ? " try" : ""}${Q.slot === slot ? " on" : ""}" role="button" tabindex="0">${thumb}<span><small>${esc(slotName(cat.trait_type))} · ${esc(trying ? t("q.trying") : t("q.wear"))}</small>${esc(p ? optName(p.opt, slot) : "–")}</span></div>`);
+                const n = Object.entries(D.bag).filter(([pid]) => LK.L.byPid[pid]?.slot === slot).length + (isVip() ? Object.keys(D.wd?.stock || {}).filter((pid) => LK.L.byPid[pid]?.slot === slot).length : 0);
+                const row = el(`<div class="slot${trying ? " try" : ""}${Q.slot === slot ? " on" : ""}" role="button" tabindex="0">${thumb}<span><small>${esc(slotName(cat.trait_type))} · ${esc(trying ? t("q.trying") : t("q.wear"))}</small>${esc(p ? optName(p.opt, slot) : "–")}</span>${n ? `<em class="cnt" title="${esc(t("q.cnt", { n }))}">${n}</em>` : ""}</div>`);
                 if (canTake && (p?.opt.file || Q.take.has(slot))) {
                     const x = el(`<button type="button" class="x">${esc(Q.take.has(slot) ? t("q.untake") : t("q.take"))}</button>`);
                     x.onclick = (e) => { e.stopPropagation(); Q.take.has(slot) ? Q.take.delete(slot) : (Q.take.add(slot), delete Q.try[slot], delete Q.borrow[slot]); renderEquip(); };
                     row.appendChild(x);
                 }
-                row.onclick = () => { Q.slot = slot; S.eq = "mine"; U.draw(); if (matchMedia("(max-width:860px)").matches) $("eqMineH").scrollIntoView({ behavior: "smooth", block: "start" }); };
+                row.onclick = () => { Q.slot = slot; S.eq = "mine"; U.draw(); $("eqMineH").scrollIntoView({ behavior: "smooth", block: "nearest" }); };
                 slots.appendChild(row);
             });
         }
@@ -152,20 +153,9 @@
         const stockAll = Object.entries(W?.stock || {}).map(([pid, n]) => [LK.L.byPid[pid], n]).filter(([p]) => p);
         const bag = bagAll.filter(([p]) => p.slot === Q.slot);
         const stock = stockAll.filter(([p]) => p.slot === Q.slot);
-        // ③ 部位分頁：每個部位旁邊標可以換的數量（自己的＋VIP 可借的），點了切換下面的清單
+        // ③ 標題跟著選到的部位；每個部位能換幾件標在 ② 的部位卡右上角
         const slotLabel = LK.L.cats[Q.slot] ? slotName(LK.L.cats[Q.slot].trait_type) : "";
         $("eqMineH").textContent = t("q.step3", { s: slotLabel });
-        const tabs = $("eqTabs");
-        if (!same(tabs, JSON.stringify([Q.slot, bagAll.map(([p, q]) => [p.pid, q]), stockAll.length, vip, S.lang, Q.try]))) {
-            tabs.innerHTML = "";
-            LK.L.cats.forEach((cat, slot) => {
-                const n = bagAll.filter(([p]) => p.slot === slot).length + (vip ? stockAll.filter(([p]) => p.slot === slot).length : 0);
-                const b = el(`<button type="button" role="tab" class="${Q.slot === slot ? "on" : ""}${Q.try[slot] != null ? " try" : ""}">${esc(slotName(cat.trait_type))}${n ? ` <small>${n}</small>` : ""}</button>`);
-                b.setAttribute("aria-selected", String(Q.slot === slot));
-                b.onclick = () => { Q.slot = slot; U.draw(); };
-                tabs.appendChild(b);
-            });
-        }
         if (!same(mine, JSON.stringify([bag.map(([p, q]) => [p.pid, q]), stock.map(([p, n]) => [p.pid, n]), Q.slot, Q.try, Q.borrow, Q.id, S.lang, vip]))) {
             mine.innerHTML = "";
             if (!bag.length && !stock.length) mine.appendChild(el(`<p class="muted small">${esc(t("q.noSlot", { s: slotLabel }))}</p>`));

@@ -675,3 +675,26 @@ a.btn{display:inline-flex;align-items:center;justify-content:center}
 .eq-tabs button small{display:inline-grid;place-items:center;min-width:20px;height:20px;margin-left:4px;padding:0 6px;border-radius:999px;background:rgba(255,255,255,.14);font-size:11px;font-weight:700}
 .eq-tabs button.try:not(.on){border-color:var(--gold);color:var(--gold)}
 .eq-stockh.mine{color:var(--soft)}
+/* 換裝頁縮小（2026-11-05 使用者：要往下滑才看得到配件）：預覽縮小，部位與配件清單都放在預覽右邊，一個畫面看完 */
+.eq-preview{grid-template-columns:minmax(0,260px) minmax(0,1fr)!important;gap:14px!important}
+.eq-right{display:flex;flex-direction:column;gap:8px;min-width:0}
+.eq-slots{grid-template-columns:repeat(auto-fill,minmax(140px,1fr))!important;gap:6px!important}
+.eq-slots .slot{grid-template-columns:32px minmax(0,1fr) auto;padding:5px 6px;font-size:12.5px;position:relative}
+.eq-slots .slot img,.eq-slots .slot .boxed{width:32px!important;height:32px!important}
+.eq-slots .slot small{font-size:10.5px}
+.eq-slots .slot .x{position:absolute;right:4px;bottom:4px;padding:0 6px;font-size:10px}
+.eq-slots .slot .cnt{position:absolute;top:4px;right:5px;font-style:normal;min-width:18px;height:18px;padding:0 5px;border-radius:999px;background:var(--red);color:#fff;font-size:10.5px;font-weight:700;display:grid;place-items:center}
+.eq-mineh{margin:4px 0 0;font-size:15px}
+.eq-right .tiles{grid-template-columns:repeat(auto-fill,minmax(72px,1fr));gap:6px;max-height:360px;overflow:auto;padding-right:2px}
+.eq-right .tile{font-size:11px;padding:4px}
+.eq #qCats{grid-template-columns:repeat(auto-fill,minmax(72px,1fr))}
+@media (max-width:860px){
+  /* 手機：預覽縮成左邊小圖、部位排在右邊，③ 配件清單在下面整排，不用滑太多 */
+  .eq-preview{grid-template-columns:112px minmax(0,1fr)!important;gap:10px!important;align-items:start}
+  .eq-preview .stack{max-width:none!important;width:112px;position:sticky;top:120px}
+  .eq-right{display:contents}
+  .eq-slots{grid-column:2;grid-template-columns:minmax(0,1fr)!important;gap:4px!important}
+  .eq-slots .eq-step{font-size:12px}
+  .eq-mineh,.eq-right .tiles,.eq-right>.muted{grid-column:1/-1}
+  .eq-right .tiles{max-height:none}
+}

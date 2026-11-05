@@ -89,7 +89,7 @@ Object.assign(window.ASC_T.en, {"s.all": "Gallery", "n.title.all": "Cat Samurai 
     "a.f.all": "All", "a.f.open": "Revealed", "a.f.box": "Unrevealed", "a.f.mine": "Mine", "a.count": "{n} cats", "a.empty": "No Cat Samurai yet", "a.loading": "Loading…", "a.boxT": "Not revealed yet: the look appears after reveal.",
     "a.owner": "Owner", "a.mineTag": "Mine", "a.os": "View on OpenSea", "a.img": "Download image", "a.equip": "Equip", "a.close": "Close", "a.v1": "Original V1 #{r}", "a.none": "None"});
 // 換裝頁步驟提示（2026-11-05：玩家不知道要先點部位才會出現配件與 VIP 借穿）
-Object.assign(window.ASC_T.zh, {"q.step2": "② 點一個部位（例如身體、衣服），下面就會列出能換的配件", "q.step3": "③ 挑「{s}」要換的配件", "q.bagT": "我背包裡的（穿上由衣櫃保管，換下退回背包）",
+Object.assign(window.ASC_T.zh, {"q.step2": "② 點部位（數字＝能換幾件）", "q.cnt": "可以換 {n} 件", "q.step3": "③ 挑「{s}」要換的配件", "q.bagT": "我背包裡的（穿上由衣櫃保管，換下退回背包）",
     "q.noSlot": "「{s}」目前沒有可以換的配件：可以去市場買、轉蛋，或購買 VIP 免費借穿公庫存的普通配件。"});
-Object.assign(window.ASC_T.en, {"q.step2": "② Tap a slot (e.g. Body, Clothes) to list the parts you can put on", "q.step3": "③ Pick a part for “{s}”", "q.bagT": "From my inventory (kept by the wardrobe while worn, returned when taken off)",
+Object.assign(window.ASC_T.en, {"q.step2": "② Tap a slot (number = parts you can put on)", "q.cnt": "{n} parts available", "q.step3": "③ Pick a part for “{s}”", "q.bagT": "From my inventory (kept by the wardrobe while worn, returned when taken off)",
     "q.noSlot": "Nothing to put on for “{s}” yet: buy in the market, try the gacha, or get VIP to borrow shared common parts for free."});
