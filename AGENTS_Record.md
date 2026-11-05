@@ -20,3 +20,4 @@
 - 2026-11-05 衣櫃上線批次已由 Safe 執行（MultiSend 0xA83c…1836）：鏈上讀回 owner＝Safe、pendingOwner＝0、admin／operator＝0xa2BC、seedClosed＝true、changeFee 10、未暫停、公庫存每種 50（抽查 #0、#1034）；NFT 的舊換裝費＝1,000,000,000（舊 V2 換裝停用）。`contracts-asc/wardrobe/migration.js` 已不需要，可刪。
 - 2026-11-05 換裝頁改版（使用者回饋：不知道要先點部位才會出現配件和 VIP 借穿）：一進來預設選第一個部位；步驟標成 ① 選喵武士 ② 點部位 ③ 挑配件；③ 上方加部位分頁（顯示每個部位可換的數量：自己的＋VIP 可借的），清單分成「我背包裡的」與「★ VIP 免費借穿」；點部位不再取消選取，手機上點部位會捲到 ③；該部位沒東西時說明去市場、轉蛋或買 VIP。拿掉 i18n `q.mine`、`q.stockPick`，新增 `q.step2`、`q.step3`、`q.bagT`、`q.noSlot`。
 - 2026-11-05 換裝頁再縮小（使用者：還是要往下滑才看得到）：預覽圖縮到 260px（手機 112px 放左邊），② 部位卡縮小、右上角紅點標能換幾件（取代 ③ 上方的部位分頁），③ 配件清單放在預覽右邊（手機在下方整排），電腦版一個畫面看得到喵武士、部位與配件；配件清單最高 360px 內捲動。
+- 2026-11-05 OpenSea 合集網址確認是 `https://opensea.io/collection/asc-cat-samurai-v2`（單隻 `opensea.io/item/polygon/<合約>/<編號>` 也正常）：`config.js` 新增 `openseaCollection`，圖鑑上方加「OpenSea 合集 ↗」按鈕；Discord 機器人官方連結也加回這個合集。

@@ -520,6 +520,7 @@
         return owners[id];
     }
     const openseaUrl = (id) => `${C.opensea}/${C.nft}/${id}`;
+    $("aOsAll").href = C.openseaCollection || `https://opensea.io/assets/matic/${C.nft}`;
     function renderAll() {
         if (!D.ready) { $("aCount").textContent = t("a.loading"); return; }
         S.af ||= "all";

@@ -84,10 +84,10 @@ Object.assign(window.ASC_T.en, {"q.vipFree": "Free for VIP", "q.stockT": "★ VI
 // 圖鑑（#nft/all）：全部喵武士組合起來的樣子
 Object.assign(window.ASC_T.zh, {"s.all": "圖鑑", "n.title.all": "喵武士圖鑑", "a.intro": "每一隻喵武士現在穿著的樣子（配件組合後的完整外觀，跟換裝、轉蛋同步更新）。點一隻看大圖、身上每個部位，以及到 OpenSea 查看。還沒解盲的顯示盲盒。",
     "a.f.all": "全部", "a.f.open": "已解盲", "a.f.box": "盲盒", "a.f.mine": "我的", "a.count": "共 {n} 隻", "a.empty": "還沒有喵武士", "a.loading": "讀取中…", "a.boxT": "這隻還沒解盲：解盲後才看得到外觀。",
-    "a.owner": "持有者", "a.mineTag": "我的", "a.os": "在 OpenSea 查看", "a.img": "下載組合圖", "a.equip": "去換裝", "a.close": "收起", "a.v1": "原版 V1 #{r}", "a.none": "不穿"});
+    "a.owner": "持有者", "a.mineTag": "我的", "a.os": "在 OpenSea 查看", "a.osAll": "OpenSea 合集 ↗", "a.img": "下載組合圖", "a.equip": "去換裝", "a.close": "收起", "a.v1": "原版 V1 #{r}", "a.none": "不穿"});
 Object.assign(window.ASC_T.en, {"s.all": "Gallery", "n.title.all": "Cat Samurai gallery", "a.intro": "Every Cat Samurai as it looks right now, with all its parts put together (updates with equip and gacha). Tap one for the full image, each part it wears, and its OpenSea page. Unrevealed ones show the mystery box.",
     "a.f.all": "All", "a.f.open": "Revealed", "a.f.box": "Unrevealed", "a.f.mine": "Mine", "a.count": "{n} cats", "a.empty": "No Cat Samurai yet", "a.loading": "Loading…", "a.boxT": "Not revealed yet: the look appears after reveal.",
-    "a.owner": "Owner", "a.mineTag": "Mine", "a.os": "View on OpenSea", "a.img": "Download image", "a.equip": "Equip", "a.close": "Close", "a.v1": "Original V1 #{r}", "a.none": "None"});
+    "a.owner": "Owner", "a.mineTag": "Mine", "a.os": "View on OpenSea", "a.osAll": "OpenSea collection ↗", "a.img": "Download image", "a.equip": "Equip", "a.close": "Close", "a.v1": "Original V1 #{r}", "a.none": "None"});
 // 換裝頁步驟提示（2026-11-05：玩家不知道要先點部位才會出現配件與 VIP 借穿）
 Object.assign(window.ASC_T.zh, {"q.step2": "② 點部位（數字＝能換幾件）", "q.cnt": "可以換 {n} 件", "q.step3": "③ 挑「{s}」要換的配件", "q.bagT": "我背包裡的（穿上由衣櫃保管，換下退回背包）",
     "q.noSlot": "「{s}」目前沒有可以換的配件：可以去市場買、轉蛋，或購買 VIP 免費借穿公庫存的普通配件。"});
