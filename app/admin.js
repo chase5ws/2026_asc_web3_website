@@ -805,11 +805,14 @@ ${x.danger ? `<p class="adm-warn">⚠️ ${L("這個操作影響很大，請再�
         const none = $("admNone"); if (none) none.classList.toggle("hidden", !q || hits > 0);
     }
 
+    /** 有 owner／admin／operator（或 Safe 簽署人）權限時：上方三段切換的中間「首頁」改成紫色「管理介面」，首頁改從左上角標誌回去 */
     function jumpBtn(show) {
-        const b = $("adminJump");
-        if (!b) return;
-        b.textContent = L("⚙ 管理", "⚙ Admin");
-        b.classList.toggle("hidden", !show);
+        const S = window.ASCUI.S;
+        if (!!S.adm === show) return;
+        S.adm = show; // 畫面由 ui.js 的 layout() 依 S.adm 換按鈕（layout 每次重畫都會重設 #sw3 的 class）
+        // 失去權限（換錢包、斷線）時還停在管理頁：回首頁
+        if (!show && window.ASCUI.S.page === "admin") window.ASCUI.go("home");
+        else window.ASCUI.draw();
     }
     function render() {
         const box = $("adminPanel");

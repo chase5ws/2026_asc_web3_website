@@ -1,0 +1,16 @@
+{
+  "chainId": 137,
+  "wardrobe": "0x68eD0610A8244769eA2C745dA49a2FBA4354490A",
+  "implementation": "0x6bB0D831d87EB27Aa77A6656784830D1171226BB",
+  "deployer": "0xa2BCD5dD5d748FA6314D438a2C55b139dB62b8ff",
+  "pendingOwner": "0x7c532A61349814633CdE4f81652Cb0E35BEB75f6",
+  "block": 96756878,
+  "tx": {
+    "impl": "0x9795018044e5c7458bbf5f50bb234a10dd093ed601db425b960d9a616be6b5c2",
+    "proxy": "0x4267dd6914425d82cfe1d59570bbcd495c2b090fe03944d2cd5c06b41017b32a",
+    "op": "0x60c75ebd53b856b1b65d52145163aa18413a8c0582dca072618108caa1ede65e",
+    "fixed": "0x6ef5b1a9e610367b472262b1ca72e60e73be667f2064afda51643a38d7f43497",
+    "transfer": "0x89d01d2d3801e84e509ac8ba24d8bfe2fb2043bf475f78e1cd789ef7e1601908"
+  },
+  "unused_duplicate_proxy": "0x7c32f17d85d1e2985b27820efabd4890dced313f"
+}

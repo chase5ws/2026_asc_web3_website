@@ -5,7 +5,7 @@ ASC 鏢局的公開網頁（純靜態，沒有建置步驟，GitHub Pages）。*
 
 ## 鏈上地址（Polygon 137）
 - 見 `config.js`（`vault`、`nft`、`parts`、`market`、`usdt`、部署區塊、Safe）。owner＝Safe `0x7c532A61349814633CdE4f81652Cb0E35BEB75f6`。
-- 舊系統：V1 金庫 `0x9a431fED8Bc5fa595E5c9fdB1abb0a3119fBD5Ad`、喵武士 V1 `0x39c774673A25B0f1F600Bf39edF639c0f44a7488`（`config.js` 的 `nftV1`）。
+- 舊系統：V1 金庫 `0x9a431fED8Bc5fa595E5c9fdB1abb0a3119fBD5Ad`、喵武士 V1 `0x39c774673A25B0f1F600Bf39edF639c0f44a7488`（網站沒有用到，只記在這裡）。
 
 ## 檔案
 | 檔案 | 說明 |

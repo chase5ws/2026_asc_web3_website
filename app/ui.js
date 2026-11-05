@@ -215,7 +215,12 @@
         $("chAsc").textContent = int(D.asc);
     }
     function layout() {
-        $("sw3").className = "sw3 p-" + S.page;
+        // S.adm（admin.js 判斷有 owner／admin／operator 權限）：中間的「首頁」換成紫色「管理介面」
+        const hb = $("sw3").querySelector('[data-go="home"], [data-go="admin"]');
+        hb.dataset.go = S.adm ? "admin" : "home";
+        hb.dataset.t = S.adm ? "nav.admin" : "nav.home";
+        hb.textContent = t(hb.dataset.t);
+        $("sw3").className = "sw3 p-" + S.page + (S.adm ? " adm" : "");
         $$("[data-go]").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.go === S.page)));
         if (narrow()) { $$('#sw3 [data-go="nft"]').forEach((b) => (b.textContent = t("nav.nftS"))); $$('#sw3 [data-go="tok"]').forEach((b) => (b.textContent = t("nav.tokS"))); }
         $$("[data-subs]").forEach((g) => g.classList.toggle("hidden", g.dataset.subs !== S.page));

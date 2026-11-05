@@ -100,7 +100,6 @@ label.f{display:flex;flex-direction:column;gap:6px}
 .eq-slots{display:flex;flex-direction:column;gap:6px}
 .slot{display:grid;grid-template-columns:44px minmax(0,1fr);gap:8px;align-items:center;padding:6px;border-radius:10px;background:var(--card2);border:1px solid transparent;font-size:13px}
 .slot.try{border-color:var(--gold)}.slot img{width:44px;height:44px;border-radius:8px;object-fit:cover}.slot small{display:block;color:var(--muted);font-size:11px}
-.sw.eqsw{width:220px}.sw.eqsw button{min-height:40px;font-size:14px}
 .tiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(84px,1fr));gap:8px}
 .tile{position:relative;border:1px solid var(--line2);border-radius:12px;background:var(--card2);padding:6px;display:flex;flex-direction:column;gap:4px;align-items:center;text-align:center;color:var(--ink);font-size:12px;line-height:1.3;cursor:pointer}
 .tile img{width:100%;aspect-ratio:1;object-fit:cover;border-radius:8px}
@@ -220,7 +219,6 @@ button:disabled,.btn:disabled{opacity:.45;cursor:not-allowed}
   .card{padding:18px}
   .status .chip#chVer.warn,.status .chip#chVer.bad{display:inline-block}
   .eq-slots{grid-template-columns:repeat(auto-fill,minmax(150px,1fr))!important}
-  .sw.eqsw{width:100%}
   .vipbar>div{flex-wrap:wrap}
 }
 img.avatar{object-fit:cover;padding:0;background:var(--card2)}
@@ -272,11 +270,6 @@ html{scroll-padding-top:90px}
 .adm-panel h2{margin:0}
 .adm-head{display:flex;align-items:flex-end;gap:10px;flex-wrap:wrap}
 .adm-head>div:first-child{margin-right:auto}
-.adm-mode{display:inline-grid;grid-template-columns:1fr 1fr;padding:3px;border-radius:999px;background:var(--bg2);border:1px solid var(--line2)}
-.adm-mode button{min-height:36px;padding:0 16px;border:0;border-radius:999px;background:transparent;color:var(--soft);font-size:13.5px;font-weight:700;white-space:nowrap;transition:background .2s,color .2s}
-.adm-mode button[aria-pressed="true"]{background:var(--red);color:#fff}
-.adm-mode button[data-m="safe"][aria-pressed="true"]{background:var(--gold);color:#111}
-.adm-mode button:disabled{opacity:.4;cursor:not-allowed}
 .adm-ref{width:42px;height:42px;flex:none;border-radius:50%;border:1px solid var(--line2);background:var(--bg2);color:var(--soft);font-size:19px;line-height:1}
 .adm-ref:hover{color:#fff;border-color:var(--gold)}.adm-ref.spin{animation:admSpin .8s linear infinite}
 @keyframes admSpin{to{transform:rotate(360deg)}}
@@ -449,7 +442,6 @@ html{scroll-padding-top:90px}
 .adm-toast.ok{border-color:var(--ok)}.adm-toast.bad{border-color:#ff8a8a}.adm-toast.out{opacity:0}.adm-toast a{margin-left:10px}
 @media (max-width:640px){
   .adm-head>div:first-child{flex:1 1 auto}
-  .adm-mode{flex:1}
   .adm-quick{grid-template-columns:minmax(0,1fr)}
   .adm-state{grid-template-columns:repeat(2,minmax(0,1fr))}
   .adm-tabs{flex-basis:100%}
@@ -459,12 +451,15 @@ html{scroll-padding-top:90px}
   .adm-list{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.adm-act{min-height:118px;padding:12px}.adm-act .tt p{-webkit-line-clamp:2}
 }
 
+/* 連到 owner／admin／operator 錢包時，中間的「首頁」換成紫色「管理介面」（首頁改從左上角標誌回去） */
 .sw3.p-admin .thumb{opacity:0}
+.sw3.adm.p-admin .thumb{opacity:1;transform:translateX(100%);background:#8b5cf6;box-shadow:none}
+.sw3.adm.p-home .thumb{opacity:0}
+.sw3.adm button[data-go="admin"]{color:#c4b0ff;font-weight:700}
+.sw3.adm button[data-go="admin"][aria-pressed="true"]{color:#fff}
 .navrow{display:flex;align-items:center;justify-content:center;gap:8px;width:100%}
 .navrow .sw3{margin:0}
-.adnav{min-height:42px;padding:0 16px;border-radius:999px;border:1px solid #6b5a33;background:rgba(11,21,48,.55);color:var(--gold);font-size:14px;font-weight:700;white-space:nowrap}
-.adnav[aria-pressed="true"]{background:var(--gold);color:#111;border-color:var(--gold)}
-@media (max-width:760px){.navrow .sw3{flex:1;width:auto}.adnav{min-height:38px;padding:0 12px;font-size:13px}}
+@media (max-width:760px){.navrow .sw3{flex:1;width:auto}}
 .note.perk{display:flex;flex-direction:column;gap:4px;padding:12px 14px;border-radius:12px;border:1px solid var(--gold);background:linear-gradient(135deg,rgba(212,175,106,.18),rgba(212,175,106,.05));color:var(--ink);font-size:13.5px;line-height:1.6}
 .note.perk b{color:var(--gold);font-size:14.5px;letter-spacing:.04em}
 
@@ -472,7 +467,7 @@ html{scroll-padding-top:90px}
    石頭與皮革的深色面板＋銅金雙框、NPC 對話、寶箱、物品欄格子、黑底系統訊息。
    物品名稱顏色：普通白、稀有藍、超稀有金（像祝福道具） ───── */
 .lg{--lt:#efe6d2;--ld:#a8987a;--lgold:#e8c27a;--lbr:#8b6a35;--lsup:#ffd257;--lrare:#6cb6ff;--lnor:#ece6da;display:flex;flex-direction:column;gap:12px;font-family:"Noto Sans TC",system-ui,sans-serif}
-.lg-frame,.lg-win,.lg-box,.gfx-in{position:relative;color:var(--lt);border:1px solid #000;border-radius:3px;
+.lg-win,.lg-box,.gfx-in{position:relative;color:var(--lt);border:1px solid #000;border-radius:3px;
   background:radial-gradient(ellipse at 50% 0%,rgba(120,90,50,.18),transparent 60%),repeating-linear-gradient(45deg,rgba(255,255,255,.012) 0 2px,rgba(0,0,0,.035) 2px 4px),linear-gradient(180deg,#241c13,#17120c);
   box-shadow:inset 0 0 0 1px #8b6a35,inset 0 0 0 3px #120d08,inset 0 0 0 4px #5a4322,inset 0 0 24px rgba(0,0,0,.7),0 10px 28px rgba(0,0,0,.55)}
 .lg-win{padding:0 14px 14px;display:flex;flex-direction:column;gap:14px}
