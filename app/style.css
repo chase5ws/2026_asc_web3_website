@@ -669,3 +669,9 @@ html{scroll-padding-top:90px}
 .gal-act .btn{flex:1 1 140px;text-align:center;text-decoration:none}
 @media (max-width:860px){.gal-detail{grid-template-columns:minmax(0,1fr)}.gal-detail .stack,.gal-detail .boxed{max-width:340px;margin:0 auto}}
 a.btn{display:inline-flex;align-items:center;justify-content:center}
+/* 換裝頁步驟（② 部位、③ 配件） */
+.eq-step{grid-column:1/-1;margin:0;color:var(--gold);font-weight:700;font-size:13px}
+.slot.on{outline:2px solid var(--gold);background:rgba(212,175,106,.12)}
+.eq-tabs button small{display:inline-grid;place-items:center;min-width:20px;height:20px;margin-left:4px;padding:0 6px;border-radius:999px;background:rgba(255,255,255,.14);font-size:11px;font-weight:700}
+.eq-tabs button.try:not(.on){border-color:var(--gold);color:var(--gold)}
+.eq-stockh.mine{color:var(--soft)}

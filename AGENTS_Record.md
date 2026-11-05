@@ -17,3 +17,5 @@
 - 刪除（移到 `_to_delete/`，已加進 .gitignore，確認後整個資料夾刪掉）：衣櫃一次性部署頁 `contracts-asc/wardrobe/deploy.html` 與它的測試 `tests/DeployPage.test.js`、`Claude outputs/`（AI 的預覽圖與打包檔）、4 個 `.fuse_hidden*`（同步留下的舊檔副本，被 commit 進來）。
 - 沒用到的程式：i18n `q.gacha`、`q.notVip`、`g.sum`；CSS `.adm-mode`、`.sw.eqsw`、`.lg-frame`、`.adnav`；config `nftV1`（V1 地址留在 AGENTS.md）。檢查過圖片（assets 全部有用到）、JS 函式、HTML id。
 - 管理入口：原本是三段切換旁邊的金色「⚙ 管理」按鈕；改成連上 owner／admin／operator（或 Safe 簽署人、待接受的新主人）錢包時，三段切換中間的「首頁」直接變成紫色「管理介面」（`ASCUI.S.adm`，admin.js 的 `jumpBtn` 設定、ui.js 的 `layout` 套用；layout 每次重畫都會重設 #sw3 的 class，所以狀態放在 S 不放 class，避免重畫迴圈）。首頁從左上角標誌回去；失去權限時停在管理頁會自動回首頁。
+- 2026-11-05 衣櫃上線批次已由 Safe 執行（MultiSend 0xA83c…1836）：鏈上讀回 owner＝Safe、pendingOwner＝0、admin／operator＝0xa2BC、seedClosed＝true、changeFee 10、未暫停、公庫存每種 50（抽查 #0、#1034）；NFT 的舊換裝費＝1,000,000,000（舊 V2 換裝停用）。`contracts-asc/wardrobe/migration.js` 已不需要，可刪。
+- 2026-11-05 換裝頁改版（使用者回饋：不知道要先點部位才會出現配件和 VIP 借穿）：一進來預設選第一個部位；步驟標成 ① 選喵武士 ② 點部位 ③ 挑配件；③ 上方加部位分頁（顯示每個部位可換的數量：自己的＋VIP 可借的），清單分成「我背包裡的」與「★ VIP 免費借穿」；點部位不再取消選取，手機上點部位會捲到 ③；該部位沒東西時說明去市場、轉蛋或買 VIP。拿掉 i18n `q.mine`、`q.stockPick`，新增 `q.step2`、`q.step3`、`q.bagT`、`q.noSlot`。

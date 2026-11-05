@@ -103,11 +103,13 @@
 
         const cats = D.ids.filter(revealed);
         if (!cats.includes(Q.id)) { Q.id = cats[0] ?? null; Q.try = {}; Q.borrow = {}; Q.take.clear(); }
+        // 一進來就選好第一個部位，下面直接列出能換的配件（以前要先點部位才會出現，玩家不知道）
+        if (Q.slot == null || !LK.L.cats[Q.slot]) Q.slot = 0;
         const qc = $("qCats");
         if (!same(qc, JSON.stringify([cats, Q.id, S.lang, cats.map((id) => tok(id)?.traits)]))) {
             qc.innerHTML = "";
             if (!cats.length) qc.appendChild(el(`<p class="muted">${esc(CH.account ? t("q.noneCat") : t("lock"))}</p>`));
-            cats.forEach((id) => qc.appendChild(catCard(id, id === Q.id, () => { Q.id = id; Q.try = {}; Q.borrow = {}; Q.take.clear(); Q.slot = null; renderEquip(); })));
+            cats.forEach((id) => qc.appendChild(catCard(id, id === Q.id, () => { Q.id = id; Q.try = {}; Q.borrow = {}; Q.take.clear(); renderEquip(); })));
         }
         $("qBox").classList.toggle("hidden", Q.id == null);
         const cur = Q.id != null ? picksOf(Q.id) : [];
@@ -119,6 +121,7 @@
         const slots = $("eqSlots");
         if (!same(slots, JSON.stringify([sig, Q.slot, [...Q.take], Q.try, S.lang]))) {
             slots.innerHTML = "";
+            slots.appendChild(el(`<p class="eq-step">${esc(t("q.step2"))}</p>`));
             LK.L.cats.forEach((cat, slot) => {
                 const p = now.find((x) => x.slot === slot);
                 const trying = Q.try[slot] != null || Q.take.has(slot);
@@ -130,7 +133,7 @@
                     x.onclick = (e) => { e.stopPropagation(); Q.take.has(slot) ? Q.take.delete(slot) : (Q.take.add(slot), delete Q.try[slot], delete Q.borrow[slot]); renderEquip(); };
                     row.appendChild(x);
                 }
-                row.onclick = () => { Q.slot = Q.slot === slot ? null : slot; S.eq = "mine"; U.draw(); };
+                row.onclick = () => { Q.slot = slot; S.eq = "mine"; U.draw(); if (matchMedia("(max-width:860px)").matches) $("eqMineH").scrollIntoView({ behavior: "smooth", block: "start" }); };
                 slots.appendChild(row);
             });
         }
@@ -145,15 +148,29 @@
             renderEquip();
         };
         const mine = $("eqMine");
-        const bag = Object.entries(D.bag).map(([pid, q]) => [LK.L.byPid[pid], q]).filter(([p]) => p && (Q.slot == null || p.slot === Q.slot));
-        // 公庫存種類多：選了部位才列出那個部位的，沒選只顯示一行提示
+        const bagAll = Object.entries(D.bag).map(([pid, q]) => [LK.L.byPid[pid], q]).filter(([p]) => p);
         const stockAll = Object.entries(W?.stock || {}).map(([pid, n]) => [LK.L.byPid[pid], n]).filter(([p]) => p);
-        const stock = Q.slot == null ? [] : stockAll.filter(([p]) => p.slot === Q.slot);
-        if (!same(mine, JSON.stringify([bag.map(([p, q]) => [p.pid, q]), stock.map(([p, n]) => [p.pid, n]), stockAll.length, Q.slot, Q.try, Q.borrow, Q.id, S.lang, vip]))) {
+        const bag = bagAll.filter(([p]) => p.slot === Q.slot);
+        const stock = stockAll.filter(([p]) => p.slot === Q.slot);
+        // ③ 部位分頁：每個部位旁邊標可以換的數量（自己的＋VIP 可借的），點了切換下面的清單
+        const slotLabel = LK.L.cats[Q.slot] ? slotName(LK.L.cats[Q.slot].trait_type) : "";
+        $("eqMineH").textContent = t("q.step3", { s: slotLabel });
+        const tabs = $("eqTabs");
+        if (!same(tabs, JSON.stringify([Q.slot, bagAll.map(([p, q]) => [p.pid, q]), stockAll.length, vip, S.lang, Q.try]))) {
+            tabs.innerHTML = "";
+            LK.L.cats.forEach((cat, slot) => {
+                const n = bagAll.filter(([p]) => p.slot === slot).length + (vip ? stockAll.filter(([p]) => p.slot === slot).length : 0);
+                const b = el(`<button type="button" role="tab" class="${Q.slot === slot ? "on" : ""}${Q.try[slot] != null ? " try" : ""}">${esc(slotName(cat.trait_type))}${n ? ` <small>${n}</small>` : ""}</button>`);
+                b.setAttribute("aria-selected", String(Q.slot === slot));
+                b.onclick = () => { Q.slot = slot; U.draw(); };
+                tabs.appendChild(b);
+            });
+        }
+        if (!same(mine, JSON.stringify([bag.map(([p, q]) => [p.pid, q]), stock.map(([p, n]) => [p.pid, n]), Q.slot, Q.try, Q.borrow, Q.id, S.lang, vip]))) {
             mine.innerHTML = "";
-            if (!bag.length && !stock.length && !stockAll.length) mine.appendChild(el(`<p class="muted small">${esc(t("q.noBag"))}</p>`));
+            if (!bag.length && !stock.length) mine.appendChild(el(`<p class="muted small">${esc(t("q.noSlot", { s: slotLabel }))}</p>`));
+            if (bag.length) mine.appendChild(el(`<p class="eq-stockh small mine">${esc(t("q.bagT"))}</p>`));
             bag.forEach(([p, q]) => mine.appendChild(tile(p, `<span class="q">×${q}</span>`, () => pick(p, false), Q.try[p.slot] === p.pid && !Q.borrow[p.slot])));
-            if (Q.slot == null && stockAll.length) mine.appendChild(el(`<p class="eq-stockh small">${esc(vip ? t("q.stockPick") : t("q.stockVip"))}</p>`));
             if (stock.length) {
                 mine.appendChild(el(`<p class="eq-stockh small">${esc(vip ? t("q.stockT") : t("q.stockVip"))}</p>`));
                 stock.forEach(([p, n]) => {
