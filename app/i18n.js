@@ -93,3 +93,20 @@ Object.assign(window.ASC_T.zh, {"q.step2": "② 點部位（數字＝能換幾�
     "q.noSlot": "「{s}」目前沒有可以換的配件：可以去市場買、轉蛋，或購買 VIP 免費借穿公庫存的普通配件。"});
 Object.assign(window.ASC_T.en, {"q.step2": "② Tap a slot (number = parts you can put on)", "q.cnt": "{n} parts available", "q.step3": "③ Pick a part for “{s}”", "q.bagT": "From my inventory (kept by the wardrobe while worn, returned when taken off)",
     "q.noSlot": "Nothing to put on for “{s}” yet: buy in the market, try the gacha, or get VIP to borrow shared common parts for free."});
+// 活動（#nft/event）與活動背景（活動徽章合約 EventBadges）
+Object.assign(window.ASC_T.zh, {"s.event": "活動", "n.title.event": "活動領取", "ev.intro": "活動期間輸入公告的代碼，就能領到這場活動的背景（活動徽章）。徽章綁定在你的錢包、不能轉賣，是「我參加過」的證明；領到後到「換裝」的「背景」穿上。活動結束就領不到了。",
+    "ev.none": "目前沒有活動", "ev.step3": "③ 挑要穿的背景", "ev.bgSlot": "背景", "ev.badgeTag": "活動", "ev.noBg": "不穿背景", "ev.myBadges": "我的活動背景（綁定、不能轉賣，VIP 也不能借穿）", "ev.noBadge": "還沒有活動背景：活動期間到「活動」輸入代碼領取。",
+    "ev.toEvents": "去活動領取背景", "ev.bgChange": "背景：{x}（免費）", "ev.needVerified": "Discord 已綁定的錢包", "ev.needHolder": "持有喵武士", "ev.needHolderNote": "這場活動只限持有喵武士的錢包",
+    "ev.untitled": "活動 #{n}", "ev.st.open": "進行中", "ev.st.soon": "還沒開始", "ev.st.got": "已領取", "ev.st.full": "已額滿", "ev.st.over": "已結束", "ev.period": "{a} ～ {b}",
+    "ev.capN": "已領 {n} / {m}", "ev.capAll": "已領 {n} 人", "ev.need": "限：{x}", "ev.bound": "綁定錢包・不能轉賣・喵武士轉手後背景會自動拿掉", "ev.codePh": "輸入活動代碼",
+    "ev.claim": "領取", "ev.codeEmpty": "請輸入活動代碼", "ev.got": "領到了！到換裝的「背景」就能穿上「{x}」", "ev.wearIt": "去換裝穿上",
+    "e.Soulbound": "活動背景綁定錢包，不能轉移或上架", "e.BadEvent": "找不到這場活動", "e.EventExists": "這個活動編號已經用過了", "e.BadTime": "時間不對：截止要在開始之後（新活動也要填代碼）",
+    "e.NotOpen": "不在活動領取時間內", "e.WrongCode": "代碼不對，請再確認一次", "e.AlreadyClaimed": "這個錢包已經領過這場活動了", "e.EventFull": "這場活動已經額滿", "e.NotHolder": "這場活動只限持有喵武士的錢包", "e.NoBadge": "你沒有這個活動背景"});
+Object.assign(window.ASC_T.en, {"s.event": "Events", "n.title.event": "Event rewards", "ev.intro": "During an event, enter the announced code to claim that event's background (an event badge). Badges are bound to your wallet and can't be sold — proof you were there. Put it on in Equip → Background. Once the event ends it can no longer be claimed.",
+    "ev.none": "No events right now", "ev.step3": "③ Pick a background", "ev.bgSlot": "Background", "ev.badgeTag": "Event", "ev.noBg": "No background", "ev.myBadges": "My event backgrounds (bound, not for sale, not borrowable by VIPs)", "ev.noBadge": "No event backgrounds yet: claim one in Events with the event code.",
+    "ev.toEvents": "Claim backgrounds in Events", "ev.bgChange": "Background: {x} (free)", "ev.needVerified": "Discord-linked wallets", "ev.needHolder": "Cat Samurai holders", "ev.needHolderNote": "This event is for Cat Samurai holders only",
+    "ev.untitled": "Event #{n}", "ev.st.open": "Live", "ev.st.soon": "Not started", "ev.st.got": "Claimed", "ev.st.full": "Full", "ev.st.over": "Ended", "ev.period": "{a} – {b}",
+    "ev.capN": "{n} / {m} claimed", "ev.capAll": "{n} claimed", "ev.need": "For: {x}", "ev.bound": "Wallet-bound · not for sale · the background comes off if the cat changes hands", "ev.codePh": "Event code",
+    "ev.claim": "Claim", "ev.codeEmpty": "Enter the event code", "ev.got": "Claimed! Put on “{x}” in Equip → Background", "ev.wearIt": "Go equip it",
+    "e.Soulbound": "Event backgrounds are wallet-bound and can't be transferred or listed", "e.BadEvent": "Event not found", "e.EventExists": "That event number is already used", "e.BadTime": "Bad time range: the end must be after the start (new events need a code)",
+    "e.NotOpen": "Not within the claim period", "e.WrongCode": "Wrong code — please check it", "e.AlreadyClaimed": "This wallet already claimed this event", "e.EventFull": "This event is full", "e.NotHolder": "This event is for Cat Samurai holders only", "e.NoBadge": "You don't have this event background"});

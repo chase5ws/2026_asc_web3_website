@@ -21,3 +21,9 @@
 - 2026-11-05 換裝頁改版（使用者回饋：不知道要先點部位才會出現配件和 VIP 借穿）：一進來預設選第一個部位；步驟標成 ① 選喵武士 ② 點部位 ③ 挑配件；③ 上方加部位分頁（顯示每個部位可換的數量：自己的＋VIP 可借的），清單分成「我背包裡的」與「★ VIP 免費借穿」；點部位不再取消選取，手機上點部位會捲到 ③；該部位沒東西時說明去市場、轉蛋或買 VIP。拿掉 i18n `q.mine`、`q.stockPick`，新增 `q.step2`、`q.step3`、`q.bagT`、`q.noSlot`。
 - 2026-11-05 換裝頁再縮小（使用者：還是要往下滑才看得到）：預覽圖縮到 260px（手機 112px 放左邊），② 部位卡縮小、右上角紅點標能換幾件（取代 ③ 上方的部位分頁），③ 配件清單放在預覽右邊（手機在下方整排），電腦版一個畫面看得到喵武士、部位與配件；配件清單最高 360px 內捲動。
 - 2026-11-05 OpenSea 合集網址確認是 `https://opensea.io/collection/asc-cat-samurai-v2`（單隻 `opensea.io/item/polygon/<合約>/<編號>` 也正常）：`config.js` 新增 `openseaCollection`，圖鑑上方加「OpenSea 合集 ↗」按鈕；Discord 機器人官方連結也加回這個合集。
+
+## 2026-11-05 活動背景（活動徽章 EventBadges）
+- 使用者決定：活動背景綁定錢包、不能轉賣（參加證明）；只能用使用者公告的代碼在活動期間領取，過期就沒有；NFT 頁要有活動領取介面；VIP 不能借穿；喵武士轉手後背景自動拿掉（徽章留在原錢包）。
+- 做法（使用者選「新的活動徽章合約」）：`contracts-asc/badges/`：EventBadges（UUPS、不能轉移的 ERC-1155，代碼存 keccak256(編號, 代碼)、期限、名額、可限 Discord 綁定與持有者、`wear` 穿背景、`backgroundOf` 只在穿上的人還持有時有效、grant／revoke、角色同衣櫃）＋ hardhat 測試＋`npm run build` 匯出＋一次性部署頁。不動 NFT、不升級衣櫃。**這台環境無法編譯 Solidity，測試要在使用者電腦跑。**
+- 網站：`config.js` 新增 `badges`（空的時候活動頁、背景格都不顯示）；chain.js 加 ABI 與錯誤；look.js 把 `"badges": true` 的部位（必須在 traits.json 最後面）拿出來當 `L.bgCat`／`L.bgOpts`，`compose` 第三個參數畫背景、`bgOf` 讀 `L.bg`（ui.js 每次用 `backgroundsOf` 更新）；NFT 子分頁「活動」（#nft/event：狀態、期間、名額、限制、輸入代碼領取，先 staticCall 試算）；換裝頁 ② 多「背景」部位，③ 列我的活動背景與「不穿背景」，確認時另送一筆 `wear`；圖鑑顯示背景；管理面板「活動 EventBadges」（建立／修改活動：代碼在瀏覽器算雜湊、時間用電腦時區；補發、收回、metadata 網址、暫停、升級）。
+- 版面：NFT 子選單 7 個改成置中、間距縮小；錢包狀態標籤會換行，不再蓋到子選單。

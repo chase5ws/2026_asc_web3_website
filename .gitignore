@@ -2,3 +2,5 @@ node_modules/
 .DS_Store
 *.log
 _to_delete/
+contracts-asc/badges/artifacts/
+contracts-asc/badges/cache/

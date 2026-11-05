@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>活動徽章部署（一次性）</title>
+<style>
+:root{--bg:#070d1f;--card:#0f1b3a;--line:#22355f;--ink:#e8eefc;--muted:#8fa0c6;--ok:#52d39a;--bad:#ff8a8a;--red:#d43a3a;--gold:#d4af6a}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.6 system-ui,-apple-system,"PingFang TC","Noto Sans TC",sans-serif}
+main{max-width:760px;margin:0 auto;padding:24px 16px 60px;display:flex;flex-direction:column;gap:14px}
+h1{font-size:22px;margin:0}.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;display:flex;flex-direction:column;gap:10px}
+label{display:flex;flex-direction:column;gap:4px;font-size:13px;color:var(--muted)}input{min-height:40px;border-radius:10px;border:1px solid var(--line);background:#0b1530;color:var(--ink);padding:0 10px;font:14px ui-monospace,monospace}
+button{min-height:44px;border:0;border-radius:10px;background:var(--red);color:#fff;font-weight:700;font-size:15px;padding:0 16px;cursor:pointer}button.alt{background:transparent;border:1px solid var(--line);color:var(--ink)}button:disabled{opacity:.45;cursor:not-allowed}
+.pill{display:inline-block;padding:2px 10px;border-radius:999px;border:1px solid var(--line);font-size:13px}.pill.ok{color:var(--ok);border-color:var(--ok)}.pill.bad{color:var(--bad);border-color:var(--bad)}
+ol{margin:0;padding-left:22px;display:flex;flex-direction:column;gap:6px}li.done::marker{content:"✓  ";color:var(--ok)}li.run{color:var(--gold)}li.fail{color:var(--bad)}.tx{font-size:12px;word-break:break-all}a{color:#8db8ff}
+table{border-collapse:collapse;width:100%;font-size:13px}td{border-top:1px solid var(--line);padding:6px 4px;word-break:break-all;vertical-align:top}.muted{color:var(--muted);font-size:13px}
+</style>
+</head>
+<body>
+<main>
+<h1>活動徽章部署（一次性，部署完就刪）</h1>
+<p class="muted">部署 EventBadges（實作＋UUPS 代理），先由你的錢包當 owner：設定 operator，最後發起轉移給 Safe。Safe 在管理面板產生的批次裡 acceptOwnership、setAdmin 才算上線。需要同資料夾的 <code>build.json</code>（在 <code>contracts-asc/badges</code> 跑 <code>npm run build</code> 產生）。</p>
+<div class="card"><b>1. 連結 MetaMask</b><div><button type="button" id="bConn">連結 MetaMask</button> <span class="pill" id="pAcc">未連結</span> <span class="pill" id="pNet">–</span> <span class="pill" id="pBuild">讀取 build.json…</span></div></div>
+<div class="card"><b>2. 設定</b>
+<label>最後要轉給的 Safe<input id="iSafe"></label>
+<label>operator（機器人錢包，只能緊急暫停；預設讀 NFT 的 operator）<input id="iOp"></label>
+<label>救援錢包 guardian（部署後不能改；0＝不用）<input id="iGuard"></label>
+<label>NFT（喵武士 V2）<input id="iNft"></label>
+<label>金庫（AscPointV2，用來檢查 Discord 綁定）<input id="iVault"></label>
+<label>徽章 metadata 網址（結尾要有 /）<input id="iUri"></label>
+<label style="flex-direction:row;align-items:center;gap:8px;color:var(--ink)"><input type="checkbox" id="cMain" style="min-height:auto">我確定要部署到 Polygon 主網</label>
+<div style="display:flex;gap:8px;flex-wrap:wrap"><button type="button" id="bGo" disabled>開始部署</button><button type="button" class="alt" id="bReset">清除進度</button></div>
+</div>
+<div class="card"><b>3. 進度（每一步 MetaMask 確認一次；中途關掉回來按「開始部署」會接著做，不會重複部署）</b><ol id="steps"></ol></div>
+<div class="card" id="cRes" hidden><b>結果</b><table id="tRes"></table><button type="button" class="alt" id="bDl">下載部署結果 polygon.json</button></div>
+</main>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.13.4/ethers.umd.min.js"></script>
+<script>
+(() => {
+const E = window.ethers;
+const M = { nft: "0xc70E923942B9404268C4842E6A42CFE5be6152E0", vault: "0xB0B0026dBb092adf290df75729619343d51cA4bD", safe: "0x7c532A61349814633CdE4f81652Cb0E35BEB75f6", guardian: "0xDe8119fE605C934C99cF2ADF2e76e151e8F5E887", uri: "https://chase5ws.github.io/2026_asc_web3_ipfs/v2/badges/", rpc: "https://polygon-bor-rpc.publicnode.com" };
+const $ = (id) => document.getElementById(id);
+const KEY = "asc-badges-deploy";
+const st = (() => { try { return JSON.parse(localStorage.getItem(KEY) || "{}"); } catch (_) { return {}; } })();
+const save = () => { try { localStorage.setItem(KEY, JSON.stringify(st)); } catch (_) {} };
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const link = (k, v) => `<a href="https://polygonscan.com/${k}/${v}" target="_blank" rel="noopener">${esc(v)}</a>`;
+let ART = null, provider, signer, me;
+
+for (const [id, v] of [["iSafe", M.safe], ["iGuard", M.guardian], ["iNft", M.nft], ["iVault", M.vault], ["iUri", M.uri]]) $(id).value = st.cfg?.[id] ?? v;
+if (st.cfg?.iOp) $("iOp").value = st.cfg.iOp;
+else new E.Contract(M.nft, ["function operator() view returns (address)"], new E.JsonRpcProvider(M.rpc, 137, { staticNetwork: true })).operator().then((a) => { if (!$("iOp").value) $("iOp").value = a; }).catch(() => {});
+fetch("./build.json", { cache: "no-store" }).then((r) => r.json()).then((j) => { ART = j; $("pBuild").textContent = "build.json ✓"; $("pBuild").className = "pill ok"; ready(); })
+    .catch(() => { $("pBuild").textContent = "找不到 build.json：先 npm run build"; $("pBuild").className = "pill bad"; });
+
+const STEPS = [["impl", "部署實作合約 EventBadges"], ["proxy", "部署代理 ERC1967Proxy（initialize：owner＝你的錢包）"], ["op", "setOperator（機器人錢包）"], ["transfer", "transferOwnership（Safe）：Safe 之後在管理面板的批次 acceptOwnership"], ["check", "讀回檢查"]];
+function render(cur, err) {
+    $("steps").innerHTML = STEPS.map(([k, l]) => {
+        const cls = st.done?.[k] ? "done" : k === cur ? (err ? "fail" : "run") : "";
+        return `<li class="${cls}">${esc(l)}${st.tx?.[k] ? `<div class="tx">${link("tx", st.tx[k])}</div>` : ""}${k === cur && err ? `<div class="tx">${esc(err)}</div>` : ""}</li>`;
+    }).join("");
+    if (st.proxy) {
+        $("cRes").hidden = false;
+        $("tRes").innerHTML = [["<b>活動徽章（代理）</b>", link("address", st.proxy)], ["實作", st.impl ? link("address", st.impl) : "–"], ["部署區塊", st.block ?? "–"], ["代理 constructor 參數（驗證用）", `<code>${esc(st.ctorArgs || "")}</code>`], ["檢查", st.check || "–"]]
+            .map(([a, b]) => `<tr><td>${a}</td><td>${b}</td></tr>`).join("");
+    }
+}
+function ready() { $("bGo").disabled = !(ART && me && st.net === 137); }
+async function connect() {
+    if (!window.ethereum) { alert("找不到 MetaMask：請用裝了 MetaMask 的瀏覽器開這個網頁"); return; }
+    provider = new E.BrowserProvider(window.ethereum, "any");
+    await provider.send("eth_requestAccounts", []);
+    signer = await provider.getSigner(); me = await signer.getAddress();
+    st.net = Number((await provider.getNetwork()).chainId);
+    $("pAcc").textContent = me.slice(0, 6) + "…" + me.slice(-4); $("pAcc").className = "pill ok";
+    $("pNet").textContent = st.net === 137 ? "Polygon 主網" : `chainId ${st.net}：請切到 Polygon`; $("pNet").className = "pill " + (st.net === 137 ? "ok" : "bad");
+    ready();
+}
+async function step(k, fn) {
+    if (st.done?.[k]) return;
+    render(k);
+    const tx = await fn();
+    if (tx?.hash) { (st.tx ||= {})[k] = tx.hash; save(); render(k); const r = await tx.wait(); if (r.status !== 1) throw new Error("交易失敗"); }
+    (st.done ||= {})[k] = true; save(); render();
+}
+let running = false;
+async function go() {
+    if (running) return; // 防止連按兩次部署出兩個合約
+    if (!$("cMain").checked) { alert("請先勾選「我確定要部署到 Polygon 主網」"); return; }
+    running = true; $("bGo").disabled = true;
+    let cur = null;
+    try {
+        const A = (id) => { const v = $(id).value.trim(); return v ? E.getAddress(v) : E.ZeroAddress; };
+        const cfg = { safe: A("iSafe"), op: A("iOp"), guard: A("iGuard"), nft: A("iNft"), vault: A("iVault"), uri: $("iUri").value.trim() };
+        if (cfg.safe === E.ZeroAddress || cfg.nft === E.ZeroAddress || cfg.vault === E.ZeroAddress) throw new Error("Safe、NFT、金庫地址都要填");
+        st.cfg = Object.fromEntries(["iSafe", "iOp", "iGuard", "iNft", "iVault", "iUri"].map((id) => [id, $(id).value])); st.deployer ||= me; save();
+        if (st.deployer !== me && st.done?.proxy && !st.done?.transfer) throw new Error(`請切回原本的部署錢包 ${st.deployer}（它是目前的 owner）`);
+        const bd = () => new E.Contract(st.proxy, ART.EventBadges.abi, signer);
+        // 部署：先記下交易 hash，中途關掉回來時用收據找回合約地址，不會重複部署
+        const created = async (k) => { const h = st.tx?.[k]; if (!h) return null; const r = await provider.waitForTransaction(h); if (!r || r.status !== 1) { delete st.tx[k]; save(); return null; } return r; };
+        cur = "impl"; await step("impl", async () => {
+            let r = await created("impl");
+            if (!r) { const c = await new E.ContractFactory(ART.EventBadges.abi, ART.EventBadges.bytecode, signer).deploy(); (st.tx ||= {}).impl = c.deploymentTransaction().hash; save(); render("impl"); r = await created("impl"); if (!r) throw new Error("部署失敗"); }
+            st.impl = r.contractAddress; save(); return null;
+        });
+        cur = "proxy"; await step("proxy", async () => {
+            const data = new E.Interface(ART.EventBadges.abi).encodeFunctionData("initialize", [st.deployer, cfg.guard, cfg.nft, cfg.vault, cfg.uri]);
+            let r = await created("proxy");
+            if (!r) { const c = await new E.ContractFactory(ART.ERC1967Proxy.abi, ART.ERC1967Proxy.bytecode, signer).deploy(st.impl, data); (st.tx ||= {}).proxy = c.deploymentTransaction().hash; save(); render("proxy"); r = await created("proxy"); if (!r) throw new Error("部署失敗"); }
+            st.proxy = r.contractAddress; st.block = r.blockNumber;
+            st.ctorArgs = E.AbiCoder.defaultAbiCoder().encode(["address", "bytes"], [st.impl, data]).slice(2); save(); return null;
+        });
+        cur = "op"; await step("op", async () => (cfg.op === E.ZeroAddress ? null : bd().setOperator(cfg.op)));
+        cur = "transfer"; await step("transfer", async () => bd().transferOwnership(cfg.safe));
+        cur = "check"; st.done.check = false;
+        const b = new E.Contract(st.proxy, ART.EventBadges.abi, provider);
+        const [o, p, op, n, v, u] = await Promise.all([b.owner(), b.pendingOwner(), b.operator(), b.nft(), b.vault(), b.baseURI()]);
+        const bad = [];
+        if (p !== cfg.safe) bad.push(`pendingOwner ${p}`);
+        if (op !== cfg.op) bad.push(`operator ${op}`);
+        if (n !== cfg.nft || v !== cfg.vault) bad.push("NFT／金庫地址不一致");
+        if (u !== cfg.uri) bad.push("metadata 網址不一致");
+        st.check = bad.length ? `<span class="pill bad">✗ ${esc(bad.join("、"))}</span>` : `<span class="pill ok">✓ 全部正確</span>　目前 owner ${esc(o)}（你），等 Safe acceptOwnership`;
+        st.done.check = !bad.length; save(); render();
+    } catch (e) { console.error(e); render(cur, e.shortMessage || e.reason || e.message); }
+    running = false; ready();
+}
+$("bConn").onclick = () => connect().catch((e) => alert(e.shortMessage || e.message));
+$("bGo").onclick = go;
+$("bReset").onclick = () => { if (confirm("清除這台瀏覽器的部署進度？（已上鏈的合約不受影響）")) { localStorage.removeItem(KEY); location.reload(); } };
+$("bDl").onclick = () => {
+    const out = { chainId: 137, badges: st.proxy, implementation: st.impl, block: st.block, deployer: st.deployer, pendingOwner: st.cfg?.iSafe, operator: st.cfg?.iOp, guardian: st.cfg?.iGuard, baseURI: st.cfg?.iUri, tx: st.tx };
+    const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([JSON.stringify(out, null, 2)], { type: "application/json" })); a.download = "polygon.json"; a.click();
+};
+render();
+})();
+</script>
+</body>
+</html>

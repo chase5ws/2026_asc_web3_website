@@ -13,7 +13,10 @@
         "error ERC1155InsufficientBalance(address sender, uint256 balance, uint256 needed, uint256 tokenId)", "error ERC1155MissingApprovalForAll(address operator, address owner)",
         // 衣櫃（Wardrobe）
         "error IsPaused()", "error BadSlot(uint256 slot)", "error DuplicateSlot(uint256 slot)", "error WrongSlot(uint256 slot, uint256 partId)", "error SlotRequired(uint256 slot)",
-        "error NoChange(uint256 slot)", "error NoStock(uint256 partId)", "error NotEnough(uint256 partId, uint256 available)"
+        "error NoChange(uint256 slot)", "error NoStock(uint256 partId)", "error NotEnough(uint256 partId, uint256 available)",
+        // 活動徽章（EventBadges）
+        "error Soulbound()", "error BadEvent(uint256 id)", "error EventExists(uint256 id)", "error BadTime()", "error NotOpen(uint256 id)", "error WrongCode()",
+        "error AlreadyClaimed(uint256 id, address user)", "error EventFull(uint256 id)", "error NotHolder(address user)", "error NoBadge(uint256 badge)"
     ];
     const ABI = {
         vault: [
@@ -60,13 +63,21 @@
             "event Equipped(uint256 indexed tokenId, address indexed owner, uint256[] partIds, uint256[] clearSlots)",
             "event SlotChanged(uint256 indexed tokenId, address indexed owner, uint256 slot, uint256 oldPart, uint8 oldKind, uint256 newPart, uint8 newKind)"
         ],
+        badges: [
+            ...ERRORS,
+            "function eventIds() view returns (uint256[])", "function badgesOf(address) view returns (uint256[])", "function hasClaimed(uint256,address) view returns (bool)",
+            "function eventOf(uint256) view returns (tuple(bytes32 codeHash, uint64 start, uint64 end, uint32 cap, uint32 claimed, bool verifiedOnly, bool holdersOnly, bool exists))",
+            "function backgroundsOf(uint256[]) view returns (uint256[])", "function paused() view returns (bool)",
+            "function claim(uint256 id, string code)", "function wear(uint256 tokenId, uint256 badge)",
+            "event BackgroundSet(uint256 indexed tokenId, address indexed owner, uint256 badge)"
+        ],
         usdt: ["function balanceOf(address) view returns (uint256)", "function allowance(address,address) view returns (uint256)", "function approve(address,uint256) returns (bool)"]
     };
     const ERR_IFACE = new E.Interface(ERRORS);
 
     const ro = new E.JsonRpcProvider(C.rpcUrl, C.chainId, { staticNetwork: true, batchMaxCount: 20 });
     const read = {};
-    for (const k of Object.keys(ABI)) read[k] = new E.Contract(C[k], ABI[k], ro);
+    for (const k of Object.keys(ABI)) if (C[k]) read[k] = new E.Contract(C[k], ABI[k], ro); // 沒填地址的合約（例如還沒部署的活動徽章）不建立
 
     let account = null;
     let browser = null;

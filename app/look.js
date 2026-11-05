@@ -13,7 +13,11 @@
     async function loadTraits() {
         L.traits = await getJson(`${A}/traits.json`);
         if (!L.traits) throw new Error("讀不到 traits.json");
-        L.cats = L.traits.categories;
+        // 活動背景（"badges": true 的部位，放在 categories 最後面）：不是 ERC-1155 配件，由活動徽章合約決定，另外存在 L.bgCat
+        L.cats = L.traits.categories.filter((c) => !c.badges);
+        L.bgCat = L.traits.categories.find((c) => c.badges) || null;
+        L.bgOpts = {};
+        for (const o of L.bgCat?.options || []) if (o.badge != null && o.file) L.bgOpts[Number(o.badge)] = { ...o, layer: layerUrl(o.file) };
         L.parts = [];
         L.cats.forEach((cat, c) => cat.options.forEach((o, i) => {
             if (!o.file) return;
@@ -124,10 +128,12 @@
         const rank = (c) => (order.includes(c.cat) ? order.indexOf(c.cat) : order.length + c.slot);
         return [...list].sort((a, b) => rank(a) - rank(b));
     }
-    /** 疊圖預覽：在 box 裡放每層 <img> */
-    function compose(box, list) {
+    /** 疊圖預覽：在 box 裡放每層 <img>；bg＝活動背景的徽章編號（畫在最底層） */
+    function compose(box, list, bg) {
         box.innerHTML = "";
         box.classList.add("stack");
+        const b = bg && L.bgOpts[Number(bg)];
+        if (b) { const im = document.createElement("img"); im.alt = ""; im.loading = "lazy"; im.src = b.layer; box.appendChild(im); }
         for (const p of drawOrder(list)) {
             if (!p.opt?.file) continue;
             const im = document.createElement("img");
@@ -139,6 +145,9 @@
     }
     const tierOf = (list) => (list.some((p) => p.opt.tier === "super") ? "super" : list.some((p) => p.opt.tier === "rare") ? "rare" : "normal");
     const imageOf = (id) => `${A}/v2/images/${id}.png`;
+    /** 這隻現在有效的活動背景（徽章編號，0＝沒有）：ui.js 每次讀鏈時用 backgroundsOf 更新 L.bg */
+    L.bg = {};
+    const bgOf = (id) => Number(L.bg[String(id)] ?? L.tokens[String(id)]?.bg ?? 0);
 
-    window.ASCLook = { L, loadTraits, sync, reset, applyEquip, v1Traits, lookOf, picks, compose, drawOrder, tierOf, imageOf, empty, rollTraits, A };
+    window.ASCLook = { L, loadTraits, sync, reset, applyEquip, v1Traits, lookOf, picks, compose, drawOrder, tierOf, imageOf, bgOf, empty, rollTraits, A };
 })();

@@ -12,6 +12,8 @@
     const revealed = (id) => !!tok(id)?.revealed;
     const isVip = () => Number(D.nftMe?.[1] || 0) > Date.now() / 1000;
     const nft = () => write("nft");
+    const bgName = (o) => (S.lang === "zh" && o?.zh) || o?.name || "";
+    const hasBg = () => !!(C.badges && LK.L.bgCat);
 
     /** 某顆現在的外觀（換裝試穿：try／take 疊上去） */
     function picksOf(id, withTry) {
@@ -25,7 +27,7 @@
     }
     function catCard(id, on, onClick, check) {
         const b = el(`<button type="button" class="${on ? "on" : ""}"></button>`);
-        if (revealed(id)) { const st = document.createElement("div"); st.className = "stack"; LK.compose(st, picksOf(id)); b.appendChild(st); }
+        if (revealed(id)) { const st = document.createElement("div"); st.className = "stack"; LK.compose(st, picksOf(id), LK.bgOf(id)); b.appendChild(st); }
         else b.appendChild(el(`<img class="boxed" src="./assets/box.png" alt="?" loading="lazy" style="object-fit:cover;border-style:solid">`));
         if (check) b.appendChild(el(`<span class="chk">${on ? "✓" : ""}</span>`));
         b.appendChild(el(`<span>#${id}${tok(id)?.ref != null ? ` · V1 #${tok(id).ref}` : ""}</span>`));
@@ -102,24 +104,26 @@
         $("qFee").textContent = !D.wd ? "–" : isVip() ? t("q.vipFree") : fee(D.wd.fee);
 
         const cats = D.ids.filter(revealed);
-        if (!cats.includes(Q.id)) { Q.id = cats[0] ?? null; Q.try = {}; Q.borrow = {}; Q.take.clear(); }
+        if (!cats.includes(Q.id)) { Q.id = cats[0] ?? null; Q.try = {}; Q.borrow = {}; Q.take.clear(); delete Q.bg; }
         // 一進來就選好第一個部位，下面直接列出能換的配件（以前要先點部位才會出現，玩家不知道）
-        if (Q.slot == null || !LK.L.cats[Q.slot]) Q.slot = 0;
+        if (Q.slot == null || (Q.slot !== "bg" && !LK.L.cats[Q.slot]) || (Q.slot === "bg" && !hasBg())) Q.slot = 0;
         const qc = $("qCats");
         if (!same(qc, JSON.stringify([cats, Q.id, S.lang, cats.map((id) => tok(id)?.traits)]))) {
             qc.innerHTML = "";
             if (!cats.length) qc.appendChild(el(`<p class="muted">${esc(CH.account ? t("q.noneCat") : t("lock"))}</p>`));
-            cats.forEach((id) => qc.appendChild(catCard(id, id === Q.id, () => { Q.id = id; Q.try = {}; Q.borrow = {}; Q.take.clear(); renderEquip(); })));
+            cats.forEach((id) => qc.appendChild(catCard(id, id === Q.id, () => { Q.id = id; Q.try = {}; Q.borrow = {}; Q.take.clear(); delete Q.bg; renderEquip(); })));
         }
         $("qBox").classList.toggle("hidden", Q.id == null);
         const cur = Q.id != null ? picksOf(Q.id) : [];
         const now = Q.id != null ? picksOf(Q.id, true) : [];
         const prev = $("qPrev");
-        const sig = JSON.stringify(now.map((p) => p.opt.name));
-        if (prev._sig !== sig) { prev._sig = sig; LK.compose(prev, now); }
+        const curBg = Q.id != null ? LK.bgOf(Q.id) : 0;
+        const nowBg = Q.bg ?? curBg;
+        const sig = JSON.stringify([now.map((p) => p.opt.name), nowBg]);
+        if (prev._sig !== sig) { prev._sig = sig; LK.compose(prev, now, nowBg); }
 
         const slots = $("eqSlots");
-        if (!same(slots, JSON.stringify([sig, Q.slot, [...Q.take], Q.try, S.lang, Object.keys(D.bag), Object.keys(D.wd?.stock || {}).length, isVip()]))) {
+        if (!same(slots, JSON.stringify([sig, Q.slot, [...Q.take], Q.try, S.lang, Object.keys(D.bag), Object.keys(D.wd?.stock || {}).length, isVip(), D.ev?.mine, Q.bg]))) {
             slots.innerHTML = "";
             slots.appendChild(el(`<p class="eq-step">${esc(t("q.step2"))}</p>`));
             LK.L.cats.forEach((cat, slot) => {
@@ -137,6 +141,14 @@
                 row.onclick = () => { Q.slot = slot; S.eq = "mine"; U.draw(); $("eqMineH").scrollIntoView({ behavior: "smooth", block: "nearest" }); };
                 slots.appendChild(row);
             });
+            // 活動背景：用活動徽章穿（不是配件、不能 VIP 借）
+            if (hasBg()) {
+                const o = LK.L.bgOpts[nowBg], n = (D.ev?.mine || []).filter((b) => LK.L.bgOpts[b]).length;
+                const thumb = o ? `<img src="${o.layer}" alt="" style="object-fit:cover">` : `<span class="boxed" style="width:44px;height:44px;border-radius:8px;display:grid;place-items:center;background:var(--bg2);color:var(--muted)">–</span>`;
+                const row = el(`<div class="slot bgslot${Q.bg != null && Q.bg !== curBg ? " try" : ""}${Q.slot === "bg" ? " on" : ""}" role="button" tabindex="0">${thumb}<span><small>${esc(t("ev.bgSlot"))} · ${esc(Q.bg != null && Q.bg !== curBg ? t("q.trying") : t("ev.badgeTag"))}</small>${esc(o ? bgName(o) : t("ev.noBg"))}</span>${n ? `<em class="cnt">${n}</em>` : ""}</div>`);
+                row.onclick = () => { Q.slot = "bg"; U.draw(); $("eqMineH").scrollIntoView({ behavior: "smooth", block: "nearest" }); };
+                slots.appendChild(row);
+            }
         }
 
         // 我的配件＋VIP 公庫存（點了試穿）：自己的配件穿上由衣櫃保管、換下退回；VIP 借公庫存的普通配件免費，換下歸還
@@ -154,9 +166,27 @@
         const bag = bagAll.filter(([p]) => p.slot === Q.slot);
         const stock = stockAll.filter(([p]) => p.slot === Q.slot);
         // ③ 標題跟著選到的部位；每個部位能換幾件標在 ② 的部位卡右上角
-        const slotLabel = LK.L.cats[Q.slot] ? slotName(LK.L.cats[Q.slot].trait_type) : "";
-        $("eqMineH").textContent = t("q.step3", { s: slotLabel });
-        if (!same(mine, JSON.stringify([bag.map(([p, q]) => [p.pid, q]), stock.map(([p, n]) => [p.pid, n]), Q.slot, Q.try, Q.borrow, Q.id, S.lang, vip]))) {
+        const slotLabel = Q.slot === "bg" ? t("ev.bgSlot") : LK.L.cats[Q.slot] ? slotName(LK.L.cats[Q.slot].trait_type) : "";
+        $("eqMineH").textContent = Q.slot === "bg" ? t("ev.step3") : t("q.step3", { s: slotLabel });
+        if (Q.slot === "bg") {
+            if (!same(mine, JSON.stringify(["bg", D.ev?.mine, Q.bg, curBg, Q.id, S.lang]))) {
+                mine.innerHTML = "";
+                const my = (D.ev?.mine || []).filter((b) => LK.L.bgOpts[b]);
+                const pickBg = (b) => { if (b === (Q.bg ?? curBg)) delete Q.bg; else Q.bg = b; if (Q.bg === curBg) delete Q.bg; renderEquip(); };
+                mine.appendChild(el(`<p class="eq-stockh small">${esc(t("ev.myBadges"))}</p>`));
+                if (!my.length) mine.appendChild(el(`<p class="muted small">${esc(t("ev.noBadge"))}</p>`));
+                for (const b of my) {
+                    const o = LK.L.bgOpts[b];
+                    const n = el(`<button type="button" class="tile bgtile${nowBg === b ? " on" : ""}"><img src="${o.layer}" alt="" loading="lazy" style="object-fit:cover"><span>${esc(bgName(o))}</span><span class="rk super">${esc(t("ev.badgeTag"))}</span></button>`);
+                    n.onclick = () => pickBg(b);
+                    mine.appendChild(n);
+                }
+                if (curBg || Q.bg) { const n = el(`<button type="button" class="tile${nowBg === 0 ? " on" : ""}"><span class="boxed" style="aspect-ratio:1;display:grid;place-items:center;color:var(--muted)">✕</span><span>${esc(t("ev.noBg"))}</span></button>`); n.onclick = () => pickBg(0); mine.appendChild(n); }
+                const go = el(`<button type="button" class="btn alt" style="grid-column:1/-1;min-height:40px;font-size:14px">${esc(t("ev.toEvents"))}</button>`);
+                go.onclick = () => { U.go("nft", "event"); window.scrollTo(0, 0); };
+                mine.appendChild(go);
+            }
+        } else if (!same(mine, JSON.stringify([bag.map(([p, q]) => [p.pid, q]), stock.map(([p, n]) => [p.pid, n]), Q.slot, Q.try, Q.borrow, Q.id, S.lang, vip]))) {
             mine.innerHTML = "";
             if (!bag.length && !stock.length) mine.appendChild(el(`<p class="muted small">${esc(t("q.noSlot", { s: slotLabel }))}</p>`));
             if (bag.length) mine.appendChild(el(`<p class="eq-stockh small mine">${esc(t("q.bagT"))}</p>`));
@@ -182,27 +212,41 @@
             (k === 1 ? ret : k === 2 ? giveBack : p.tier === "super" ? admin : lose).push(partName(p));
         }
         const cost = !W ? null : vip ? 0n : W.fee;
-        $("qNeed").textContent = Q.id == null ? "" : !W ? t("q.noWd") : W.paused ? t("q.paused") : [
+        const bgTo = Q.id != null && Q.bg != null && Q.bg !== curBg ? Q.bg : null;
+        Q._bg = bgTo;
+        const bgLine = bgTo == null ? "" : t("ev.bgChange", { x: bgTo ? bgName(LK.L.bgOpts[bgTo]) : t("ev.noBg") });
+        if (bgTo != null && !(changes.length + takes.length)) {
+            $("qNeed").textContent = D.ev?.paused ? t("q.paused") : bgLine;
+        } else $("qNeed").textContent = Q.id == null ? "" : !W ? t("q.noWd") : W.paused ? t("q.paused") : [bgLine, 
             t("q.need", { n: changes.length, m: takes.length }),
             ret.length ? t("q.ret", { x: ret.join("、") }) : "", giveBack.length ? t("q.giveBack", { x: giveBack.join("、") }) : "",
             admin.length ? t("q.back", { x: admin.join("、") }) : "", lose.length ? t("q.lose", { x: lose.join("、") }) : "",
             changes.length + takes.length ? (cost ? t("q.cost", { f: fee(cost) }) : t("q.costFree")) : ""
         ].filter(Boolean).join("　");
-        $("bEquip").disabled = Q.id == null || !W || W.paused || !(changes.length + takes.length);
-        $("eqReset").disabled = !(Object.keys(Q.try).length + Q.take.size);
+        const partsOk = !!W && !W.paused && changes.length + takes.length > 0;
+        const bgOk = bgTo != null && !D.ev?.paused && (!(changes.length + takes.length) || partsOk);
+        $("bEquip").disabled = Q.id == null || !(partsOk || bgOk);
+        $("eqReset").disabled = !(Object.keys(Q.try).length + Q.take.size) && Q.bg == null;
         Q._changes = changes.map(([slot, pid]) => ({ slot: Number(slot), partId: pid, borrow: !!Q.borrow[slot] }));
         Q._takes = takes;
 
     }
-    $("eqReset").onclick = () => { Q.try = {}; Q.borrow = {}; Q.take.clear(); renderEquip(); };
+    $("eqReset").onclick = () => { Q.try = {}; Q.borrow = {}; Q.take.clear(); delete Q.bg; renderEquip(); };
+    /** 換背景：活動徽章合約的 wear（免費，跟換配件分開的一筆交易） */
+    async function wearBg(id, badge) {
+        const r = await send($("mEquip"), $("bEquip"), async () => (await write("badges")).wear(id, badge));
+        if (r) { LK.L.bg[String(id)] = badge; delete Q.bg; renderEquip(); }
+        return r;
+    }
     $("bVip").onclick = () => {
         const n = Number($("vPer").value || 1);
         send($("mVip"), $("bVip"), async (step) => { await payAsc(C.nft, D.vip.price * BigInt(n), step); return (await nft()).buyVip(n); });
     };
     $("bEquip").onclick = async () => {
-        const id = Q.id, W = D.wd;
-        if (!W) return;
+        const id = Q.id, W = D.wd, bgTo = Q._bg;
         const cs = [...Q._changes, ...Q._takes.map((slot) => ({ slot, partId: NONE, borrow: false }))];
+        if (!cs.length) { if (bgTo != null) await wearBg(id, bgTo); return; }
+        if (!W) return;
         const own = cs.filter((c) => c.partId !== NONE && !c.borrow);
         const cost = isVip() ? 0n : W.fee;
         const r = await send($("mEquip"), $("bEquip"), async (step) => {
@@ -235,6 +279,7 @@
             W.worn[id] = wn;
             Q.try = {}; Q.borrow = {}; Q.take.clear();
             renderEquip();
+            if (bgTo != null) await wearBg(id, bgTo); // 背景是另一份合約：配件換好再換背景
         }
     };
     /** 「刷新」：丟掉外觀快取、重新讀鏈上的背包與喵武士（剛轉蛋、剛換裝看不到時用） */
@@ -557,7 +602,7 @@
         if (same(d, JSON.stringify([id, revealed(id), tok(id)?.traits, mine.has(id), S.lang]))) return;
         d.innerHTML = "";
         const open = revealed(id);
-        if (open) { const st = document.createElement("div"); st.className = "stack"; LK.compose(st, picksOf(id)); d.appendChild(st); }
+        if (open) { const st = document.createElement("div"); st.className = "stack"; LK.compose(st, picksOf(id), LK.bgOf(id)); d.appendChild(st); }
         else d.appendChild(el(`<img class="boxed" src="./assets/box.png" alt="?">`));
         const ref = tok(id)?.ref;
         const info = el(`<div class="gal-info"><h3>AscCatSamurai #${id}</h3><span class="muted small">${ref != null ? esc(t("a.v1", { r: ref })) + " · " : ""}${open ? tierTag(LK.tierOf(picksOf(id))) : esc(t("a.boxT"))}</span><span class="muted small">${esc(t("a.owner"))} <span id="aOwner">…</span></span></div>`);
@@ -569,6 +614,8 @@
                 parts.appendChild(el(`<div class="gal-part">${img}<span>${esc(name)}<small>${esc(slotName(p.cat))}${p.part ? " · " : ""}</small></span></div>`));
                 if (p.part) parts.lastChild.querySelector("small").insertAdjacentHTML("beforeend", tierTag(p.part.tier));
             }
+            const bg = LK.L.bgOpts?.[LK.bgOf(id)];
+            if (bg) parts.appendChild(el(`<div class="gal-part"><img src="${bg.layer}" alt="" loading="lazy"><span>${esc(bgName(bg))}<small>${esc(t("ev.bgSlot"))} · ${esc(t("ev.badgeTag"))}</small></span></div>`));
             info.appendChild(parts);
         }
         const act = el(`<div class="gal-act"></div>`);
@@ -583,6 +630,56 @@
         ownerOf(id).then((a) => { const o = $("aOwner"); if (o && S.pick === id) o.innerHTML = a ? `<a href="${CH.link("address", a)}" target="_blank" rel="noopener">${esc(CH.account && a.toLowerCase() === CH.account.toLowerCase() ? t("a.mineTag") : CH.short(a))}</a>` : "–"; });
     }
 
+    /* ───── 活動：輸入代碼領取活動背景（活動徽章，不能轉移） ───── */
+    const evState = (e, now) => (e.mine ? "got" : now < e.start ? "soon" : now > e.end ? "over" : e.cap && e.claimed >= e.cap ? "full" : "open");
+    const evTime = (s) => new Date(s * 1000).toLocaleString(S.lang === "zh" ? "zh-TW" : "en-US", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit", hour12: false });
+    function renderEvent() {
+        const box = $("evList");
+        if (!C.badges) { box.innerHTML = `<p class="muted">${esc(t("ev.none"))}</p>`; return; }
+        if (!D.ready || !D.ev) { box.innerHTML = `<p class="muted">${esc(t("a.loading"))}</p>`; return; }
+        const now = Math.floor(Date.now() / 1000), rank = { open: 0, soon: 1, got: 2, full: 3, over: 4 };
+        const list = [...D.ev.list].sort((a, b) => rank[evState(a, now)] - rank[evState(b, now)] || b.start - a.start);
+        if (same(box, JSON.stringify([list, S.lang, !!CH.account, D.status?.verified, D.ids.length, D.ev.paused, Math.floor(now / 60)]))) return;
+        box.innerHTML = "";
+        if (!list.length) box.appendChild(el(`<p class="muted">${esc(t("ev.none"))}</p>`));
+        for (const e of list) {
+            const o = LK.L.bgOpts[e.id], s = evState(e, now);
+            const need = [e.verifiedOnly && t("ev.needVerified"), e.holdersOnly && t("ev.needHolder")].filter(Boolean).join("・");
+            const card = el(`<div class="ev ${s}"><div class="ev-img">${o ? `<img src="${o.layer}" alt="" loading="lazy">` : `<span>#${e.id}</span>`}</div><div class="ev-info">
+<div class="ev-h"><b>${esc(o ? bgName(o) : t("ev.untitled", { n: e.id }))}</b><span class="ev-st ${s}">${esc(t("ev.st." + s))}</span></div>
+<span class="muted small">${esc(t("ev.period", { a: evTime(e.start), b: evTime(e.end) }))}　${esc(e.cap ? t("ev.capN", { n: e.claimed, m: e.cap }) : t("ev.capAll", { n: e.claimed }))}</span>
+${need ? `<span class="muted small">${esc(t("ev.need", { x: need }))}</span>` : ""}
+<span class="soft small">${esc(t("ev.bound"))}</span></div></div>`);
+            if (s === "open") {
+                const block = !CH.account ? t("lock") : D.ev.paused ? t("q.paused") : e.verifiedOnly && !D.status?.verified ? t("e.NotVerified") : e.holdersOnly && !D.ids.length ? t("ev.needHolderNote") : "";
+                const row = el(`<div class="ev-claim"><input class="in" placeholder="${esc(t("ev.codePh"))}" autocomplete="off" spellcheck="false"${block ? " disabled" : ""}><button class="btn" type="button"${block ? " disabled" : ""}>${esc(t("ev.claim"))}</button></div>`);
+                const [inp, btn] = [row.querySelector("input"), row.querySelector("button")];
+                const go = async () => {
+                    const code = inp.value.trim();
+                    if (!code) { U.say($("mEvent"), t("ev.codeEmpty"), "bad"); inp.focus(); return; }
+                    const r = await send($("mEvent"), btn, async () => {
+                        const c = await write("badges");
+                        await c.claim.staticCall(e.id, code); // 先試算：代碼錯、已領過會直接顯示原因，不花 gas
+                        return c.claim(e.id, code);
+                    });
+                    if (r) U.say($("mEvent"), t("ev.got", { x: o ? bgName(o) : `#${e.id}` }), "ok");
+                };
+                btn.onclick = go;
+                inp.onkeydown = (ev) => { if (ev.key === "Enter") go(); };
+                card.querySelector(".ev-info").appendChild(row);
+                if (block) card.querySelector(".ev-info").appendChild(el(`<span class="note warn small">${esc(block)}</span>`));
+            }
+            if (s === "got" && o) {
+                const b = el(`<button class="btn alt" type="button" style="min-height:40px;font-size:14px;align-self:flex-start">${esc(t("ev.wearIt"))}</button>`);
+                b.onclick = () => { Q.slot = "bg"; U.go("nft", "equip"); window.scrollTo(0, 0); };
+                card.querySelector(".ev-info").appendChild(b);
+            }
+            box.appendChild(card);
+        }
+    }
+    // 活動分頁：有部署活動徽章才顯示
+    U.renderers.push(() => { $("subEvent")?.classList.toggle("hidden", !C.badges); });
+    U.renderers.push(() => { if (S.page === "nft" && S.nft === "event") renderEvent(); });
     U.renderers.push(() => { if (S.page === "nft" && S.nft === "all") renderAll(); });
     U.renderers.push(() => { if (S.page === "nft" && S.nft === "mint") renderMint(); });
     U.renderers.push(() => { if (S.page === "nft" && S.nft === "equip") renderEquip(); });

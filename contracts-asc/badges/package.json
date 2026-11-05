@@ -1,0 +1,14 @@
+{
+	"name": "asc-event-badges",
+	"private": true,
+	"description": "ASC 活動徽章（活動背景）合約：測試與匯出部署檔",
+	"scripts": {
+		"test": "hardhat test",
+		"build": "hardhat compile && node export.js"
+	},
+	"devDependencies": {
+		"@nomicfoundation/hardhat-toolbox": "^5.0.0",
+		"@openzeppelin/contracts": "5.0.2",
+		"hardhat": "^2.22.0"
+	}
+}

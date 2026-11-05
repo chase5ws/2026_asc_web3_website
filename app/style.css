@@ -698,3 +698,23 @@ a.btn{display:inline-flex;align-items:center;justify-content:center}
   .eq-mineh,.eq-right .tiles,.eq-right>.muted{grid-column:1/-1}
   .eq-right .tiles{max-height:none}
 }
+/* 活動（#nft/event）與背景部位 */
+.evs{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:12px}
+.ev{display:grid;grid-template-columns:120px minmax(0,1fr);gap:12px;padding:12px;border-radius:14px;background:var(--bg2);border:1px solid var(--line)}
+.ev.open{border-color:var(--gold);box-shadow:0 0 0 1px rgba(212,175,106,.35)}
+.ev.over,.ev.full{opacity:.65}
+.ev-img{aspect-ratio:1;border-radius:10px;overflow:hidden;background:var(--card2);display:grid;place-items:center;color:var(--muted);font:900 22px var(--serif)}
+.ev-img img{width:100%;height:100%;object-fit:cover}
+.ev-info{display:flex;flex-direction:column;gap:6px;min-width:0}
+.ev-h{display:flex;gap:8px;align-items:center;justify-content:space-between}.ev-h b{font-size:16px}
+.ev-st{font-size:11px;font-weight:700;padding:2px 8px;border-radius:999px;white-space:nowrap;background:rgba(143,160,198,.15);color:var(--soft)}
+.ev-st.open{background:var(--gold);color:#111}.ev-st.got{background:rgba(82,211,154,.18);color:var(--ok)}
+.ev-claim{display:flex;gap:8px}.ev-claim .in{flex:1;min-width:0;min-height:42px;font-size:16px}.ev-claim .btn{min-height:42px;font-size:15px}
+.slot.bgslot{border:1px dashed rgba(212,175,106,.5)}
+.bgtile img{aspect-ratio:1}
+@media (max-width:860px){.ev{grid-template-columns:84px minmax(0,1fr)}}
+/* NFT 子選單變成 7 個（多了圖鑑、活動）：置中在三段切換下方、間距縮小，不會壓到右邊的錢包狀態 */
+@media (min-width:861px){.top .mid .subs[data-subs="nft"]{left:50%;transform:translateX(-50%)}.top .mid .subs[data-subs="nft"] .sub{padding:0 9px}}
+.ev-claim{flex-wrap:wrap}.ev-claim .in{flex:1 1 150px}
+/* 錢包狀態小標籤：視窗不夠寬時換行，不要往左蓋到子選單 */
+@media (min-width:861px){.toprow .right{min-width:0}.toprow .wallet{min-width:0;max-width:100%}.wallet .status{flex-wrap:wrap;max-width:100%}}

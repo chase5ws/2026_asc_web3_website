@@ -181,6 +181,21 @@
                 } catch (e) { console.warn("衣櫃讀取失敗", e); D.wd = D.wd || null; }
             }
             await LK.sync().catch((e) => console.warn("外觀同步", e));
+            // 活動徽章：活動清單、我的徽章、每隻喵武士現在有效的背景（沒部署時跳過）
+            if (read.badges) {
+                try {
+                    const b = read.badges, ids = (await b.eventIds()).map(Number);
+                    const toks = Object.keys(LK.L.tokens).map(Number);
+                    const [infos, mine, claimed, bgs, paused] = await Promise.all([
+                        Promise.all(ids.map((id) => b.eventOf(id))), CH.account ? b.badgesOf(CH.account) : [],
+                        CH.account ? Promise.all(ids.map((id) => b.hasClaimed(id, CH.account))) : ids.map(() => false),
+                        toks.length ? b.backgroundsOf(toks) : [], b.paused()
+                    ]);
+                    D.ev = { paused, list: ids.map((id, i) => ({ id, start: Number(infos[i].start), end: Number(infos[i].end), cap: Number(infos[i].cap), claimed: Number(infos[i].claimed), verifiedOnly: infos[i].verifiedOnly, holdersOnly: infos[i].holdersOnly, mine: claimed[i] })),
+                        mine: mine.map(Number) };
+                    LK.L.bg = Object.fromEntries(toks.map((id, i) => [String(id), Number(bgs[i] || 0)]));
+                } catch (e) { console.warn("活動徽章讀取失敗", e); }
+            }
             D.ready = true;
         })().catch((e) => console.warn("讀鏈失敗", e)).finally(() => { loading = null; draw(); });
         return loading;

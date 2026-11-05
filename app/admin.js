@@ -13,6 +13,7 @@
 
     const KINDS = [["vault", "金庫 AscPointV2", "Vault AscPointV2"], ["nft", "喵武士 AscCatSamuraiV2", "Cat Samurai AscCatSamuraiV2"], ["parts", "配件 AscCatParts", "Parts AscCatParts"], ["market", "市場 AscMarket", "Market AscMarket"]];
     if (C.wardrobe) KINDS.push(["wardrobe", "衣櫃 Wardrobe", "Wardrobe Wardrobe"]);
+    if (C.badges) KINDS.push(["badges", "活動 EventBadges", "Events EventBadges"]);
     const ROLE_ABI = ["function owner() view returns (address)", "function pendingOwner() view returns (address)", "function admin() view returns (address)", "function operator() view returns (address)"];
     const SAFE_ABI = ["function getOwners() view returns (address[])", "function getThreshold() view returns (uint256)"];
     const ERRS = new E.Interface(["error NotAdmin()", "error NotOperator()", "error NotGuardian()", "error BadRoleTarget()", "error RenounceDisabled()", "error OwnableUnauthorizedAccount(address account)",
@@ -31,9 +32,14 @@
         pct: (v) => { const n = Number(v); if (!(n >= 0 && n <= 100)) throw new Error(L("百分比 0～100", "Percent 0–100")); return BigInt(Math.round(n * 100)); },
         pct8: (v) => { const a = split(v).map((x) => Number(T.pct(x))); if (a.length !== 8) throw new Error(L("要剛好 8 個", "Need exactly 8 values")); return a; },
         int8: (v) => { const a = split(v).map((x) => Number(T.uint(x))); if (a.length !== 8) throw new Error(L("要剛好 8 個", "Need exactly 8 values")); return a; },
-        str: (v) => String(v).trim()
+        str: (v) => String(v).trim(),
+        // 時間：「2026-11-10 20:00」（你電腦的時區）或 unix 秒
+        time: (v) => { const s = String(v).trim(); if (/^\d{9,}$/.test(s)) return BigInt(s); const d = new Date(s.replace(" ", "T")); if (isNaN(d)) throw new Error(L("時間格式：2026-11-10 20:00", "Format: 2026-11-10 20:00")); return BigInt(Math.floor(d / 1000)); },
+        // 活動代碼：原文只留在你的瀏覽器，送出前在 prep 換成 keccak256(活動編號, 代碼)
+        code: (v) => String(v).trim()
     };
-    const HINT = () => ({ addr: "0x…", addrs: L("0x…，多個用逗號或換行分隔", "0x…, separate with commas or new lines"), uint: "0", uints: "1, 2, 3", usdt: "USDT", pct: "%", pct8: "70, 75, 80, 85, 90, 94, 97, 100", int8: "0, 30, 60, 90, 120, 180, 240, 360", str: "https://…/" });
+    const codeHash = (id, code) => E.solidityPackedKeccak256(["uint256", "string"], [id, code]);
+    const HINT = () => ({ addr: "0x…", addrs: L("0x…，多個用逗號或換行分隔", "0x…, separate with commas or new lines"), uint: "0", uints: "1, 2, 3", usdt: "USDT", pct: "%", pct8: "70, 75, 80, 85, 90, 94, 97, 100", int8: "0, 30, 60, 90, 120, 180, 240, 360", str: "https://…/", time: "2026-11-10 20:00", code: L("例如 MOON2026（大小寫有差）", "e.g. MOON2026 (case-sensitive)") });
     const pct = (bps) => `${Number(bps) / 100}%`;
     const usd = (v) => `${Number(E.formatUnits(v ?? 0n, 6)).toLocaleString("en-US", { maximumFractionDigits: 6 })} USDT`;
     const int = (v) => Number(v ?? 0).toLocaleString("en-US");
@@ -106,6 +112,27 @@
         { c: "market", lv: "owner", sig: "rescueERC20(address token,address to,uint256 amount)", zh: "救回誤轉代幣", en: "Rescue ERC-20", d: ["數量是最小單位", "Amount in smallest units"], a: [["token", "addr", "代幣", "Token"], ["to", "addr", "收款", "To"], ["amount", "uint", "數量", "Amount"]], warn: true }
     ];
     // 衣櫃（UUPS 可升級；owner 是 Safe）
+    // 活動徽章（活動背景）：代碼只在瀏覽器算雜湊，不上鏈；時間用你電腦的時區
+    const evPrep = (create) => (v) => {
+        const [id, code, ...rest] = v;
+        if (create && !code) throw new Error(L("新活動要填代碼", "A new event needs a code"));
+        return [id, code ? codeHash(id, code) : E.ZeroHash, ...rest];
+    };
+    const EV_ARGS = [["start", "time", "開始領取", "Claim starts"], ["end", "time", "截止", "Claim ends"], ["cap", "uint", "人數上限（0＝不限）", "Cap (0 = none)"], ["verifiedOnly", "bool", "只限 Discord 綁定的錢包", "Discord-linked wallets only"], ["holdersOnly", "bool", "只限持有喵武士", "Cat Samurai holders only"]];
+    if (C.badges) A.push(
+        { c: "badges", lv: "admin", sig: "createEvent(uint256 id,bytes32 codeHash,uint64 start,uint64 end,uint32 cap,bool verifiedOnly,bool holdersOnly)", zh: "建立活動", en: "Create event",
+            d: ["編號要跟 traits.json 背景選項的 badge 一樣；代碼只在你的瀏覽器算雜湊，不會上鏈", "Number must match the background's badge in traits.json; the code is hashed in your browser, never sent on-chain"],
+            a: [["id", "uint", "活動編號（1 起）", "Event number (from 1)"], ["codeHash", "code", "活動代碼", "Event code"], ...EV_ARGS], pre: () => ["", "", "", "", "0", "true", "true"], prep: evPrep(true) },
+        { c: "badges", lv: "admin", sig: "updateEvent(uint256 id,bytes32 codeHash,uint64 start,uint64 end,uint32 cap,bool verifiedOnly,bool holdersOnly)", zh: "修改活動", en: "Edit event",
+            d: ["代碼留空＝不換；提早結束：截止填現在", "Leave the code empty to keep it; end now to close early"], a: [["id", "uint", "活動編號", "Event number"], ["codeHash", "code", "新代碼（留空不換）", "New code (empty = keep)"], ...EV_ARGS], prep: evPrep(false) },
+        { c: "badges", lv: "admin", sig: "grant(uint256 id,address[] users)", zh: "補發活動背景", en: "Grant event background", d: ["不看期限與代碼；每個錢包每場一次", "Ignores time and code; once per wallet"], a: [["id", "uint", "活動編號", "Event number"], ["users", "addrs", "錢包", "Wallets"]] },
+        { c: "badges", lv: "admin", sig: "revoke(uint256 id,address user)", zh: "收回活動背景", en: "Revoke event background", d: ["例如被盜錢包；收回後那個錢包不能再領同一場", "e.g. a stolen wallet; it can't claim this event again"], a: [["id", "uint", "活動編號", "Event number"], ["user", "addr", "錢包", "Wallet"]], warn: true },
+        { c: "badges", lv: "admin", sig: "setBaseURI(string b)", zh: "徽章 metadata 網址", en: "Badge metadata URL", d: ["結尾要有 /", "Must end with /"], a: [["b", "str", "網址", "URL"]] },
+        { c: "badges", lv: "admin", sig: "setPaused(bool v)", zh: "暫停／恢復領取與穿背景", en: "Pause / resume", d: ["", ""], a: [["v", "bool", "暫停", "Paused"]] },
+        { c: "badges", lv: "admin", sig: "setOperator(address op)", zh: "設定 operator", en: "Set operator", d: ["只能緊急暫停", "Can only emergency-pause"], a: [["op", "addr", "operator", "Operator"]] },
+        { c: "badges", lv: "operator", sig: "emergencyPause()", zh: "緊急暫停活動", en: "Emergency pause events", d: ["恢復要 admin", "Admin resumes"], a: [], warn: true },
+        { c: "badges", lv: "owner", sig: "upgradeToAndCall(address newImplementation,bytes data)", zh: "升級活動合約", en: "Upgrade event contract", d: ["新實作要先部署、測試；data 通常填 0x", "Deploy and test the new implementation first; data is usually 0x"], a: [["newImplementation", "addr", "新實作", "New implementation"], ["data", "str", "data", "data"]], danger: true }
+    );
     if (C.wardrobe) A.push(
         { c: "wardrobe", lv: "operator", sig: "emergencyPause()", zh: "緊急暫停換裝", en: "Emergency pause", d: ["operator 只能暫停；恢復要 admin", "Operator can only pause; admin resumes"], a: [], warn: true },
         { c: "wardrobe", lv: "admin", sig: "setPaused(bool v)", zh: "暫停／恢復換裝", en: "Pause / resume equip", d: ["", ""], a: [["v", "bool", "暫停", "Paused"]], pre: (s) => [String(!!s.wardrobe?.paused)] },
@@ -259,6 +286,8 @@
             case "usdt": return usd(v);
             case "pct": return pct(v);
             case "bool": return yes(v);
+            case "time": return new Date(Number(v) * 1000).toLocaleString(lang() === "zh" ? "zh-TW" : "en-US", { hour12: false });
+            case "code": return /^0x0{64}$/.test(String(v)) ? L("（不換代碼）", "(keep code)") : `${String(v).slice(0, 10)}…（${L("代碼雜湊", "code hash")}）`;
             default: return String(v);
         }
     }
@@ -844,11 +873,12 @@ ${KINDS.map(([k, zh, en]) => paneHtml(k, zh, en)).join("")}
         renderCart();
     }
     function collect(x, card) {
-        return x.a.map(([name, type, zh, en], i) => {
+        const out = x.a.map(([name, type, zh, en], i) => {
             const el = card.querySelector(`#adf-${x.c}-${x.fn}-${i}`);
             try { return type === "bool" ? el.checked : T[type](el.value); }
             catch (e) { throw new Error(`${L(zh, en)}：${e.shortMessage || e.message}`); }
         });
+        return x.prep ? x.prep(out) : out;
     }
     const msgs = {}; // 重畫面板時保留每張卡片的結果訊息
     function say(card, text, kind, hash) {
