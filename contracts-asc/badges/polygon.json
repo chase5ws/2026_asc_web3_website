@@ -1,0 +1,17 @@
+{
+  "chainId": 137,
+  "badges": "0x445eE4A94477a87b95E066DD0A32e0bBB174c2B5",
+  "implementation": "0xb4a54D11b6ab0A3d2966004A3A00E0f582d074bE",
+  "block": 96774549,
+  "deployer": "0xa2BCD5dD5d748FA6314D438a2C55b139dB62b8ff",
+  "pendingOwner": "0x7c532A61349814633CdE4f81652Cb0E35BEB75f6",
+  "operator": "0xa2BCD5dD5d748FA6314D438a2C55b139dB62b8ff",
+  "guardian": "0xDe8119fE605C934C99cF2ADF2e76e151e8F5E887",
+  "baseURI": "https://chase5ws.github.io/2026_asc_web3_ipfs/v2/badges/",
+  "tx": {
+    "impl": "0xdbb88bca4daef4900d5e0fe6f5ed88030f271ddc22e63eebafa1b6c6366c37ce",
+    "proxy": "0xd536bdef4ecd249e5960ea2a058dd142eca988d2f21e936c59e8c6d0b50987d0",
+    "op": "0x36229e4b0df01f30b232e5b70688935a0d2fa7ca070ed9a72e821cd9948b7ba3",
+    "transfer": "0xefcd81eff36f1087e52adba4a60899a4454a17c67b114b76e622ca2b032bc913"
+  }
+}

@@ -29,3 +29,4 @@
 - 版面：NFT 子選單 7 個改成置中、間距縮小；錢包狀態標籤會換行，不再蓋到子選單。
 - 2026-11-05 背景預設透明＋#0 白色測試：traits.json 的 Background 第一個選項 Transparent（file null），metadata 沒穿時寫 Background: Transparent；新增 White（layers/Background/White.png，badge 1）。合約還沒部署，用 `v2/overrides.json` {"0":{"Background":"White"}} 讓 #0 先畫白底（鏈上有穿背景時以鏈上為準，網站 look.js 的 bgOf 同樣順序）。活動徽章部署頁改由 GitHub Pages `/badges-deploy/` 發布（需要 commit build.json）。
 - 2026-11-05 部署頁 404：使用者沒在本機編譯（沒有 build.json）。改成 pages.yml 在 GitHub 上 npm install → hardhat test → npm run build，通過才發布 /badges-deploy/（含 build.json、verify-badges.json、ABI），失敗不影響網站。
+- 2026-11-05 活動徽章上線（部署）：代理 `0x445eE4A94477a87b95E066DD0A32e0bBB174c2B5`（實作 0xb4a5…74bE，區塊 96774549），鏈上讀回 owner＝部署錢包、pendingOwner＝Safe、operator＝0xa2BC、NFT／金庫／guardian 正確、未暫停。`config.js` 填上 `badges`，結果存 `contracts-asc/badges/polygon.json`，pages.yml 拿掉部署頁。下一步：Safe 批次 acceptOwnership＋setAdmin，然後建立活動 1（White 測試）。
