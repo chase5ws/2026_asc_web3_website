@@ -85,7 +85,7 @@ const $ = (id) => document.getElementById(id);
 const KEY = "asc-wardrobe-deploy";
 const st = (() => { try { return JSON.parse(localStorage.getItem(KEY) || "{}"); } catch (_) { return {}; } })();
 // 2026-11-03 實作已經部署過（0x6bB0D831…26BB，交易 0x9795…b5c2），代理還沒部署：沒有本機進度時直接沿用這個實作，不重新部署、不重付 gas
-if (!st.tx?.impl && !st.done?.proxy) { (st.tx ||= {}).impl = "0x9795018044e5c7458bbf5f50bb234a10dd093ed601db425b960d9a616be6b5c2"; }
+if (!st.done?.impl) { (st.tx ||= {}).impl = "0x9795018044e5c7458bbf5f50bb234a10dd093ed601db425b960d9a616be6b5c2"; st.impl = "0x6bB0D831d87EB27Aa77A6656784830D1171226BB"; (st.done ||= {}).impl = true; }
 const save = () => { try { localStorage.setItem(KEY, JSON.stringify(st, (k, v) => (typeof v === "bigint" ? v.toString() : v))); } catch (_) {} };
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 const link = (k, v) => `<a href="https://polygonscan.com/${k}/${v}" target="_blank" rel="noopener">${esc(v)}</a>`;
