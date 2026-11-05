@@ -19,12 +19,16 @@
 | `contracts/Mocks.sol` | 測試用的假 NFT、假金庫；順便讓 hardhat 編譯 ERC1967Proxy |
 | `test/EventBadges.test.js` | 測試 |
 | `export.js` | `npm run build` 匯出 `build.json`（部署頁用）、`EventBadges.abi.json`、`verify-badges.json`（Polygonscan 驗證） |
-| `deploy.html` | 一次性部署頁（讀同資料夾的 build.json），部署完刪掉 |
+| `deploy.html` | 一次性部署頁（讀同資料夾的 build.json），GitHub Pages 發到 `/badges-deploy/`，部署完刪掉 |
 
 ## 上線順序
 1. 這個資料夾：`npm install` → `npm test`（全部通過）→ `npm run build`。
-2. 部署：在網站資料夾 `npm start`，開 `http://localhost:8080/contracts-asc/badges/deploy.html`，MetaMask 用部署錢包，按一次「開始部署」（實作 → 代理 → setOperator → transferOwnership(Safe)）。
+2. 部署（GitHub Pages）：把 `build.json` commit 推上去，等 Pages 更新後開 `https://chase5ws.github.io/2026_asc_web3_website/badges-deploy/`，MetaMask 用部署錢包，按一次「開始部署」（實作 → 代理 → setOperator → transferOwnership(Safe)）。部署完把 `pages.yml` 的「活動徽章部署頁」那一步刪掉。
 3. 把結果的代理地址填進網站 `config.js` 的 `badges`。
 4. 管理面板產生 Safe 批次：`acceptOwnership`、`setAdmin`。
 5. 建活動：管理面板「活動徽章」→ 填編號、代碼、時間 → 送出（代碼只在你的瀏覽器算雜湊，不會上鏈）。
 6. 背景圖：放到 `2026_asc_web3_ipfs` 的 `layers/Background/`，在 `traits.json` 的 Background 選項加 `"badge": 活動編號`；出圖同步會產生徽章 metadata（`v2/badges/<編號>.json`）並把背景畫在最底層。
+
+## 背景預設與測試
+- `traits.json` 的 Background 第一個選項是 `Transparent`（`file: null`）：沒穿活動背景時圖片背景是透明的，metadata 的 Background 屬性寫 Transparent。
+- 合約還沒部署前要看效果：在 `2026_asc_web3_ipfs/v2/overrides.json` 寫 `{"0": {"Background": "White"}}`，出圖同步與網站都會把 #0 畫上白色背景（鏈上有穿背景時以鏈上為準）。測試完把那一行拿掉就回到透明。

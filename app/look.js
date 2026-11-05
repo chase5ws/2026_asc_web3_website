@@ -147,7 +147,14 @@
     const imageOf = (id) => `${A}/v2/images/${id}.png`;
     /** 這隻現在有效的活動背景（徽章編號，0＝沒有）：ui.js 每次讀鏈時用 backgroundsOf 更新 L.bg */
     L.bg = {};
-    const bgOf = (id) => Number(L.bg[String(id)] ?? L.tokens[String(id)]?.bg ?? 0);
+    // 順序跟出圖同步（sync_v2.py）一樣：鏈上有穿 → v2/overrides.json 的 Background（測試／手動）→ 沒有（透明）
+    const bgOf = (id) => {
+        const k = String(id), chain = Number(L.bg[k] ?? L.tokens[k]?.bg ?? 0);
+        if (chain) return chain;
+        const name = L.overrides[k]?.Background;
+        const hit = name && Object.entries(L.bgOpts || {}).find(([, o]) => o.name === name);
+        return hit ? Number(hit[0]) : 0;
+    };
 
     window.ASCLook = { L, loadTraits, sync, reset, applyEquip, v1Traits, lookOf, picks, compose, drawOrder, tierOf, imageOf, bgOf, empty, rollTraits, A };
 })();
