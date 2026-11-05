@@ -28,3 +28,4 @@
 - 網站：`config.js` 新增 `badges`（空的時候活動頁、背景格都不顯示）；chain.js 加 ABI 與錯誤；look.js 把 `"badges": true` 的部位（必須在 traits.json 最後面）拿出來當 `L.bgCat`／`L.bgOpts`，`compose` 第三個參數畫背景、`bgOf` 讀 `L.bg`（ui.js 每次用 `backgroundsOf` 更新）；NFT 子分頁「活動」（#nft/event：狀態、期間、名額、限制、輸入代碼領取，先 staticCall 試算）；換裝頁 ② 多「背景」部位，③ 列我的活動背景與「不穿背景」，確認時另送一筆 `wear`；圖鑑顯示背景；管理面板「活動 EventBadges」（建立／修改活動：代碼在瀏覽器算雜湊、時間用電腦時區；補發、收回、metadata 網址、暫停、升級）。
 - 版面：NFT 子選單 7 個改成置中、間距縮小；錢包狀態標籤會換行，不再蓋到子選單。
 - 2026-11-05 背景預設透明＋#0 白色測試：traits.json 的 Background 第一個選項 Transparent（file null），metadata 沒穿時寫 Background: Transparent；新增 White（layers/Background/White.png，badge 1）。合約還沒部署，用 `v2/overrides.json` {"0":{"Background":"White"}} 讓 #0 先畫白底（鏈上有穿背景時以鏈上為準，網站 look.js 的 bgOf 同樣順序）。活動徽章部署頁改由 GitHub Pages `/badges-deploy/` 發布（需要 commit build.json）。
+- 2026-11-05 部署頁 404：使用者沒在本機編譯（沒有 build.json）。改成 pages.yml 在 GitHub 上 npm install → hardhat test → npm run build，通過才發布 /badges-deploy/（含 build.json、verify-badges.json、ABI），失敗不影響網站。

@@ -23,7 +23,7 @@
 
 ## 上線順序
 1. 這個資料夾：`npm install` → `npm test`（全部通過）→ `npm run build`。
-2. 部署（GitHub Pages）：把 `build.json` commit 推上去，等 Pages 更新後開 `https://chase5ws.github.io/2026_asc_web3_website/badges-deploy/`，MetaMask 用部署錢包，按一次「開始部署」（實作 → 代理 → setOperator → transferOwnership(Safe)）。部署完把 `pages.yml` 的「活動徽章部署頁」那一步刪掉。
+2. 部署（GitHub Pages）：推上去後 GitHub Actions 會自動測試、編譯（`npm run build`），通過才發布部署頁；等 Pages 更新後開 `https://chase5ws.github.io/2026_asc_web3_website/badges-deploy/`，MetaMask 用部署錢包，按一次「開始部署」（實作 → 代理 → setOperator → transferOwnership(Safe)）。部署完把 `pages.yml` 的「活動徽章部署頁」那一步刪掉。
 3. 把結果的代理地址填進網站 `config.js` 的 `badges`。
 4. 管理面板產生 Safe 批次：`acceptOwnership`、`setAdmin`。
 5. 建活動：管理面板「活動徽章」→ 填編號、代碼、時間 → 送出（代碼只在你的瀏覽器算雜湊，不會上鏈）。
